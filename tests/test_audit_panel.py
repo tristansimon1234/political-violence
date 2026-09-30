@@ -36,6 +36,7 @@ def _video(duree_s: int, ratio: float | None) -> VideoDetail:
         (180, 9 / 16, "short"),
         (181, 9 / 16, "long"),  # vertical mais trop long
         (50, 16 / 9, "long"),  # court mais horizontal
+        (50, 1.0, "short"),  # carré
         (50, None, "ambigu"),
         (0, None, "long"),  # live à venir
     ],

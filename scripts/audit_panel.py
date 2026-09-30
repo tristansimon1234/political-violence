@@ -35,13 +35,13 @@ NB_TITRES = 20
 def format_video(v: VideoDetail) -> str:
     """'short', 'long' ou 'ambigu' (≤ 3 min, format du lecteur inconnu).
 
-    Règle proposée : Short = durée ≤ 180 s ET lecteur vertical (largeur < hauteur).
+    Règle proposée : Short = durée ≤ 180 s ET lecteur vertical ou carré (largeur ≤ hauteur).
     """
     if v.duree_s == 0 or v.duree_s > DUREE_MAX_SHORT_S:
         return "long"
     if v.ratio is None:
         return "ambigu"
-    return "short" if v.ratio < 1 else "long"
+    return "short" if v.ratio <= 1 else "long"
 
 
 @dataclass
