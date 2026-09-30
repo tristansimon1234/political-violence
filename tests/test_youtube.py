@@ -68,10 +68,10 @@ class FauxYouTube:
         raise AssertionError(ressource)
 
 
-def test_stats_90j_s_arrete_a_90_jours() -> None:
+def test_stats_s_arretent_a_la_fenetre() -> None:
     faux = FauxYouTube(nb_videos=500)
     yt = YouTube("cle", budget=100, transport=faux)
-    stats = yt.stats_90j("UU", MAINTENANT, max_pages=60)
+    stats = yt.stats_recentes("UU", MAINTENANT, jours=90, max_pages=60)
     assert stats.videos == 90  # jours 0 à 89
     assert stats.vues == 9000
     assert stats.part_commentaires_ouverts == pytest.approx(0.5)
@@ -81,9 +81,9 @@ def test_stats_90j_s_arrete_a_90_jours() -> None:
     assert yt.consomme == 4
 
 
-def test_stats_90j_tronque() -> None:
+def test_stats_tronquees() -> None:
     yt = YouTube("cle", budget=100, transport=FauxYouTube(nb_videos=500))
-    stats = yt.stats_90j("UU", MAINTENANT, max_pages=1)
+    stats = yt.stats_recentes("UU", MAINTENANT, jours=90, max_pages=1)
     assert stats.tronque
     assert stats.videos == 50
 
@@ -92,7 +92,7 @@ def test_run_ne_depasse_jamais_le_budget() -> None:
     faux = FauxYouTube(nb_videos=500)
     yt = YouTube("cle", budget=3, transport=faux)
     with pytest.raises(QuotaDepasse):
-        yt.stats_90j("UU", MAINTENANT, max_pages=60)
+        yt.stats_recentes("UU", MAINTENANT, jours=90, max_pages=60)
     assert yt.consomme <= yt.budget
     assert len(faux.appels) == yt.consomme
 

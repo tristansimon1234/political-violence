@@ -15,3 +15,4 @@ Chaque décision validée qui modifie le projet est ajoutée ici, datée, avec s
 - **30/09/2026** · Sous-types du panel (taxonomie v1) : `media` = `info_continu`, `tv_radio`, `talk_show`, `presse_nationale`, `pure_player` ; `influenceur` = `vulgarisation`, `commentateur`, `debat` ; `politique` = `parti`, `personnalite`. Source de vérité : `radar/schemas.py`.
 - **30/09/2026** · Supabase appelé en REST (PostgREST) via `requests`, sans `supabase-py`, pour limiter les dépendances.
 - **30/09/2026** · Taxonomie v2 : ajout du sous-type influenceur `interview_longue` (Thinkerview, Sam Zirah), issu du panel v0.
+- **30/09/2026** · Vues et activité des sources calculées sur **30 jours** au lieu de 90 : le parcours complet des chaînes d'info sur 90 jours coûtait trop de quota (≈ 1 300 unités pour une partie du panel). Remplace le critère « vues à 90 jours ».

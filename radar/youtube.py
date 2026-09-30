@@ -98,12 +98,12 @@ class Chaine(BaseModel):
     uploads_playlist_id: str
 
 
-class Stats90j(BaseModel):
+class StatsRecentes(BaseModel):
     videos: int
     vues: int
     part_commentaires_ouverts: float | None
     derniere_video_at: datetime | None
-    tronque: bool  # True si la limite de pages a coupé le parcours avant 90 jours
+    tronque: bool  # True si la limite de pages a coupé le parcours avant la fin de la fenêtre
 
 
 def parser_reference(ref: str) -> tuple[Literal["id", "forHandle", "forUsername"], str]:
@@ -162,12 +162,14 @@ class YouTube:
             uploads_playlist_id=c.contentDetails.relatedPlaylists.uploads,
         )
 
-    def stats_90j(self, uploads_playlist_id: str, maintenant: datetime, max_pages: int) -> Stats90j:
-        """Vues et activité des vidéos publiées sur les 90 derniers jours.
+    def stats_recentes(
+        self, uploads_playlist_id: str, maintenant: datetime, jours: int, max_pages: int
+    ) -> StatsRecentes:
+        """Vues et activité des vidéos publiées sur les `jours` derniers jours.
 
         Coût : 1 unité par page de 50 uploads + 1 unité par lot de 50 vidéos.
         """
-        limite = maintenant - timedelta(days=90)
+        limite = maintenant - timedelta(days=jours)
         ids: list[str] = []
         derniere: datetime | None = None
         page: str | None = None
@@ -204,7 +206,7 @@ class YouTube:
             for v in rep_v.items:
                 vues += v.statistics.viewCount
                 ouvertes += v.statistics.commentCount is not None
-        return Stats90j(
+        return StatsRecentes(
             videos=len(ids),
             vues=vues,
             part_commentaires_ouverts=ouvertes / len(ids) if ids else None,

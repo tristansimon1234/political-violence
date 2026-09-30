@@ -15,7 +15,7 @@ def _csv(tmp_path: Path, contenu: str) -> Path:
 
 
 def test_csv_valide(tmp_path: Path) -> None:
-    lignes = lire_csv(_csv(tmp_path, "@a,media,info_continu,top vues 90j info continu\n"))
+    lignes = lire_csv(_csv(tmp_path, "@a,media,info_continu,top vues 30j info continu\n"))
     assert lignes[0].sous_type == "info_continu"
 
 

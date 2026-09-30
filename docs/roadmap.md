@@ -2,7 +2,7 @@
 
 ## Prochaines étapes
 
-1. Espace admin des sources + import initial des ~50 chaînes (résolution API, vues 90 jours, activité, critère d'inclusion).
+1. Espace admin des sources + import initial des ~50 chaînes (résolution API, vues 30 jours, activité, critère d'inclusion).
 2. Refactor de `radar_youtube.py` dans la structure cible, avec stockage Parquet et purge à 30 jours.
 3. Récupération de septembre (étalée sur 2 à 3 jours de quota), en commençant par la première semaine pour calibrer.
 4. Intégration Jev + test de qualité : 500 commentaires classés par Jev et par Claude, comparaison.

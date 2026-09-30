@@ -23,7 +23,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
   - `influenceur` (12) : vulgarisation, commentateurs, débat
   - `politique` (13) : partis et personnalités. **Analysées à part** (chambres d'écho militantes), jamais agrégées avec le reste.
 - Chaque source porte `type`, `sous_type`, et le critère qui justifie sa présence.
-- Critère de sélection : quotas par sous-type, puis classement par **vues sur les 90 derniers jours** (pas par abonnés), sous condition d'activité (publication politique régulière, commentaires ouverts). Diversité éditoriale vérifiée ensuite (public/privé, lignes éditoriales). Vues et activité calculées automatiquement à l'import dans l'admin.
+- Critère de sélection : quotas par sous-type, puis classement par **vues sur les 30 derniers jours** (pas par abonnés), sous condition d'activité (publication politique régulière, commentaires ouverts). Diversité éditoriale vérifiée ensuite (public/privé, lignes éditoriales). Vues et activité calculées automatiquement à l'import dans l'admin.
 - Pas de champ "orientation politique" sur les médias et influenceurs. L'équilibre du panel se vérifie à la main et se documente.
 
 ## Règles non négociables
