@@ -32,8 +32,8 @@ from radar.youtube import (
 
 log = logging.getLogger("import_sources")
 
-# Fenêtre de calcul des vues et de l'activité (docs/decisions.md, 30/09/2026).
-JOURS = 30
+# Fenêtre par défaut de calcul des vues et de l'activité (docs/decisions.md).
+JOURS_DEFAUT = 30
 
 
 class LignePanel(BaseModel):
@@ -82,7 +82,7 @@ def lire_csv(chemin: Path) -> list[LignePanel]:
 
 
 def ligne_source(
-    ligne: LignePanel, chaine: Chaine, stats: StatsRecentes, maintenant: datetime
+    ligne: LignePanel, chaine: Chaine, stats: StatsRecentes, jours: int, maintenant: datetime
 ) -> dict[str, Any]:
     return {
         "channel_id": chaine.channel_id,
@@ -93,8 +93,9 @@ def ligne_source(
         "critere_inclusion": ligne.critere,
         "uploads_playlist_id": chaine.uploads_playlist_id,
         "abonnes": chaine.abonnes,
-        "videos_30j": stats.videos,
-        "vues_30j": stats.vues,
+        "fenetre_jours": jours,
+        "videos_fenetre": stats.videos,
+        "vues_fenetre": stats.vues,
         "part_commentaires_ouverts": stats.part_commentaires_ouverts,
         "derniere_video_at": stats.derniere_video_at.isoformat()
         if stats.derniere_video_at
@@ -104,20 +105,21 @@ def ligne_source(
     }
 
 
-def afficher(resultats: list[tuple[LignePanel, dict[str, Any]]]) -> None:
+def afficher(resultats: list[tuple[LignePanel, dict[str, Any]]], jours: int) -> None:
     print(
-        f"\n{'type':<12}{'sous_type':<18}{'abonnés':>12}{'vidéos/j':>9}{'vues 30j':>14}"
+        f"\n{'type':<12}{'sous_type':<18}{'abonnés':>12}{f'vidéos {jours}j':>12}"
+        f"{f'vues {jours}j':>14}"
         f"{'com. ouverts':>13}  nom résolu (handle) [nom attendu si différent]"
     )
     for ligne, s in sorted(
-        resultats, key=lambda r: (r[1]["type"], r[1]["sous_type"], -r[1]["vues_30j"])
+        resultats, key=lambda r: (r[1]["type"], r[1]["sous_type"], -r[1]["vues_fenetre"])
     ):
         part = s["part_commentaires_ouverts"]
         abonnes = "-" if s["abonnes"] is None else f"{s['abonnes']:,}"
         attendu = f" [{ligne.nom}]" if ligne.nom and ligne.nom != s["nom"] else ""
         print(
-            f"{s['type']:<12}{s['sous_type']:<18}{abonnes:>12}{s['videos_30j'] / JOURS:>9.1f}"
-            f"{s['vues_30j']:>14,}{'-' if part is None else f'{part:.0%}':>13}"
+            f"{s['type']:<12}{s['sous_type']:<18}{abonnes:>12}{s['videos_fenetre']:>12}"
+            f"{s['vues_fenetre']:>14,}{'-' if part is None else f'{part:.0%}':>13}"
             f"  {s['nom']} ({s['handle']}){attendu}"
         )
 
@@ -127,6 +129,9 @@ def main() -> int:
     p.add_argument("csv", type=Path)
     p.add_argument("--dry-run", action="store_true", help="appelle YouTube mais n'écrit rien")
     p.add_argument("--budget", type=int, default=3000, help="quota YouTube max pour ce run")
+    p.add_argument(
+        "--jours", type=int, default=JOURS_DEFAUT, help="fenêtre des vues et de l'activité"
+    )
     p.add_argument("--max-pages", type=int, default=40, help="pages d'uploads max par chaîne")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
@@ -142,7 +147,7 @@ def main() -> int:
             try:
                 chaine = yt.resoudre_chaine(ligne.url)
                 stats = yt.stats_recentes(
-                    chaine.uploads_playlist_id, maintenant, JOURS, args.max_pages
+                    chaine.uploads_playlist_id, maintenant, args.jours, args.max_pages
                 )
             except ResolutionImpossible as e:
                 echecs.append(str(e))
@@ -154,11 +159,11 @@ def main() -> int:
                 continue
             if stats.tronque:
                 log.warning("%s : parcours tronqué à %d pages", chaine.nom, args.max_pages)
-            resultats.append((ligne, ligne_source(ligne, chaine, stats, maintenant)))
+            resultats.append((ligne, ligne_source(ligne, chaine, stats, args.jours, maintenant)))
     except QuotaDepasse as e:
         echecs.append(f"Arrêt propre, budget atteint ({e}). Relancer pour compléter.")
 
-    afficher(resultats)
+    afficher(resultats, args.jours)
     sources = [s for _, s in resultats]
     for msg in echecs:
         print(f"ÉCHEC : {msg}", file=sys.stderr)

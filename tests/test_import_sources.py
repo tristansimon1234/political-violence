@@ -66,3 +66,4 @@ def test_main_dry_run(
     sortie = capsys.readouterr().out
     assert "Chaîne A (@a) [Chaîne B]" in sortie
     assert "--dry-run : 1 sources prêtes" in sortie
+    assert "vidéos 30j" in sortie
