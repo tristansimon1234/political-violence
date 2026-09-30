@@ -1,0 +1,46 @@
+url,type,sous_type,critere,nom,confiance_handle
+@BFMTV,media,info_continu,"Forte audience YouTube, info en continu (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus))",BFMTV,haute
+@franceinfo,media,info_continu,"Service public, info en continu (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus))",franceinfo,haute
+@LCI,media,info_continu,Info en continu (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),LCI,haute
+@CNEWSofficiel,media,info_continu,Info en continu (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),CNEWS,haute
+@FRANCE24,media,info_continu,1re chaîne « Infos et Politique » de France par abonnés (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus) · Classement HypeAuditor « Infos et Politique » France),FRANCE 24,haute
+@TF1INFO,media,tv_radio,Info TV généraliste (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),TF1 INFO,haute
+@FranceInter,media,tv_radio,"Radio publique, forte audience (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus))",France Inter,haute
+@rtl_france,media,tv_radio,Radio privée généraliste (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),RTL,haute
+@Europe1,media,tv_radio,Radio privée généraliste (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Europe 1,haute
+@RMC,media,tv_radio,"Radio, débats (Grandes Gueules…) (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus))",RMC,moyenne
+@SudRadioOfficiel,media,tv_radio,"Radio, débats et interviews (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus))",Sud Radio,haute
+@publicsenat,media,tv_radio,Chaîne parlementaire (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Public Sénat,haute
+@lcpassembleenationale,media,tv_radio,Chaîne parlementaire (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),LCP,haute
+@cavousofficiel,media,talk_show,"Talk-show d'actualité, invités politiques (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus))",C à vous,haute
+@Cdanslairofficiel,media,talk_show,Magazine de débat d'actualité (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),C dans l'air,haute
+@QuotidienTMC,media,talk_show,Talk-show d'actualité à forte audience jeune (sélection : Presse / articles spécialisés),Quotidien,haute
+https://www.youtube.com/channel/UCYpRDnhk5H8h16jpS84uqsA,media,presse_nationale,Presse nationale de référence (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Le Monde,moyenne
+@LeFigaro,media,presse_nationale,Presse nationale de référence (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Le Figaro,moyenne : @LeFigaro_Actualites existe aussi
+@liberation,media,presse_nationale,Presse nationale de référence (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Libération,haute
+@LeParisien,media,presse_nationale,Presse nationale populaire (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Le Parisien,haute
+@mediapart,media,presse_nationale,Presse d'investigation (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus) · Presse / articles spécialisés),Mediapart,haute
+@VAplusmedia,media,presse_nationale,Presse magazine d'opinion (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),VA Plus (Valeurs actuelles),haute
+@BrutFR,media,pure_player,"Pure player vidéo, public jeune (sélection : Presse / articles spécialisés)",Brut,haute
+@blastinfo,media,pure_player,Pure player d'investigation (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus) · Presse / articles spécialisés),Blast,haute
+https://www.youtube.com/channel/UCT67YOMntJxfRnO_9bXDpvw,media,pure_player,Pure player d'opinion (sélection : Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Le Média,moyenne
+@hugodecrypteactus,influenceur,vulgarisation,Top chaîne créateur « Infos et Politique » en France (sélection : Classement HypeAuditor « Infos et Politique » France),HugoDécrypte - Actus du jour,haute
+@gaspardg,influenceur,vulgarisation,"Vulgarisation d'actu, public jeune (sélection : Presse / articles spécialisés)",Gaspard G,haute
+@samzirah,influenceur,interview_longue,Interviews de responsables politiques (sélection : Presse / articles spécialisés),Sam Zirah,haute
+@GrandeBavardeuse,influenceur,commentateur,"Analyse d'actu, invitée des conférences influenceurs (sélection : Presse / articles spécialisés)",Grande bavardeuse,moyenne : activité YouTube à vérifier
+@Clemovitch,influenceur,commentateur,Analyse rhétorique du discours politique (sélection : Presse / articles spécialisés),Clément Viktorovitch,haute
+@lecrayonmedia,influenceur,debat,"Débat, public jeune (sélection : Presse / articles spécialisés)",Le Crayon,haute
+@JeanMassiet,influenceur,debat,Analyse politique en live (sélection : Presse / articles spécialisés),Jean Massiet,haute
+@thinkerview,influenceur,interview_longue,"Interviews longues, très commentées (sélection : Presse / articles spécialisés)",Thinkerview,haute
+@Osonscauser,influenceur,commentateur,Commentaire politique (sélection : Presse / articles spécialisés),Osons Causer,haute
+@TatianaventoseTV,influenceur,commentateur,Commentaire politique (sélection : Presse / articles spécialisés),Tatiana Ventôse,haute
+@PaduTeam,influenceur,debat,Réaction et débat d'actu (sélection : Presse / articles spécialisés),La PaduTeam,haute
+@LeRaptor,influenceur,commentateur,Commentaire politique (sélection : Presse / articles spécialisés),Le Raptor Dissident,moyenne : activité à vérifier
+https://www.youtube.com/channel/UCKHKSD-yanY2ZwwU_4Tgf0w,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures · Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),La France insoumise,moyenne
+@partisocialiste,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures · Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Parti socialiste,moyenne : @PartiSocialisteFR existe aussi
+https://www.youtube.com/channel/UCSwPcnzaMTuDcTgjRiJvZnw,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures · Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),PCF,haute
+@LesEcologistesFR,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures · Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Les Écologistes,haute
+@parti-renaissance,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures · Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Renaissance,haute
+@Horizonsleparti,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures),Horizons,haute
+https://www.youtube.com/channel/UC3Ma4tRFxx85oZI_XKVTPwg,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures · Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Les Républicains,haute
+@RassemblementNationalOfficiel,politique,parti,Parti représenté à l'Assemblée (sélection : Référentiel partis / candidatures · Étude Univ. Lausanne 2025 (36 médias nationaux retenus)),Rassemblement national,haute

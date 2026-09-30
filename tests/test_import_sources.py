@@ -25,6 +25,7 @@ def test_csv_valide(tmp_path: Path) -> None:
         "@a,media,parti,x\n",  # sous_type incompatible
         "@a,media,info_continu,  \n",  # critère vide
         "@a,orientation,debat,x\n",  # type inconnu
+        "Reconquête,politique,parti,x\n",  # pas une URL ni un handle
     ],
 )
 def test_csv_invalide_refuse_avant_tout_appel(tmp_path: Path, ligne: str) -> None:

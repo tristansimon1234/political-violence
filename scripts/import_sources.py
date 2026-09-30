@@ -21,7 +21,14 @@ from pydantic import BaseModel, ValidationError, field_validator, model_validato
 
 from radar.schemas import VERSION_TAXONOMIE, SousType, TypeSource, sous_type_valide
 from radar.supabase_rest import Supabase
-from radar.youtube import Chaine, QuotaDepasse, ResolutionImpossible, Stats90j, YouTube
+from radar.youtube import (
+    Chaine,
+    QuotaDepasse,
+    ResolutionImpossible,
+    Stats90j,
+    YouTube,
+    parser_reference,
+)
 
 log = logging.getLogger("import_sources")
 
@@ -32,6 +39,15 @@ class LignePanel(BaseModel):
     sous_type: SousType
     critere: str
     nom: str | None = None  # nom attendu, pour vérifier la résolution à l'œil
+
+    @field_validator("url")
+    @classmethod
+    def url_reconnue(cls, v: str) -> str:
+        try:
+            parser_reference(v)
+        except ResolutionImpossible as e:
+            raise ValueError(str(e)) from e
+        return v.strip()
 
     @field_validator("critere")
     @classmethod
@@ -108,7 +124,7 @@ def main() -> int:
     p.add_argument("csv", type=Path)
     p.add_argument("--dry-run", action="store_true", help="appelle YouTube mais n'écrit rien")
     p.add_argument("--budget", type=int, default=3000, help="quota YouTube max pour ce run")
-    p.add_argument("--max-pages", type=int, default=60, help="pages d'uploads max par chaîne")
+    p.add_argument("--max-pages", type=int, default=100, help="pages d'uploads max par chaîne")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
