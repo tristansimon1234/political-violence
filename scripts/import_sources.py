@@ -2,7 +2,7 @@
 
     python scripts/import_sources.py panel.csv --dry-run
 
-CSV attendu (en-tête) : url,type,sous_type,critere
+CSV attendu (en-tête) : url,type,sous_type,critere[,nom]
 Idempotent : upsert sur channel_id. Le champ `active` n'est jamais écrasé.
 Variables : YOUTUBE_API_KEY, et hors --dry-run SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 """
@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import requests
 from pydantic import BaseModel, ValidationError, field_validator, model_validator
 
 from radar.schemas import VERSION_TAXONOMIE, SousType, TypeSource, sous_type_valide
@@ -30,6 +31,7 @@ class LignePanel(BaseModel):
     type: TypeSource
     sous_type: SousType
     critere: str
+    nom: str | None = None  # nom attendu, pour vérifier la résolution à l'œil
 
     @field_validator("critere")
     @classmethod
@@ -83,15 +85,21 @@ def ligne_source(
     }
 
 
-def afficher(sources: list[dict[str, Any]]) -> None:
+def afficher(resultats: list[tuple[LignePanel, dict[str, Any]]]) -> None:
     print(
-        f"\n{'type':<12}{'sous_type':<18}{'vidéos/j':>9}{'vues 90j':>14}{'com. ouverts':>13}  nom"
+        f"\n{'type':<12}{'sous_type':<18}{'abonnés':>12}{'vidéos/j':>9}{'vues 90j':>14}"
+        f"{'com. ouverts':>13}  nom résolu (handle) [nom attendu si différent]"
     )
-    for s in sorted(sources, key=lambda s: (s["type"], s["sous_type"], -s["vues_90j"])):
+    for ligne, s in sorted(
+        resultats, key=lambda r: (r[1]["type"], r[1]["sous_type"], -r[1]["vues_90j"])
+    ):
         part = s["part_commentaires_ouverts"]
+        abonnes = "-" if s["abonnes"] is None else f"{s['abonnes']:,}"
+        attendu = f" [{ligne.nom}]" if ligne.nom and ligne.nom != s["nom"] else ""
         print(
-            f"{s['type']:<12}{s['sous_type']:<18}{s['videos_90j'] / 90:>9.1f}"
-            f"{s['vues_90j']:>14,}{'-' if part is None else f'{part:.0%}':>13}  {s['nom']}"
+            f"{s['type']:<12}{s['sous_type']:<18}{abonnes:>12}{s['videos_90j'] / 90:>9.1f}"
+            f"{s['vues_90j']:>14,}{'-' if part is None else f'{part:.0%}':>13}"
+            f"  {s['nom']} ({s['handle']}){attendu}"
         )
 
 
@@ -108,23 +116,29 @@ def main() -> int:
     yt = YouTube(os.environ["YOUTUBE_API_KEY"], budget=args.budget)
     maintenant = datetime.now(UTC)
 
-    sources: list[dict[str, Any]] = []
+    resultats: list[tuple[LignePanel, dict[str, Any]]] = []
     echecs: list[str] = []
     try:
         for ligne in lignes:
             try:
                 chaine = yt.resoudre_chaine(ligne.url)
+                stats = yt.stats_90j(chaine.uploads_playlist_id, maintenant, args.max_pages)
             except ResolutionImpossible as e:
                 echecs.append(str(e))
                 continue
-            stats = yt.stats_90j(chaine.uploads_playlist_id, maintenant, args.max_pages)
+            except requests.HTTPError as e:
+                echecs.append(f"{ligne.nom or ligne.url} : {e}")
+                if e.response is not None and e.response.status_code == 403:
+                    break  # quota épuisé ou clé refusée : inutile de continuer
+                continue
             if stats.tronque:
                 log.warning("%s : parcours tronqué à %d pages", chaine.nom, args.max_pages)
-            sources.append(ligne_source(ligne, chaine, stats, maintenant))
+            resultats.append((ligne, ligne_source(ligne, chaine, stats, maintenant)))
     except QuotaDepasse as e:
         echecs.append(f"Arrêt propre, budget atteint ({e}). Relancer pour compléter.")
 
-    afficher(sources)
+    afficher(resultats)
+    sources = [s for _, s in resultats]
     for msg in echecs:
         print(f"ÉCHEC : {msg}", file=sys.stderr)
     log.info("quota youtube consommé : %d / budget %d", yt.consomme, yt.budget)

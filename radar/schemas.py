@@ -5,14 +5,14 @@ Toute modification d'une liste fermée incrémente VERSION_TAXONOMIE.
 
 from typing import Final, Literal, get_args
 
-VERSION_TAXONOMIE: Final = 1
+VERSION_TAXONOMIE: Final = 2
 
 # --- Sources du panel ---
 
 TypeSource = Literal["media", "influenceur", "politique"]
 
 SousTypeMedia = Literal["info_continu", "tv_radio", "talk_show", "presse_nationale", "pure_player"]
-SousTypeInfluenceur = Literal["vulgarisation", "commentateur", "debat"]
+SousTypeInfluenceur = Literal["vulgarisation", "commentateur", "debat", "interview_longue"]
 SousTypePolitique = Literal["parti", "personnalite"]
 SousType = SousTypeMedia | SousTypeInfluenceur | SousTypePolitique
 

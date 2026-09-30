@@ -14,3 +14,4 @@ Chaque décision validée qui modifie le projet est ajoutée ici, datée, avec s
 - **30/09/2026** · Batch sur GitHub Actions, agrégats dans Supabase (UE), interface Next.js sur Vercel.
 - **30/09/2026** · Sous-types du panel (taxonomie v1) : `media` = `info_continu`, `tv_radio`, `talk_show`, `presse_nationale`, `pure_player` ; `influenceur` = `vulgarisation`, `commentateur`, `debat` ; `politique` = `parti`, `personnalite`. Source de vérité : `radar/schemas.py`.
 - **30/09/2026** · Supabase appelé en REST (PostgREST) via `requests`, sans `supabase-py`, pour limiter les dépendances.
+- **30/09/2026** · Taxonomie v2 : ajout du sous-type influenceur `interview_longue` (Thinkerview, Sam Zirah), issu du panel v0.
