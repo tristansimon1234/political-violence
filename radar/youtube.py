@@ -83,6 +83,32 @@ class _VideoItem(BaseModel):
     statistics: _VideoStats
 
 
+class _VideoSnippet(BaseModel):
+    title: str
+    publishedAt: datetime
+
+
+class _VideoContent(BaseModel):
+    duration: str = "P0D"
+
+
+class _VideoPlayer(BaseModel):
+    embedWidth: int | None = None
+    embedHeight: int | None = None
+
+
+class _VideoDetailItem(BaseModel):
+    id: str
+    snippet: _VideoSnippet
+    contentDetails: _VideoContent
+    statistics: _VideoStats
+    player: _VideoPlayer = _VideoPlayer()
+
+
+class _VideoDetailsResponse(BaseModel):
+    items: list[_VideoDetailItem] = []
+
+
 class _VideosResponse(BaseModel):
     items: list[_VideoItem] = []
 
@@ -104,6 +130,25 @@ class StatsRecentes(BaseModel):
     part_commentaires_ouverts: float | None
     derniere_video_at: datetime | None
     tronque: bool  # True si la limite de pages a coupé le parcours avant la fin de la fenêtre
+
+
+class VideoDetail(BaseModel):
+    id: str
+    titre: str  # donnée brute : jamais stockée au-delà de l'usage immédiat
+    publiee_at: datetime
+    duree_s: int
+    vues: int
+    commentaires_ouverts: bool
+    ratio: float | None  # largeur / hauteur du lecteur ; < 1 = vertical ; None si inconnu
+
+
+def duree_iso8601(duree: str) -> int:
+    """'PT1H2M3S' → 3723 secondes. 'P0D' (live à venir) → 0."""
+    m = re.fullmatch(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", duree)
+    if not m:
+        raise ValueError(f"Durée ISO 8601 invalide : {duree}")
+    j, h, mi, se = (int(g) if g else 0 for g in m.groups())
+    return ((j * 24 + h) * 60 + mi) * 60 + se
 
 
 def parser_reference(ref: str) -> tuple[Literal["id", "forHandle", "forUsername"], str]:
@@ -162,16 +207,15 @@ class YouTube:
             uploads_playlist_id=c.contentDetails.relatedPlaylists.uploads,
         )
 
-    def stats_recentes(
+    def ids_recents(
         self, uploads_playlist_id: str, maintenant: datetime, jours: int, max_pages: int
-    ) -> StatsRecentes:
-        """Vues et activité des vidéos publiées sur les `jours` derniers jours.
+    ) -> tuple[list[tuple[str, datetime]], bool]:
+        """(id, date) des uploads des `jours` derniers jours, plus un indicateur de troncature.
 
-        Coût : 1 unité par page de 50 uploads + 1 unité par lot de 50 vidéos.
+        Coût : 1 unité par page de 50 uploads.
         """
         limite = maintenant - timedelta(days=jours)
-        ids: list[str] = []
-        derniere: datetime | None = None
+        videos: list[tuple[str, datetime]] = []
         page: str | None = None
         tronque = False
         for n in range(max_pages):
@@ -188,14 +232,49 @@ class YouTube:
                 pub = item.contentDetails.videoPublishedAt
                 if pub is None or pub < limite:
                     continue
-                ids.append(item.contentDetails.videoId)
-                derniere = pub if derniere is None else max(derniere, pub)
+                videos.append((item.contentDetails.videoId, pub))
             page = rep.nextPageToken
             fini = page is None or any(d is not None and d < limite for d in dates)
             if fini:
                 break
             tronque = n == max_pages - 1
+        return videos, tronque
 
+    def details_videos(self, ids: list[str]) -> list[VideoDetail]:
+        """Titre, durée, format du lecteur et statistiques. Coût : 1 unité par lot de 50."""
+        details: list[VideoDetail] = []
+        for i in range(0, len(ids), 50):
+            params = {
+                "part": "snippet,contentDetails,statistics,player",
+                "id": ",".join(ids[i : i + 50]),
+                "maxHeight": "720",  # nécessaire pour obtenir embedWidth/embedHeight
+            }
+            rep = _VideoDetailsResponse.model_validate(self._appel("videos", params))
+            for v in rep.items:
+                w, h = v.player.embedWidth, v.player.embedHeight
+                details.append(
+                    VideoDetail(
+                        id=v.id,
+                        titre=v.snippet.title,
+                        publiee_at=v.snippet.publishedAt,
+                        duree_s=duree_iso8601(v.contentDetails.duration),
+                        vues=v.statistics.viewCount,
+                        commentaires_ouverts=v.statistics.commentCount is not None,
+                        ratio=w / h if w and h else None,
+                    )
+                )
+        return details
+
+    def stats_recentes(
+        self, uploads_playlist_id: str, maintenant: datetime, jours: int, max_pages: int
+    ) -> StatsRecentes:
+        """Vues et activité des vidéos publiées sur les `jours` derniers jours.
+
+        Coût : 1 unité par page de 50 uploads + 1 unité par lot de 50 vidéos.
+        """
+        videos, tronque = self.ids_recents(uploads_playlist_id, maintenant, jours, max_pages)
+        ids = [v for v, _ in videos]
+        derniere = max((d for _, d in videos), default=None)
         vues = 0
         ouvertes = 0
         for i in range(0, len(ids), 50):

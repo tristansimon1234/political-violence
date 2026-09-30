@@ -33,7 +33,7 @@ from radar.youtube import (
 log = logging.getLogger("import_sources")
 
 # Fenêtre par défaut de calcul des vues et de l'activité (docs/decisions.md).
-JOURS_DEFAUT = 30
+JOURS_DEFAUT = 90
 
 
 class LignePanel(BaseModel):
@@ -132,7 +132,7 @@ def main() -> int:
     p.add_argument(
         "--jours", type=int, default=JOURS_DEFAUT, help="fenêtre des vues et de l'activité"
     )
-    p.add_argument("--max-pages", type=int, default=40, help="pages d'uploads max par chaîne")
+    p.add_argument("--max-pages", type=int, default=100, help="pages d'uploads max par chaîne")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
