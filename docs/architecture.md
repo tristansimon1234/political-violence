@@ -26,7 +26,7 @@ YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶
 
 - Python 3.11+, typage partout, schémas Pydantic pour toute sortie de modèle
 - `anthropic` (structured outputs via `messages.parse(..., output_format=Model)` → `parsed_output`)
-- Jev via **Vercel AI Gateway** (`typesafe-ai/jev`), appelé en HTTP depuis Python (`requests`, API d'évaluation de la Gateway, zéro conservation demandée à chaque requête) : un appel par commentaire, questions fermées, probabilités et confiance par question. Client : `radar/llm.py`
+- Jev via **Vercel AI Gateway** (`typesafe-ai/jev`), appelé en HTTP depuis Python (`requests`, protocole natif TypeSafe `/typesafe/v1/systemone`, schéma vérifié dans `typesafe-sdk` 0.7.2 ; zéro conservation exigée au niveau de l'équipe Vercel et redemandée à chaque requête) : un appel par commentaire, questions fermées, probabilités et confiance par question. Client : `radar/llm.py`
 - `requests` pour l'API YouTube
 - DuckDB + Parquet (pyarrow)
 - Supabase (Postgres, région UE) pour les agrégats servis à l'interface

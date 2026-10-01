@@ -191,12 +191,11 @@ def message_nature_video(titre: str, description: str, chaine: str) -> str:
 
 SEUIL_THEME_SECONDAIRE = 0.3  # probabilité minimale d'un thème secondaire (Jev)
 
-_INSTRUCTIONS_POLITIQUE = (
-    "Le commentaire parle-t-il de politique ou d'un enjeu d'intérêt public (politiques "
-    "publiques, élections, institutions, personnalités politiques, débat de société) ? "
-    "Non pour une réaction sur la forme de la vidéo, un message personnel, une salutation "
-    "ou une publicité."
+_INSTRUCTIONS_POLITIQUE = "Le commentaire parle-t-il de politique ou d'un enjeu d'intérêt public ?"
+_POLITIQUE_OUI = (
+    "Politiques publiques, élections, institutions, personnalités politiques, débat de société."
 )
+_POLITIQUE_NON = "Réaction sur la forme de la vidéo, message personnel, salutation ou publicité."
 
 
 def _criteres(definitions: Iterable[tuple[str, str]]) -> dict[str, str]:
@@ -205,7 +204,7 @@ def _criteres(definitions: Iterable[tuple[str, str]]) -> dict[str, str]:
 
 def questions_jev(nature: NatureVideo) -> dict[str, Question]:
     questions: dict[str, Question] = {
-        "politique": QuestionOuiNon(_INSTRUCTIONS_POLITIQUE),
+        "politique": QuestionOuiNon(_INSTRUCTIONS_POLITIQUE, _POLITIQUE_OUI, _POLITIQUE_NON),
         "theme": QuestionChoix(
             "Quel est le thème principal du commentaire lui-même (pas celui de la vidéo) ?",
             _criteres(DEFINITIONS_THEMES.items()),

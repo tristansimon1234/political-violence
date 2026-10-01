@@ -21,7 +21,7 @@ Règle (`CLAUDE.md`, décision du 01/10/2026) : stockage en UE. Un traitement tr
 ## Vercel AI Gateway
 
 - **Localisation** : routage global par défaut. Une option de région par requête existe (`inferenceRegion` avec `geoRegion: "eu"`). Si elle ne peut pas être respectée, la requête échoue (non vérifié). Elle n'aide pas pour Jev, qui n'a pas de région UE documentée.
-- **Conservation** : prompts et réponses non conservés, métadonnées (modèle, tokens, coût) gardées 30 jours (non vérifié). Zéro conservation par requête avec `providerOptions.gateway.zeroDataRetention: true` (vérifié dans le code du paquet `@ai-sdk/gateway`) : la requête échoue si le fournisseur ne garantit pas le ZDR. Cette option est réservée aux plans Pro et Enterprise. **Le Radar l'envoie à chaque appel.**
+- **Conservation** : prompts et réponses non conservés, métadonnées (modèle, tokens, coût) gardées 30 jours (non vérifié). Zéro conservation par requête avec `providerOptions.gateway.zeroDataRetention: true` (vérifié dans le code du paquet `@ai-sdk/gateway`) : la requête échoue si le fournisseur ne garantit pas le ZDR. Cette option est réservée aux plans Pro et Enterprise. Elle existe aussi pour toute l'équipe dans le tableau de bord (non vérifié). **Le Radar exige le réglage d'équipe et redemande le ZDR à chaque appel.** Jev est appelé avec le protocole natif TypeSafe (`/typesafe/v1/systemone`), dont le schéma est vérifié dans le paquet officiel `typesafe-sdk` 0.7.2.
 - **Entraînement** : option « disallow prompt training », incluse dans le ZDR (non vérifié).
 - **Transfert** : DPA (vercel.com/legal/dpa) avec CCT 2021/914 et certification DPF déclarée (non vérifié).
 - **Sous-traitants ultérieurs** : security.vercel.com (non vérifié).

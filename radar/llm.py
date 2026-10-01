@@ -95,8 +95,10 @@ class ClientClaude:
 
 # --- Jev ---
 
+# Protocole natif TypeSafe (`POST /v1/systemone`, schéma du paquet officiel typesafe-sdk 0.7.2),
+# servi par Vercel AI Gateway sous /typesafe. Surchargeable par JEV_URL / JEV_MODELE.
 MODELE_JEV = "typesafe-ai/jev"
-URL_JEV = "https://ai-gateway.vercel.sh/v1/evaluate"
+URL_JEV = "https://ai-gateway.vercel.sh/typesafe/v1/systemone"
 # Prix d'entrée publié par des sources tierces (non vérifié) ; sortie gratuite. Utilisé
 # seulement si la Gateway ne renvoie pas le coût réel.
 PRIX_JEV_ENTREE = 0.042
@@ -139,6 +141,8 @@ class _ErreurJev(BaseModel):
 @dataclass(frozen=True)
 class QuestionOuiNon:
     instructions: str
+    oui: str | None = None  # ce qui compte comme oui
+    non: str | None = None  # ce qui compte comme non
 
 
 @dataclass(frozen=True)
@@ -169,6 +173,7 @@ class _ReponseQuestionJev(BaseModel):
     model_config = ConfigDict(extra="allow")
     choice: str | None = None
     value: str | float | bool | None = None
+    noul: float | None = None  # oui/non : probabilité du oui (protocole TypeSafe)
     probability: float | None = None
     score: float | None = None
     probabilities: dict[str, float] = {}
@@ -197,7 +202,11 @@ def lire_reponse_jev(
             raise ReponseInvalide(f"jev : réponse absente pour {nom}")
         if isinstance(q, QuestionOuiNon):
             p = next(
-                (float(v) for v in (r.probability, r.value, r.score) if isinstance(v, int | float)),
+                (
+                    float(v)
+                    for v in (r.noul, r.probability, r.value, r.score)
+                    if isinstance(v, int | float)
+                ),
                 r.probabilities.get("true", r.probabilities.get("yes")),
             )
             if p is None or not 0 <= p <= 1:
@@ -235,11 +244,12 @@ class ClientJev:
         self,
         budget_usd: float,
         cle: str | None = None,
-        url: str = URL_JEV,
+        url: str | None = None,
         transport: Transport = _post,
     ) -> None:
         self._cle = cle or cle_gateway()
-        self._url = url
+        self._url = url or os.environ.get("JEV_URL") or URL_JEV
+        self._modele = os.environ.get("JEV_MODELE") or MODELE_JEV
         self._transport = transport
         self.compteur = Compteur(budget_usd, _nom="jev")
 
@@ -247,14 +257,17 @@ class ClientJev:
         qs: dict[str, Any] = {}
         for nom, q in questions.items():
             if isinstance(q, QuestionOuiNon):
-                qs[nom] = {"type": "boolean", "instructions": q.instructions}
+                qs[nom] = {"type": "noul", "instructions": q.instructions}
+                if q.oui or q.non:
+                    qs[nom]["criteria"] = {"true": q.oui, "false": q.non}
             else:
                 qs[nom] = {"type": "choice", "instructions": q.instructions, "criteria": q.criteres}
+        # Zéro conservation : exigée au niveau de l'équipe Vercel (AI Gateway > ZDR) et
+        # redemandée ici ; si la Gateway refuse ce champ, la sonde le montre.
         return {
-            "model": MODELE_JEV,
+            "model": self._modele,
             "state": etat,
             "questions": qs,
-            # Zéro conservation : la Gateway refuse la requête si ce n'est pas garanti.
             "providerOptions": {"gateway": {"zeroDataRetention": True}},
         }
 

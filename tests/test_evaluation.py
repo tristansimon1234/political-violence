@@ -129,7 +129,7 @@ Q: dict[str, QuestionOuiNon | QuestionChoix] = {
 def test_lire_reponse_jev_formats() -> None:
     brut = {
         "answers": {
-            "politique": {"type": "boolean", "probability": 0.8},
+            "politique": {"type": "noul", "noul": 0.8},
             "theme": {"type": "choice", "choice": "sante", "probabilities": {"sante": 0.7}},
         }
     }
@@ -559,3 +559,14 @@ def test_script_preparer_evaluer(
     )
     assert len(faux_jev.envois) == appels
     assert "Recommandation" in rapport_ and TEXTE not in rapport_
+
+
+def test_corps_jev_protocole_typesafe() -> None:
+    """Schéma de requête du paquet officiel typesafe-sdk 0.7.2 (POST /v1/systemone)."""
+    jev = ClientJev(1.0, cle="x", transport=FauxJev())
+    corps = jev.corps("état", questions_jev("opinion_debat"))
+    assert corps["model"] == "typesafe-ai/jev" and corps["state"] == "état"
+    q = corps["questions"]
+    assert q["politique"]["type"] == "noul" and set(q["politique"]["criteria"]) == {"true", "false"}
+    assert q["theme"]["type"] == "choice" and "retraites" in q["theme"]["criteria"]
+    assert set(q) == {"politique", "theme", "emotion", "position"}
