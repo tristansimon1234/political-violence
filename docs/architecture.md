@@ -6,7 +6,7 @@
 YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶ stockage ─▶ agrégats ─▶ interface
 ```
 
-1. **Collecte** (`radar/collecte.py`, `scripts/collecte.py`, workflow `collecte.yml`) : playlist des uploads de chaque source active (1 unité / 50) → `videos.list` pour toutes les nouvelles vidéos (1 unité / 50 ; format `short` / `long`) → **pré-filtre mots-clés** (`config/mots_cles.txt`, `radar/prefiltre.py`) → `commentThreads.list` (ordre pertinence, pages de 100, commentaires de premier niveau seulement) **uniquement pour les vidéos qui passent le pré-filtre et pour toutes celles des chaînes politiques** : 2 pages par vidéo longue, 1 page par Short. Quotidien : vidéos publiées dans les 3 derniers jours, commentaires re-récupérés chaque jour (une fois par jour au plus). Backfill : `--depuis` / `--jusqua`, une récupération par vidéo, reprise là où le run s'est arrêté (`collecte_etat`, `videos.derniere_collecte`). Arrêt propre avant le budget de quota.
+1. **Collecte** (`radar/collecte.py`, `scripts/collecte.py`, workflow `collecte.yml`) : playlist des uploads de chaque source active (1 unité / 50) → `videos.list` pour toutes les nouvelles vidéos (1 unité / 50 ; format `short` / `long`) → **pré-filtre mots-clés** (`config/mots_cles.txt`, `radar/prefiltre.py`) → `commentThreads.list` (ordre pertinence, pages de 100, commentaires de premier niveau seulement) **uniquement pour les vidéos qui passent le pré-filtre et pour toutes celles des chaînes politiques** : 2 pages par vidéo longue, 1 page par Short. Quotidien : vidéos publiées dans les 3 derniers jours, commentaires re-récupérés chaque jour (une fois par jour au plus). Backfill : `--depuis` / `--jusqua`, une récupération par vidéo, reprise là où le run s'est arrêté (`collecte_etat`, `videos.derniere_collecte`). Arrêt propre avant le budget de quota (ou sur `quotaExceeded`). Écriture par lots de 250 vidéos commentées, et de ce qui a été collecté en cas d'erreur imprévue : un plantage perd au plus un lot. Vidéo devenue indisponible (404, 403 hors quota, 400) : sautée et marquée. Erreurs passagères (5xx, 429, réseau) : jusqu'à 4 essais.
 2. **Filtre politique (entonnoir)** : mots-clés sur titre/description/tags (fait à la collecte, voir 1) → Jev (`politique_directe` / `enjeu_public` / `hors_sujet`) → Claude si confiance < seuil. Les chaînes politiques ne sont pas filtrées.
 3. **Classification (cascade)** :
    - **Jev** (TypeSafe, via Vercel AI Gateway) : classification fermée des commentaires à volume (est_politique, thèmes, position vis-à-vis de la vidéo, émotion, candidat visé dans une liste fermée). Renvoie des probabilités et une confiance.
@@ -26,7 +26,7 @@ YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶
 
 - Python 3.11+, typage partout, schémas Pydantic pour toute sortie de modèle
 - `anthropic` (structured outputs via `messages.parse(..., output_format=Model)` → `parsed_output`)
-- Jev via **Vercel AI Gateway** (`typesafe-ai/jev`), appelé avec `evaluate` d'AI SDK 7 (TypeScript). L'étape de classification Jev est donc un petit worker TypeScript (schémas en Zod, miroirs des modèles Pydantic), ou un appel HTTP à la Gateway depuis Python si l'endpoint le permet : vérifier la doc avant de coder, le modèle est récent
+- Jev via **Vercel AI Gateway** (`typesafe-ai/jev`), appelé en HTTP depuis Python (`requests`, protocole natif TypeSafe `/typesafe/v1/systemone`, schéma vérifié dans `typesafe-sdk` 0.7.2 ; zéro conservation exigée au niveau de l'équipe Vercel et redemandée à chaque requête) : un appel par commentaire, questions fermées, probabilités et confiance par question. Client : `radar/llm.py`
 - `requests` pour l'API YouTube
 - DuckDB + Parquet (pyarrow)
 - Supabase (Postgres, région UE) pour les agrégats servis à l'interface
@@ -59,12 +59,12 @@ radar-2027/
 │   ├── schemas.py           # taxonomie + modèles Pydantic (source de vérité)
 │   ├── youtube.py           # client API + suivi du quota
 │   ├── filtre.py            # entonnoir politique
-│   ├── classify_jev.py
-│   ├── classify_claude.py
+│   ├── llm.py               # clients Jev et Claude (coût journalisé, budget)
+│   ├── classification.py    # prompts neutres, minimisation, sorties typées
+│   ├── evaluation.py        # test Jev / Claude / vérité terrain
 │   ├── stories.py           # détection et cycle de vie des sujets d'actu
 │   ├── storage.py           # Parquet, DuckDB, purge 30 jours
 │   └── aggregate.py         # vélocité, attention, intensité, décalage, récupération politique
-├── workers/jev/             # worker TypeScript AI SDK (Jev via Vercel AI Gateway), schémas Zod générés depuis schemas.py
 ├── web/                     # app Next.js sur Vercel
 │   ├── app/(public)/        # Cette semaine, Vue d'ensemble, Méthodologie, Journal
 │   └── app/admin/           # gestion des sources et des sujets d'actu

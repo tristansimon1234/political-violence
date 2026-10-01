@@ -23,6 +23,9 @@ log = logging.getLogger(__name__)
 
 RETENTION_JOURS = 30
 TABLES_BRUTES = ("commentaires", "videos")
+# Fichiers de travail dérivés du brut (échantillons, étiquetage) : `evaluation/AAAA-MM-JJ-….`,
+# datés de la plus ancienne récupération des commentaires qu'ils contiennent, purgés pareil.
+DOSSIER_EVALUATION = "evaluation"
 
 SCHEMAS: dict[str, pa.Schema] = {
     # Aucun pseudo, aucun identifiant d'auteur en clair : seulement auteur_hash.
@@ -200,8 +203,19 @@ def enregistrer(
     return len(nouvelles)
 
 
+def date_fichier(chemin: str) -> date | None:
+    """Date en tête du nom de fichier (`AAAA-MM-JJ…`), None si absente."""
+    try:
+        return date.fromisoformat(chemin.rsplit("/", 1)[-1][:10])
+    except ValueError:
+        return None
+
+
 def purger(st: Stockage, aujourdhui: date, retention: int = RETENTION_JOURS) -> list[str]:
-    """Supprime les partitions de `retention` jours ou plus (texte brut : 30 jours maximum)."""
+    """Supprime les partitions et fichiers d'évaluation de `retention` jours ou plus.
+
+    Texte brut : 30 jours maximum. Un fichier d'évaluation sans date est supprimé aussi.
+    """
     limite = aujourdhui - timedelta(days=retention - 1)
     a_supprimer = [
         chemin
@@ -209,5 +223,9 @@ def purger(st: Stockage, aujourdhui: date, retention: int = RETENTION_JOURS) -> 
         for jour, chemin in partitions(st, table).items()
         if jour < limite
     ]
+    for chemin in st.lister(DOSSIER_EVALUATION):
+        jour = date_fichier(chemin)
+        if jour is None or jour < limite:
+            a_supprimer.append(chemin)
     st.supprimer(a_supprimer)
     return a_supprimer

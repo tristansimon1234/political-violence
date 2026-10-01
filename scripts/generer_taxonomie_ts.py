@@ -9,11 +9,16 @@ import json
 from pathlib import Path
 
 from radar.schemas import (
+    EMOTIONS,
     FENETRE_ACTIVITE_JOURS,
     FORMATS_VIDEO,
     LIBELLES_TYPE,
+    NATURES_VIDEO,
+    POSITIONS,
     SEUIL_ACTIVITE_VIDEOS,
     SOUS_TYPES_PAR_TYPE,
+    THEMES,
+    TONALITES,
     TYPES_SOURCE,
     VERSION_TAXONOMIE,
 )
@@ -23,6 +28,14 @@ CIBLE = Path(__file__).parents[1] / "web" / "lib" / "taxonomie.ts"
 
 def _j(valeur: object) -> str:
     return json.dumps(valeur, ensure_ascii=False)
+
+
+def _liste(nom: str, type_ts: str, valeurs: tuple[str, ...]) -> list[str]:
+    return [
+        f"export const {nom} = {_j(list(valeurs))} as const;",
+        f"export type {type_ts} = (typeof {nom})[number];",
+        "",
+    ]
 
 
 def contenu() -> str:
@@ -48,6 +61,11 @@ def contenu() -> str:
             f"export const FORMATS_VIDEO = {_j(list(FORMATS_VIDEO))} as const;",
             "export type FormatVideo = (typeof FORMATS_VIDEO)[number];",
             "",
+            *_liste("THEMES", "Theme", THEMES),
+            *_liste("NATURES_VIDEO", "NatureVideo", NATURES_VIDEO),
+            *_liste("POSITIONS", "Position", POSITIONS),
+            *_liste("EMOTIONS", "Emotion", EMOTIONS),
+            *_liste("TONALITES", "Tonalite", TONALITES),
         ]
     )
 

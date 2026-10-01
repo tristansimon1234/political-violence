@@ -38,7 +38,12 @@ def rapport(p: Parametres, b: Bilan, yt: YouTube, debut: datetime) -> str:
         f"- Passent le pré-filtre ou chaîne politique : {b.videos_prefiltre}",
         f"- Éligibles aux commentaires : {b.videos_eligibles} "
         f"({b.pages_estimees} pages ≈ {b.pages_estimees} unités)",
-        f"- Vidéos commentées : {b.videos_commentees}, commentaires : {b.commentaires}",
+        f"- Vidéos commentées : {b.videos_commentees}, commentaires : {b.commentaires}"
+        + (
+            f", vidéos indisponibles sautées : {b.videos_indisponibles}"
+            if b.videos_indisponibles
+            else ""
+        ),
         f"- Quota consommé : {yt.consomme} / {yt.budget}"
         + (" — ARRÊT PROPRE AVANT LE BUDGET, relancer pour reprendre" if b.arret_budget else ""),
     ]
@@ -121,6 +126,7 @@ def main() -> int:
                     "jusqua": params.jusqua.isoformat() if params.jusqua else None,
                     "prefiltre_version": mots_cles.version,
                     "pages_par_format": PAGES_COMMENTAIRES,
+                    "videos_indisponibles": bilan.videos_indisponibles,
                 },
             },
         )

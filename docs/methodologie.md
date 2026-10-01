@@ -42,3 +42,13 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 **Vues.** Les vues des Shorts et des vidéos longues ne sont pas comparables : depuis 2025, YouTube compte chaque relecture d'un Short. Les métriques d'attention et d'intensité séparent donc toujours les deux formats.
 
 **Données personnelles.** Les auteurs de commentaires sont remplacés par un identifiant chiffré ; aucun pseudo n'est conservé. Le texte des commentaires, les titres et les descriptions sont supprimés au plus tard 30 jours après leur récupération ; seuls les résultats agrégés sont conservés au-delà.
+
+## Classification
+
+**Ce qui est classé.** Chaque commentaire collecté est décrit par un modèle de langage selon une grille fermée : s'il parle de politique ou d'un enjeu d'intérêt public, ses thèmes (1 à 3, parmi 14), son émotion dominante et, sous les vidéos d'opinion seulement, son accord avec le propos de la vidéo. Il ne s'agit jamais de l'opinion de son auteur sur le sujet. Sous une vidéo factuelle (journal, reportage), aucune position n'est calculée.
+
+**Neutralité.** Les consignes données aux modèles décrivent ce que dit le commentaire, sans juger s'il a raison et sans tenir compte de l'orientation de la vidéo ou de la chaîne. Les définitions des catégories sont publiées ici avant toute utilisation.
+
+**Données envoyées aux modèles.** Le texte du commentaire, avec les mentions et les liens masqués, et le contexte de la vidéo (titre, chaîne, nature). Jamais l'auteur ni l'identifiant du commentaire. Les prestataires ne conservent pas les données et ne s'en servent pas pour entraîner leurs modèles (liste des sous-traitants publiée).
+
+**Contrôle de qualité.** Avant l'usage, les modèles sont comparés à un étiquetage manuel d'un échantillon stratifié par catégorie de chaîne, format et nature de vidéo.

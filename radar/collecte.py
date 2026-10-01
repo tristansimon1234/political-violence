@@ -21,13 +21,14 @@ from typing import Any, Literal, Protocol
 from radar.anonymisation import hash_auteur
 from radar.prefiltre import MotsCles
 from radar.storage import Stockage, enregistrer, purger
-from radar.youtube import QuotaDepasse, VideoDetail, YouTube, format_video
+from radar.youtube import QuotaDepasse, VideoDetail, VideoIndisponible, YouTube, format_video
 
 log = logging.getLogger(__name__)
 
 FENETRE_REVISITE_JOURS = 3
 PAGES_COMMENTAIRES = {"long": 2, "short": 1}
 MAX_PAGES_UPLOADS = 100
+LOT_ECRITURE = 250  # vidéos commentées entre deux écritures (un plantage perd au plus un lot)
 
 
 class Base(Protocol):
@@ -54,6 +55,7 @@ class Bilan:
     commentaires: int = 0
     pages_estimees: int = 0
     arret_budget: bool = False
+    videos_indisponibles: int = 0
     prefiltre_par_type: Counter[str] = field(default_factory=Counter[str])
     nouvelles_par_type: Counter[str] = field(default_factory=Counter[str])
     prefiltre_par_jour: Counter[str] = field(default_factory=Counter[str])
@@ -100,6 +102,47 @@ def collecter(
     touchees: set[str] = set()
     commentaires: list[dict[str, Any]] = []
     premieres: list[date] = []
+
+    def ecrire() -> None:
+        """Stockage brut d'abord, puis état : une vidéo marquée collectée est stockée.
+
+        Appelée par lots pendant la collecte : idempotente, chaque appel n'écrit que le
+        nouveau depuis le précédent.
+        """
+        if p.dry_run:
+            return
+        assert stockage is not None
+        enregistrer(stockage, "videos", aujourdhui, bruts_videos, depuis=aujourdhui)
+        enregistrer(
+            stockage,
+            "commentaires",
+            aujourdhui,
+            commentaires,
+            depuis=min(premieres, default=aujourdhui),
+        )
+        base.upsert("videos", [videos[i] for i in sorted(touchees)], conflit="video_id")
+        if p.mode == "backfill" and p.jusqua is not None:
+            base.upsert(
+                "collecte_etat",
+                [
+                    {
+                        "source_id": sid,
+                        "depuis": str(p.depuis.date()),
+                        "jusqua": str(p.jusqua.date()),
+                    }
+                    for sid in bilan.sources_parcourues
+                ],
+                conflit="source_id,depuis,jusqua",
+            )
+        bruts_videos.clear()
+        commentaires.clear()
+        premieres.clear()
+        touchees.clear()
+        log.info(
+            "écriture : %d vidéos commentées, %d commentaires",
+            bilan.videos_commentees,
+            bilan.commentaires,
+        )
 
     try:
         # 1-2. Uploads et métadonnées
@@ -192,7 +235,17 @@ def collecter(
         # 4. Commentaires
         assert sel is not None
         for v in eligibles:
-            recus = yt.commentaires(v["video_id"], PAGES_COMMENTAIRES[v["format"]])
+            try:
+                recus = yt.commentaires(v["video_id"], PAGES_COMMENTAIRES[v["format"]])
+            except VideoIndisponible as e:
+                # Supprimée ou devenue privée depuis la lecture des métadonnées : on ne la
+                # redemande plus (traitée comme commentaires fermés).
+                log.warning("vidéo indisponible : %s", e)
+                v["commentaires_fermes"] = True
+                v["maj_at"] = maintenant.isoformat()
+                touchees.add(v["video_id"])
+                bilan.videos_indisponibles += 1
+                continue
             for c in recus:
                 commentaires.append(
                     {
@@ -216,32 +269,22 @@ def collecter(
             touchees.add(v["video_id"])
             bilan.videos_commentees += 1
             bilan.commentaires += len(recus)
+            if bilan.videos_commentees % LOT_ECRITURE == 0:
+                ecrire()
     except QuotaDepasse as e:
         log.warning("arrêt propre avant le budget : %s", e)
         bilan.arret_budget = True
         if p.dry_run:
             return bilan
+    except Exception:
+        # Erreur imprévue : on sauve ce qui a été collecté avant de la laisser remonter.
+        if not p.dry_run:
+            log.exception("erreur imprévue, écriture de ce qui a été collecté")
+            ecrire()
+        raise
 
-    # 5. Écritures : stockage brut d'abord, puis état (une vidéo marquée collectée est stockée).
+    ecrire()
     assert stockage is not None
-    enregistrer(stockage, "videos", aujourdhui, bruts_videos, depuis=aujourdhui)
-    enregistrer(
-        stockage,
-        "commentaires",
-        aujourdhui,
-        commentaires,
-        depuis=min(premieres, default=aujourdhui),
-    )
-    base.upsert("videos", [videos[i] for i in sorted(touchees)], conflit="video_id")
-    if p.mode == "backfill" and p.jusqua is not None:
-        base.upsert(
-            "collecte_etat",
-            [
-                {"source_id": sid, "depuis": str(p.depuis.date()), "jusqua": str(p.jusqua.date())}
-                for sid in bilan.sources_parcourues
-            ],
-            conflit="source_id,depuis,jusqua",
-        )
     supprimees = purger(stockage, aujourdhui)
     if supprimees:
         log.info("purge 30 jours : %s", ", ".join(supprimees))
