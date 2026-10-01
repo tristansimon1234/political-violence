@@ -39,3 +39,4 @@ Chaque décision validée qui modifie le projet est ajoutée ici, datée, avec s
 - **01/10/2026** · ~~Horizons = chaîne d'Édouard Philippe.~~ Exception annulée le jour même par Tristan : Horizons reste « sans chaîne active » ; `@edouardphilippe` ne compte que comme personnalité.
 - **01/10/2026** · **Import initial du panel v1** dans Supabase (`yqzgtkaeodibfujienyj`) : 73 sources enregistrées via le workflow `import-sources.yml` (dry-run puis import, ~1 800 unités chacun).
 - **01/10/2026** · **Admin v1** (Next.js sur Vercel) : consultation, pause/réactivation et journal ; pas d'ajout de source depuis l'admin (liste fermée). Taxonomie TypeScript générée depuis `schemas.py` (constantes TS, pas de Zod tant qu'aucune sortie de modèle n'est validée côté TS).
+- **01/10/2026** · **Étape 1 terminée** : panel v1 importé (73 sources), admin en ligne sur Vercel, accès admin vérifié.
