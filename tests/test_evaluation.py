@@ -74,7 +74,8 @@ def test_position_nulle_sur_video_factuelle() -> None:
         est_politique=True,
         themes=["immigration"],
         position="accord_video",
-        emotion="colere",
+        tonalite="negative",
+        hostilite=True,
     )
     assert normaliser(c, "info_factuelle").position is None
     assert normaliser(c, "opinion_debat").position == "accord_video"
@@ -90,7 +91,8 @@ def _reps(p_politique: float, conf_theme: float = 0.9) -> dict[str, RepOuiNon | 
             {"retraites": 0.6, "economie_emploi": 0.35, "sante": 0.05},
             conf_theme,
         ),
-        "emotion": RepChoix("colere", {"colere": 0.8}, 0.8),
+        "tonalite": RepChoix("negative", {"negative": 0.8}, 0.8),
+        "hostilite": RepOuiNon(0.1, 0.9),
         "position": RepChoix("nuance", {"nuance": 0.7}, 0.7),
     }
 
@@ -111,7 +113,8 @@ def test_normaliser_limite_les_themes() -> None:
         est_politique=True,
         themes=["sante", "sante", "logement", "education", "securite"],
         position=None,
-        emotion="neutre",
+        tonalite="neutre",
+        hostilite=False,
     )
     assert normaliser(c, "opinion_debat").themes == ("sante", "logement", "education")
     c2 = c.model_copy(update={"est_politique": False})
@@ -188,7 +191,8 @@ class FauxJev:
         answers: dict[str, Any] = {
             "politique": {"probability": conf},
             "theme": {"choice": "retraites", "confidence": conf},
-            "emotion": {"choice": "colere", "confidence": conf},
+            "tonalite": {"choice": "negative", "confidence": conf},
+            "hostilite": {"noul": 0.2},
         }
         if "position" in corps["questions"]:
             answers["position"] = {"choice": "nuance", "confidence": conf}
@@ -226,7 +230,8 @@ class FauxAnthropic:
                             "est_politique": True,
                             "themes": ["retraites"],
                             "position": "accord_video",
-                            "emotion": "colere",
+                            "tonalite": "negative",
+                            "hostilite": False,
                         }
                         for i in range(1, n + 1)
                     ]
@@ -355,25 +360,33 @@ def test_etiquetage_aller_retour() -> None:
         nature = next(li.nature for li in lignes if li.ref == ref)
         champs[7] = "retraites+sante" if ref != "C002" else "aucun"
         champs[8] = "desaccord_video" if nature == "opinion_debat" else "-"
-        champs[9] = "colere"
+        champs[9] = "negative"
+        champs[10] = "oui" if ref == "C001" else ("" if ref == "C003" else "non")
         remplies.append(";".join(champs))
-    remplies[-1] = ";".join([*remplies[-1].split(";")[:7], "", "", ""])  # ligne non remplie
+    remplies[-1] = ";".join([*remplies[-1].split(";")[:7], "", "", "", ""])  # non remplie
     etiquettes = lire_etiquettes(("\n".join(remplies) + "\n").encode(), lignes)
     assert len(etiquettes) == sum(li.verite for li in lignes) - 1
     assert etiquettes["C002"].est_politique is False and etiquettes["C002"].themes == ()
     assert etiquettes["C001"].themes == ("retraites", "sante")
+    assert etiquettes["C001"].hostilite is True and etiquettes["C003"].hostilite is None
+    assert etiquettes["C002"].hostilite is False and etiquettes["C002"].tonalite == "negative"
 
 
 def test_etiquetage_invalide_signale() -> None:
     lignes = _lignes()
     entete = (
-        "ref;categorie;format;nature_video;chaine;titre_video;commentaire;themes;position;emotion"
+        "ref;categorie;format;nature_video;chaine;titre_video;commentaire;themes;position;"
+        "tonalite;hostilite"
     )
-    mauvais = f"{entete}\nC001;x;x;x;x;x;x;inflation;;joie\nC999;x;x;x;x;x;x;sante;-;colere\n"
+    mauvais = (
+        f"{entete}\nC001;x;x;x;x;x;x;inflation;;joie;non\n"
+        "C002;x;x;x;x;x;x;sante;-;neutre;peut-etre\nC999;x;x;x;x;x;x;sante;-;neutre;non\n"
+    )
     with pytest.raises(ValueError) as e:
         lire_etiquettes(mauvais.encode(), lignes)
     message = str(e.value)
-    assert "C001 : thème inconnu" in message and "C001 : émotion" in message
+    assert "C001 : thème inconnu" in message and "C001 : tonalité" in message
+    assert "C002 : hostilité" in message
     assert "C001 : position" in message and "C999 : référence inconnue" in message
 
 
@@ -381,7 +394,7 @@ def test_etiquetage_invalide_signale() -> None:
 
 
 def _cl(conf: float | None, ok: bool = True) -> Classement:
-    return Classement(True, ("retraites",) if ok else ("sante",), None, "colere", conf)
+    return Classement(True, ("retraites",) if ok else ("sante",), None, "negative", False, conf)
 
 
 def test_cascade() -> None:
@@ -392,12 +405,14 @@ def test_cascade() -> None:
 
 
 def test_comparer_dimensions() -> None:
-    ref = Etiquette(True, ("retraites", "sante"), None, "colere")
-    d = comparer(Classement(True, ("sante", "retraites"), None, "colere"), ref)
+    ref = Etiquette(True, ("retraites", "sante"), None, "negative", True)
+    d = comparer(Classement(True, ("sante", "retraites"), None, "negative", True), ref)
     assert d["theme_principal"] is False and d["theme_commun"] is True
-    assert d["position"] is None and d["complet"] is False
-    non = comparer(Classement(False, (), None, "neutre"), Etiquette(False, (), None, "neutre"))
-    assert non["theme_principal"] is None and non["complet"] is True
+    assert d["position"] is None and d["hostilite"] is True and d["complet"] is False
+    non = comparer(
+        Classement(False, (), None, "neutre", True), Etiquette(False, (), None, "neutre", None)
+    )
+    assert non["theme_principal"] is None and non["hostilite"] is None and non["complet"] is True
 
 
 def test_rapport_sans_texte_ni_titre(tmp_path: Path) -> None:
@@ -410,7 +425,8 @@ def test_rapport_sans_texte_ni_titre(tmp_path: Path) -> None:
             True,
             ("retraites",),
             "accord_video" if li.nature == "opinion_debat" else None,
-            "colere",
+            "negative",
+            False,
         )
         for li in lignes
         if li.verite
@@ -548,7 +564,8 @@ def test_script_preparer_evaluer(
     appels = len(faux_jev.envois)
     brut = st.lire(f"evaluation/{jour}-etiquetage.csv").decode("utf-8-sig").splitlines()
     rempli = [brut[0]] + [
-        ";".join([*x.split(";")[:7], "retraites", "accord_video", "colere"]) for x in brut[1:]
+        ";".join([*x.split(";")[:7], "retraites", "accord_video", "negative", "non"])
+        for x in brut[1:]
     ]
     st.ecrire(f"evaluation/{jour}-etiquetage-rempli.csv", "\n".join(rempli).encode())
     rapport_ = lancer("evaluer")
@@ -568,7 +585,8 @@ def test_corps_jev_protocole_typesafe() -> None:
     q = corps["questions"]
     assert q["politique"]["type"] == "noul" and set(q["politique"]["criteria"]) == {"true", "false"}
     assert q["theme"]["type"] == "choice" and "retraites" in q["theme"]["criteria"]
-    assert set(q) == {"politique", "theme", "emotion", "position"}
+    assert set(q) == {"politique", "theme", "tonalite", "hostilite", "position"}
+    assert q["hostilite"]["type"] == "noul" and set(q["hostilite"]["criteria"]) == {"true", "false"}
 
 
 def test_cout_jev_reel_de_la_gateway() -> None:
@@ -604,7 +622,7 @@ def test_fichier_synthetique_et_commande(
     for x in texte[1:]:
         champs = x.split(";")
         position = "nuance" if champs[3] == "opinion_debat" else "-"
-        rempli.append(";".join([*champs[:7], "retraites", position, "colere"]))
+        rempli.append(";".join([*champs[:7], "retraites", position, "negative", "oui"]))
     fichier = tmp_path / "rempli.csv"
     fichier.write_text("\n".join(rempli), encoding="utf-8")
 
@@ -636,7 +654,12 @@ def test_fichier_synthetique_et_commande(
 def test_position_obligatoire_sur_video_d_opinion() -> None:
     """Claude sans position sous une vidéo d'opinion : repli sur hors_sujet, jamais None."""
     c = ClassementCommentaire(
-        numero=1, est_politique=False, themes=[], position=None, emotion="enthousiasme"
+        numero=1,
+        est_politique=False,
+        themes=[],
+        position=None,
+        tonalite="positive",
+        hostilite=False,
     )
     assert normaliser(c, "opinion_debat").position == "hors_sujet"
     assert normaliser(c, "info_factuelle").position is None
@@ -646,20 +669,22 @@ def test_arbitrage_a_l_aveugle() -> None:
     from radar.evaluation import fichier_arbitrage, rapport_arbitrage
 
     lignes = _lignes(4)  # C001..C004 ; C004 factuelle (pas de position)
-    tristan = {li.ref: Etiquette(True, ("retraites",), None, "colere") for li in lignes}
-    tristan["C001"] = Etiquette(True, ("retraites",), "accord_video", "colere")
-    tristan["C002"] = Etiquette(True, ("retraites",), "accord_video", "colere")
-    tristan["C003"] = Etiquette(True, ("retraites",), "accord_video", "colere")
+    tristan = {li.ref: Etiquette(True, ("retraites",), None, "negative", False) for li in lignes}
+    for ref in ("C001", "C002", "C003"):
+        tristan[ref] = Etiquette(True, ("retraites",), "accord_video", "negative", False)
+    tristan["C003"] = Etiquette(True, ("retraites",), "accord_video", "negative", None)
     jev = {
-        li.ref: Classement(True, ("retraites",), tristan[li.ref].position, "colere", 0.9)
+        li.ref: Classement(True, ("retraites",), tristan[li.ref].position, "negative", False, 0.9)
         for li in lignes
     }
     claude = dict(jev)
-    jev["C001"] = Classement(True, ("retraites",), "accord_video", "lassitude", 0.4)
-    claude["C002"] = Classement(True, ("sante",), "accord_video", "colere")
+    jev["C001"] = Classement(True, ("retraites",), "accord_video", "neutre", False, 0.4)
+    claude["C002"] = Classement(True, ("sante",), "accord_video", "negative", False)
+    # Hostilité non tranchée par Tristan (C003) : jamais proposée à l'arbitrage.
+    claude["C003"] = Classement(True, ("retraites",), "accord_video", "negative", True)
     donnees, cle = fichier_arbitrage(lignes, jev, claude, tristan, random.Random(0))
     texte = donnees.decode("utf-8-sig")
-    assert len(cle) == 2  # C001 émotion, C002 thèmes ; le reste fait l'unanimité
+    assert len(cle) == 2  # C001 tonalité, C002 thèmes ; le reste fait l'unanimité
     assert "jev" not in texte and "claude" not in texte and "tristan" not in texte  # anonyme
     # L'arbitre retient la réponse de Jev pour C001, et les deux pour C002.
     lignes_csv = texte.splitlines()
@@ -673,7 +698,7 @@ def test_arbitrage_a_l_aveugle() -> None:
             champs[10] = "A+B"
         remplies.append(";".join(champs))
     r = rapport_arbitrage("\n".join(remplies).encode(), cle)
-    assert "| emotion | 1 | 0 % (0/1) | 100 % (1/1) | 0 % (0/1) |" in r
+    assert "| tonalite | 1 | 0 % (0/1) | 100 % (1/1) | 0 % (0/1) |" in r
     assert "| themes | 1 | 100 % (1/1) | 100 % (1/1) | 100 % (1/1) |" in r
     with pytest.raises(ValueError):
-        rapport_arbitrage(("\n".join(remplies) + "\nR999;x;emotion;;;;;;;;A;").encode(), cle)
+        rapport_arbitrage(("\n".join(remplies) + "\nR999;x;tonalite;;;;;;;;A;").encode(), cle)

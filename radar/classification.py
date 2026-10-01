@@ -17,14 +17,14 @@ from pydantic import BaseModel
 
 from radar.llm import Question, QuestionChoix, QuestionOuiNon, RepChoix, RepOuiNon
 from radar.schemas import (
-    EMOTIONS,
     MAX_THEMES_COMMENTAIRE,
     POSITIONS,
     THEMES,
-    Emotion,
+    TONALITES,
     NatureVideo,
     Position,
     Theme,
+    Tonalite,
 )
 
 _MENTION = re.compile(r"(?<![\w.])@[\w.\-]+")
@@ -74,15 +74,22 @@ DEFINITIONS_POSITIONS: dict[Position, str] = {
     "(practical question, unrelated remark).",
 }
 
-DEFINITIONS_EMOTIONS: dict[Emotion, str] = {
-    "colere": "Anger: indignation, outrage, accusations, 'it's a scandal'.",
-    "moquerie": "Mockery: irony, sarcasm, derision, mocking emojis.",
-    "inquietude": "Worry: fear or concern about the future, safety or one's situation.",
-    "enthousiasme": "Enthusiasm: support, praise, joy, admiration, encouragement.",
-    "lassitude": "Weariness: resignation, disillusion, 'nothing ever changes', fatigue.",
+DEFINITIONS_TONALITES: dict[Tonalite, str] = {
+    "positive": "Positive: support, praise, gratitude, joy, enthusiasm, hope.",
     "neutre": "Neutral: calm statement of facts or opinion, simple question, no marked "
-    "emotion. An opinion stated calmly is neutral.",
+    "feeling. An opinion stated calmly is neutral, even a disagreement.",
+    "negative": "Negative: anger, indignation, worry, weariness, disappointment, sadness, mockery.",
 }
+
+HOSTILITE_OUI = (
+    "Insult, slur, personal attack, contempt or dehumanisation aimed at a person or a group, "
+    "threat, call to violence, or anger expressed aggressively against someone. Mockery "
+    "counts only when it targets a person or a group with contempt."
+)
+HOSTILITE_NON = (
+    "Disagreement, even firm; criticism of a policy, an institution or a decision; light "
+    "irony about a situation; indignation without attacking anyone ('it's a scandal')."
+)
 
 # Règles de lecture, communes à Jev et Claude (tirées de l'étiquetage de Tristan, 01/10/2026).
 REGLE_POLITIQUE = (
@@ -126,7 +133,8 @@ class ClassementCommentaire(BaseModel):
     est_politique: bool
     themes: list[Theme]
     position: Position | None
-    emotion: Emotion
+    tonalite: Tonalite
+    hostilite: bool
 
 
 class ReponseCommentaires(BaseModel):
@@ -144,7 +152,8 @@ class Classement:
     est_politique: bool
     themes: tuple[Theme, ...]  # le premier est le thème principal ; vide si non politique
     position: Position | None
-    emotion: Emotion
+    tonalite: Tonalite
+    hostilite: bool
     confiance: float | None = None  # fournie par Jev ; None pour Claude
 
 
@@ -157,7 +166,8 @@ def normaliser(c: ClassementCommentaire, nature: NatureVideo) -> Classement:
         est_politique=c.est_politique,
         themes=tuple(themes[:MAX_THEMES_COMMENTAIRE]) if c.est_politique else (),
         position=(c.position or "hors_sujet") if nature == "opinion_debat" else None,
-        emotion=c.emotion,
+        tonalite=c.tonalite,
+        hostilite=c.hostilite,
     )
 
 
@@ -180,14 +190,16 @@ For each numbered comment:
 - position: required when the video type is opinion_debat, null when it is
   info_factuelle. {REGLE_POSITION}
 {_liste(DEFINITIONS_POSITIONS.items())}
-- emotion: the dominant emotion expressed.
-{_liste(DEFINITIONS_EMOTIONS.items())}
+- tonalite: the overall tone of the comment.
+{_liste(DEFINITIONS_TONALITES.items())}
+- hostilite: true when the comment is hostile. Hostile: {HOSTILITE_OUI} Not hostile:
+  {HOSTILITE_NON}
 
 Mentions and links have been masked. Answer for every number, in order."""
 
 assert set(DEFINITIONS_THEMES) == set(THEMES)
 assert set(DEFINITIONS_POSITIONS) == set(POSITIONS)
-assert set(DEFINITIONS_EMOTIONS) == set(EMOTIONS)
+assert set(DEFINITIONS_TONALITES) == set(TONALITES)
 
 
 def message_commentaires(contexte: ContexteVideo, textes: list[str]) -> str:
@@ -251,9 +263,12 @@ def questions_jev(nature: NatureVideo) -> dict[str, Question]:
             "What is the main theme of the French YouTube comment `comment`? " + REGLE_THEMES,
             _criteres(DEFINITIONS_THEMES.items()),
         ),
-        "emotion": QuestionChoix(
-            "What is the dominant emotion expressed by the French YouTube comment `comment`?",
-            _criteres(DEFINITIONS_EMOTIONS.items()),
+        "tonalite": QuestionChoix(
+            "What is the overall tone of the French YouTube comment `comment`?",
+            _criteres(DEFINITIONS_TONALITES.items()),
+        ),
+        "hostilite": QuestionOuiNon(
+            "Is the French YouTube comment `comment` hostile?", HOSTILITE_OUI, HOSTILITE_NON
         ),
     }
     if nature == "opinion_debat":
@@ -275,11 +290,12 @@ def etat_jev(contexte: ContexteVideo, texte: str) -> dict[str, Any]:
 
 def classement_jev(reponses: dict[str, RepOuiNon | RepChoix], nature: NatureVideo) -> Classement:
     """Convertit les réponses de Jev ; confiance = la plus faible des questions utiles."""
-    politique, theme, emotion = reponses["politique"], reponses["theme"], reponses["emotion"]
-    assert isinstance(politique, RepOuiNon)
-    assert isinstance(theme, RepChoix) and isinstance(emotion, RepChoix)
+    politique, theme = reponses["politique"], reponses["theme"]
+    tonalite, hostilite = reponses["tonalite"], reponses["hostilite"]
+    assert isinstance(politique, RepOuiNon) and isinstance(hostilite, RepOuiNon)
+    assert isinstance(theme, RepChoix) and isinstance(tonalite, RepChoix)
     est_politique = politique.probabilite_oui >= 0.5
-    confiances = [politique.confiance, emotion.confiance]
+    confiances = [politique.confiance, tonalite.confiance, hostilite.confiance]
     themes: tuple[Theme, ...] = ()
     if est_politique:
         confiances.append(theme.confiance)
@@ -304,7 +320,8 @@ def classement_jev(reponses: dict[str, RepOuiNon | RepChoix], nature: NatureVide
         est_politique=est_politique,
         themes=themes,
         position=position,
-        emotion=en_emotion(emotion.choix),
+        tonalite=en_tonalite(tonalite.choix),
+        hostilite=hostilite.probabilite_oui >= 0.5,
         confiance=min(confiances),
     )
 
@@ -323,8 +340,8 @@ def en_position(v: str) -> Position:
     raise ValueError(v)
 
 
-def en_emotion(v: str) -> Emotion:
-    for e in EMOTIONS:
-        if e == v:
-            return e
+def en_tonalite(v: str) -> Tonalite:
+    for t in TONALITES:
+        if t == v:
+            return t
     raise ValueError(v)

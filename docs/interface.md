@@ -5,7 +5,7 @@
 L'interface lit uniquement les agrégats (Supabase). Maquette de référence : artifact "Radar 2027".
 
 **Structure**
-- **Cette semaine** (accueil, éditorial) : chapô "le point de la semaine" validé par la rédaction ; les 5 sujets d'actu de la semaine en cartes (thème, courbe, vélocité, où ça réagit, désaccord avec les vidéos, émotion, résumé IA dépliable avec vidéos déclencheuses) ; en colonne : le décalage couverture / réactions, la comparaison médias traditionnels vs médias natifs du web, ce qui a changé depuis la semaine précédente. Un seul filtre : réactions sous toutes les sources, les médias traditionnels ou les médias natifs du web.
+- **Cette semaine** (accueil, éditorial) : chapô "le point de la semaine" validé par la rédaction ; les 5 sujets d'actu de la semaine en cartes (thème, courbe, vélocité, où ça réagit, désaccord avec les vidéos, tonalité, part hostile, résumé IA dépliable avec vidéos déclencheuses) ; en colonne : le décalage couverture / réactions, la comparaison médias traditionnels vs médias natifs du web, ce qui a changé depuis la semaine précédente. Un seul filtre : réactions sous toutes les sources, les médias traditionnels ou les médias natifs du web.
 - **Vue d'ensemble** : la lecture par thèmes pour creuser (classement par vélocité, carte attention × intensité avec comparaison à la période précédente, signaux émergents, détail par thème) et tous les filtres avancés (période, chaîne, position, émotion, chaînes politiques).
 - **Méthodologie** et **Journal des changements**, accessibles partout.
 - Bandeau permanent : "mesure les réactions des commentateurs YouTube, pas l'opinion des Français".
@@ -29,7 +29,7 @@ L'interface lit uniquement les agrégats (Supabase). Maquette de référence : a
 - Types de source : médias traditionnels, médias natifs du web.
 - Chaînes politiques : **exclues par défaut**, affichables via un interrupteur, toujours présentées à part, jamais agrégées.
 - Chaîne précise : vue "cette chaîne face au panel".
-- Position (accord, nuance ou désaccord avec la vidéo) et émotion : les thèmes qui ne correspondent pas sont estompés, pas masqués.
+- Position (accord, nuance ou désaccord avec la vidéo), tonalité et hostilité : les thèmes qui ne correspondent pas sont estompés, pas masqués.
 
 **Drilldown verbatims** (plus tard)
 - 30 derniers jours uniquement, texte non modifié, lien vers la vidéo, pas de pseudo, quelques exemples par sujet.

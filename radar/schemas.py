@@ -5,7 +5,7 @@ Toute modification d'une liste fermée incrémente VERSION_TAXONOMIE.
 
 from typing import Final, Literal, get_args
 
-VERSION_TAXONOMIE: Final = 4
+VERSION_TAXONOMIE: Final = 5
 
 # --- Sources du panel (docs/decisions.md, 01/10/2026) ---
 
@@ -68,9 +68,8 @@ NATURES_VIDEO: Final[tuple[NatureVideo, ...]] = get_args(NatureVideo)
 Position = Literal["accord_video", "nuance", "desaccord_video", "hors_sujet"]
 POSITIONS: Final[tuple[Position, ...]] = get_args(Position)
 
-Emotion = Literal["colere", "moquerie", "inquietude", "enthousiasme", "lassitude", "neutre"]
-EMOTIONS: Final[tuple[Emotion, ...]] = get_args(Emotion)
-
+# v5 (01/10/2026) : les six émotions sont remplacées par la tonalité et l'hostilité (booléen).
+# Émotions fines : hors périmètre v1.
 Tonalite = Literal["positive", "neutre", "negative"]
 TONALITES: Final[tuple[Tonalite, ...]] = get_args(Tonalite)
 

@@ -46,3 +46,5 @@ Cascade au seuil 0,7 : 74 % (mieux que Claude seul) pour ~400 $ / million contre
 Constats : Jev meilleur que Claude sauf sur l'émotion ; Claude manque la règle « réaction à l'événement = politique ». Beaucoup de désaccords sont des ambiguïtés (thème principal vs secondaire, colère / lassitude), et Tristan signale lui-même des doutes fréquents. Confiance de Jev non interprétable sur 50 commentaires (tranches de 8 à 20). Coût : Jev 0,06 $ / 1 000, Claude 0,70 $ / 1 000.
 
 **Suite** : arbitrage à l'aveugle des désaccords (`docs/etiquetage.md`), puis test sur la semaine 1 réelle.
+
+**Note (taxonomie v5, 01/10/2026)** : les résultats ci-dessus portent sur l'émotion en six catégories, abandonnée depuis ; les prochains tests mesurent la tonalité et l'hostilité.

@@ -34,9 +34,9 @@ from radar.classification import (
     ReponseCommentaires,
     ReponseNatureVideo,
     classement_jev,
-    en_emotion,
     en_position,
     en_theme,
+    en_tonalite,
     etat_jev,
     masquer,
     message_commentaires,
@@ -46,16 +46,16 @@ from radar.classification import (
 )
 from radar.llm import ClientClaude, ClientJev, ReponseInvalide
 from radar.schemas import (
-    EMOTIONS,
     FORMATS_VIDEO,
     NATURES_VIDEO,
     POSITIONS,
     THEMES,
+    TONALITES,
     TYPES_SOURCE,
-    Emotion,
     NatureVideo,
     Position,
     Theme,
+    Tonalite,
 )
 from radar.storage import DOSSIER_EVALUATION, Stockage, date_fichier
 
@@ -139,7 +139,8 @@ SCHEMA_RESULTATS = pa.schema(
         ("est_politique", pa.bool_()),
         ("themes", pa.list_(pa.string())),
         ("position", pa.string()),
-        ("emotion", pa.string()),
+        ("tonalite", pa.string()),
+        ("hostilite", pa.bool_()),
         ("confiance", pa.float64()),
     ]
 )
@@ -327,10 +328,12 @@ COLONNES_ETIQUETAGE = (
     "commentaire",
     "themes",
     "position",
-    "emotion",
+    "tonalite",
+    "hostilite",
 )
 AUCUN_THEME = "aucun"
 SANS_POSITION = "-"
+OUI, NON = "oui", "non"
 
 
 @dataclass(frozen=True)
@@ -338,7 +341,8 @@ class Etiquette:
     est_politique: bool
     themes: tuple[Theme, ...]
     position: Position | None
-    emotion: Emotion
+    tonalite: Tonalite
+    hostilite: bool | None  # None : pas encore tranché (dimension ignorée)
 
 
 def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
@@ -360,6 +364,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
                 "",
                 position,
                 "",
+                "",
             ]
         )
     return ("﻿" + tampon.getvalue()).encode("utf-8")
@@ -378,11 +383,13 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
         ref = (rang.get("ref") or "").strip()
         brut_themes = (rang.get("themes") or "").strip().lower()
         brut_position = (rang.get("position") or "").strip().lower()
-        brut_emotion = (rang.get("emotion") or "").strip().lower()
+        brut_tonalite = (rang.get("tonalite") or "").strip().lower()
+        brut_hostilite = (rang.get("hostilite") or "").strip().lower()
         if ref not in natures:
             erreurs.append(f"{ref or '?'} : référence inconnue")
             continue
-        if not brut_themes and not brut_emotion and brut_position in ("", SANS_POSITION):
+        vide = not (brut_themes or brut_tonalite or brut_hostilite)
+        if vide and brut_position in ("", SANS_POSITION):
             continue  # pas encore étiqueté
         nature = natures[ref]
         themes: list[Theme] = []
@@ -400,11 +407,15 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
             position = next((p for p in POSITIONS if p == brut_position), None)
             if position is None:
                 erreurs.append(f"{ref} : position attendue ({', '.join(POSITIONS)})")
-        emotion: Emotion | None = next((e for e in EMOTIONS if e == brut_emotion), None)
-        if emotion is None:
-            erreurs.append(f"{ref} : émotion attendue ({', '.join(EMOTIONS)})")
+        tonalite: Tonalite | None = next((t for t in TONALITES if t == brut_tonalite), None)
+        if tonalite is None:
+            erreurs.append(f"{ref} : tonalité attendue ({', '.join(TONALITES)})")
             continue
-        etiquettes[ref] = Etiquette(bool(themes), tuple(themes[:3]), position, emotion)
+        if brut_hostilite not in (OUI, NON, ""):
+            erreurs.append(f"{ref} : hostilité attendue ({OUI}, {NON} ou vide)")
+            continue
+        hostilite = None if not brut_hostilite else brut_hostilite == OUI
+        etiquettes[ref] = Etiquette(bool(themes), tuple(themes[:3]), position, tonalite, hostilite)
     if erreurs:
         raise ValueError("Étiquetage invalide :\n" + "\n".join(erreurs))
     return etiquettes
@@ -412,14 +423,24 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
 
 # --- Comparaison ---
 
-DIMENSIONS = ("politique", "theme_principal", "theme_commun", "position", "emotion", "complet")
+DIMENSIONS = (
+    "politique",
+    "theme_principal",
+    "theme_commun",
+    "position",
+    "tonalite",
+    "hostilite",
+    "complet",
+)
+DIMENSIONS_COMPLET = ("politique", "theme_principal", "position", "tonalite", "hostilite")
 LIBELLES_DIMENSIONS = {
     "politique": "Politique / non politique",
     "theme_principal": "Thème principal",
     "theme_commun": "Au moins un thème commun",
     "position": "Position (vidéos d'opinion)",
-    "emotion": "Émotion",
-    "complet": "Tout juste (politique, thème principal, position, émotion)",
+    "tonalite": "Tonalité",
+    "hostilite": "Hostilité",
+    "complet": "Tout juste (politique, thème principal, position, tonalité, hostilité)",
 }
 
 Reference = Etiquette | Classement
@@ -432,13 +453,10 @@ def comparer(pred: Classement, ref: Reference) -> dict[str, bool | None]:
         "theme_principal": pred.themes[:1] == ref.themes[:1] if ref.est_politique else None,
         "theme_commun": bool(set(pred.themes) & set(ref.themes)) if ref.est_politique else None,
         "position": pred.position == ref.position if ref.position is not None else None,
-        "emotion": pred.emotion == ref.emotion,
+        "tonalite": pred.tonalite == ref.tonalite,
+        "hostilite": pred.hostilite == ref.hostilite if ref.hostilite is not None else None,
     }
-    d["complet"] = all(
-        v
-        for k, v in d.items()
-        if k in ("politique", "theme_principal", "position", "emotion") and v is not None
-    )
+    d["complet"] = all(v for k, v in d.items() if k in DIMENSIONS_COMPLET and v is not None)
     return d
 
 
@@ -714,7 +732,8 @@ def ecrire_resultats(
             "est_politique": c.est_politique,
             "themes": list(c.themes),
             "position": c.position,
-            "emotion": c.emotion,
+            "tonalite": c.tonalite,
+            "hostilite": c.hostilite,
             "confiance": c.confiance,
         }
         for m, res in resultats.items()
@@ -734,7 +753,8 @@ def lire_resultats(st: Stockage, jour: date) -> dict[Modele, dict[str, Classemen
             est_politique=bool(r["est_politique"]),
             themes=tuple(en_theme(t) for t in r["themes"]),
             position=en_position(r["position"]) if r["position"] else None,
-            emotion=en_emotion(r["emotion"]),
+            tonalite=en_tonalite(r["tonalite"]),
+            hostilite=bool(r["hostilite"]),
             confiance=r["confiance"],
         )
     return res
@@ -780,7 +800,8 @@ def charger_synthetique(donnees: bytes, aujourdhui: date) -> list[Ligne]:
 
 def _etiquette(c: Reference) -> str:
     themes = "+".join(c.themes) or AUCUN_THEME
-    return f"{themes} / {c.position or SANS_POSITION} / {c.emotion}"
+    hostile = "?" if c.hostilite is None else ("hostile" if c.hostilite else "non hostile")
+    return f"{themes} / {c.position or SANS_POSITION} / {c.tonalite} / {hostile}"
 
 
 def desaccords(
@@ -814,7 +835,7 @@ def desaccords(
 # --- Arbitrage à l'aveugle (données synthétiques) ---
 
 Source = Literal["tristan", "jev", "claude"]
-DIMENSIONS_ARBITRAGE = ("themes", "position", "emotion")
+DIMENSIONS_ARBITRAGE = ("themes", "position", "tonalite", "hostilite")
 LETTRES = "ABC"
 AUCUNE = "aucune"
 COLONNES_ARBITRAGE = (
@@ -833,12 +854,16 @@ COLONNES_ARBITRAGE = (
 )
 
 
-def _valeur(c: Reference, dimension: str) -> str:
+def _valeur(c: Reference, dimension: str) -> str | None:
     if dimension == "themes":
         return "+".join(c.themes) or AUCUN_THEME
     if dimension == "position":
         return c.position or SANS_POSITION
-    return c.emotion
+    if dimension == "tonalite":
+        return c.tonalite
+    if c.hostilite is None:
+        return None
+    return "hostile" if c.hostilite else "non hostile"
 
 
 def fichier_arbitrage(
@@ -871,8 +896,10 @@ def fichier_arbitrage(
             options: dict[str, list[str]] = {}
             for nom, c in sources.items():
                 assert c is not None
-                options.setdefault(_valeur(c, dim), []).append(nom)
-            if len(options) < 2:
+                valeur = _valeur(c, dim)
+                if valeur is not None:  # hostilité pas encore tranchée par Tristan
+                    options.setdefault(valeur, []).append(nom)
+            if len(options) < 2 or sum(len(v) for v in options.values()) < len(sources):
                 continue
             valeurs = sorted(options)
             rng.shuffle(valeurs)

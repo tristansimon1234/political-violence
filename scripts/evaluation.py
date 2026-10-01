@@ -226,7 +226,7 @@ def synthetique(args: argparse.Namespace) -> int:
     lignes = charger_synthetique(donnees, aujourdhui)
     etiquettes = lire_etiquettes(donnees, lignes)
     if not etiquettes:
-        print(f"Aucune étiquette dans {args.fichier} : remplir themes / position / emotion.")
+        print(f"Aucune étiquette dans {args.fichier} : voir docs/etiquetage.md.")
         return 1
     jev_client = ClientJev(budget_usd=args.budget_jev)
     claude_client = ClientClaude(budget_usd=args.budget_claude)

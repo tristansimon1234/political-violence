@@ -45,10 +45,12 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 
 ## Classification
 
-**Ce qui est classé.** Chaque commentaire collecté est décrit par un modèle de langage selon une grille fermée : s'il parle de politique ou d'un enjeu d'intérêt public, ses thèmes (1 à 3, parmi 14), son émotion dominante et, sous les vidéos d'opinion seulement, son accord avec le propos de la vidéo. Il ne s'agit jamais de l'opinion de son auteur sur le sujet. Sous une vidéo factuelle (journal, reportage), aucune position n'est calculée.
+**Ce qui est classé.** Chaque commentaire collecté est décrit par un modèle de langage selon une grille fermée : s'il parle de politique ou d'un enjeu d'intérêt public, ses thèmes (1 à 3, parmi 14), sa tonalité (positive, neutre ou négative), s'il est hostile (insulte, attaque ou mépris visant une personne ou un groupe, menace ; un désaccord, même ferme, n'est pas hostile) et, sous les vidéos d'opinion seulement, son accord avec le propos de la vidéo. Il ne s'agit jamais de l'opinion de son auteur sur le sujet. Sous une vidéo factuelle (journal, reportage), aucune position n'est calculée.
 
 **Neutralité.** Les consignes données aux modèles décrivent ce que dit le commentaire, sans juger s'il a raison et sans tenir compte de l'orientation de la vidéo ou de la chaîne. Les définitions des catégories sont publiées ici avant toute utilisation.
 
 **Données envoyées aux modèles.** Le texte du commentaire, avec les mentions et les liens masqués, et le contexte de la vidéo (titre, chaîne, nature). Jamais l'auteur ni l'identifiant du commentaire. Les prestataires ne conservent pas les données et ne s'en servent pas pour entraîner leurs modèles (liste des sous-traitants publiée).
 
 **Contrôle de qualité.** Avant l'usage, les modèles sont comparés à un étiquetage manuel d'un échantillon stratifié par catégorie de chaîne, format et nature de vidéo.
+
+**Hostilité.** La part de commentaires hostiles est publiée par catégorie de chaînes et par sujet d'actualité, jamais chaîne par chaîne : un taux par chaîne se lirait comme un jugement sur son public, alors qu'il dépend aussi de la modération propre à chaque chaîne.

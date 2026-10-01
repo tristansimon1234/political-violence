@@ -1,7 +1,7 @@
 // Fichier généré par scripts/generer_taxonomie_ts.py depuis radar/schemas.py.
 // Ne pas éditer à la main.
 
-export const VERSION_TAXONOMIE = 4;
+export const VERSION_TAXONOMIE = 5;
 
 export const TYPES_SOURCE = ["media_traditionnel", "media_natif", "politique"] as const;
 export type TypeSource = (typeof TYPES_SOURCE)[number];
@@ -25,9 +25,6 @@ export type NatureVideo = (typeof NATURES_VIDEO)[number];
 
 export const POSITIONS = ["accord_video", "nuance", "desaccord_video", "hors_sujet"] as const;
 export type Position = (typeof POSITIONS)[number];
-
-export const EMOTIONS = ["colere", "moquerie", "inquietude", "enthousiasme", "lassitude", "neutre"] as const;
-export type Emotion = (typeof EMOTIONS)[number];
 
 export const TONALITES = ["positive", "neutre", "negative"] as const;
 export type Tonalite = (typeof TONALITES)[number];
