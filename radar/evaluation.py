@@ -553,7 +553,10 @@ def rapport(
 
     if etiquettes:
         out += ["## Justesse face aux étiquettes de Tristan", ""]
-        out += ["| Dimension | Jev | Claude | Accord Jev / Claude (500) |", "|---|---:|---:|---:|"]
+        out += [
+            f"| Dimension | Jev | Claude | Accord Jev / Claude ({len(lignes)}) |",
+            "|---|---:|---:|---:|",
+        ]
         for d in DIMENSIONS:
             out.append(
                 f"| {LIBELLES_DIMENSIONS[d]} | {_pct(*taux(jev, etiquettes, d))} | "
