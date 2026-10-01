@@ -33,6 +33,10 @@ YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶
 - Batch quotidien (collecte, classification, agrégation) : **GitHub Actions** en cron, pas des fonctions Vercel (traitement trop long). Lancer après 9 h (remise à zéro du quota YouTube).
 - Taxonomie partagée : une seule source de vérité (`radar/schemas.py`), dont les listes fermées sont exportées pour les schémas Zod côté TypeScript.
 
+Projet Supabase : `yqzgtkaeodibfujienyj` (`https://yqzgtkaeodibfujienyj.supabase.co`, région UE).
+
+Import du panel : workflow GitHub Actions manuel `import-sources.yml` (modes `dry-run` / `import`), secrets `YOUTUBE_API_KEY` et `SUPABASE_SERVICE_ROLE_KEY` dans le dépôt GitHub.
+
 Variables d'environnement : `ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY`, `YOUTUBE_API_KEY`, `RADAR_SEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (batch uniquement, jamais côté interface). Jamais de secret en dur ni dans le repo.
 
 ## Structure du repo (cible)
