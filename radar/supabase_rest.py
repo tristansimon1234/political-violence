@@ -1,4 +1,4 @@
-"""Accès Supabase via l'API REST (PostgREST), avec la clé service role (batch uniquement)."""
+"""Accès Supabase via l'API REST (PostgREST), avec la clé secrète (batch uniquement)."""
 
 import logging
 from typing import Any
@@ -9,13 +9,13 @@ log = logging.getLogger(__name__)
 
 
 class Supabase:
-    def __init__(self, url: str, service_key: str) -> None:
+    def __init__(self, url: str, cle_secrete: str) -> None:
         self._base = url.rstrip("/") + "/rest/v1"
-        self._headers = {
-            "apikey": service_key,
-            "Authorization": f"Bearer {service_key}",
-            "Content-Type": "application/json",
-        }
+        self._headers = {"apikey": cle_secrete, "Content-Type": "application/json"}
+        # Nouvelle clé secrète (sb_secret_…) : pas un JWT, seulement dans `apikey`.
+        # Ancienne clé service_role (JWT) : aussi en Bearer.
+        if not cle_secrete.startswith("sb_"):
+            self._headers["Authorization"] = f"Bearer {cle_secrete}"
 
     def upsert(self, table: str, lignes: list[dict[str, Any]], conflit: str) -> None:
         """Insère ou met à jour sur la clé `conflit`. Les colonnes absentes restent inchangées."""

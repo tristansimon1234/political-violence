@@ -4,7 +4,7 @@
 
 CSV attendu (en-tête) : url,type,sous_type,critere[,nom]
 Idempotent : upsert sur channel_id. Le champ `active` n'est jamais écrasé.
-Variables : YOUTUBE_API_KEY, et hors --dry-run SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+Variables : YOUTUBE_API_KEY, et hors --dry-run SUPABASE_URL, SUPABASE_SECRET_KEY.
 """
 
 import argparse
@@ -174,7 +174,7 @@ def main() -> int:
     if args.dry_run:
         print(f"\n--dry-run : {len(sources)} sources prêtes, rien écrit.")
     else:
-        Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"]).upsert(
+        Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"]).upsert(
             "sources", sources, conflit="channel_id"
         )
         print(f"\n{len(sources)} sources enregistrées.")

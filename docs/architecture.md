@@ -35,9 +35,9 @@ YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶
 
 Projet Supabase : `yqzgtkaeodibfujienyj` (`https://yqzgtkaeodibfujienyj.supabase.co`, région UE).
 
-Import du panel : workflow GitHub Actions manuel `import-sources.yml` (modes `dry-run` / `import`), secrets `YOUTUBE_API_KEY` et `SUPABASE_SERVICE_ROLE_KEY` dans le dépôt GitHub.
+Import du panel : workflow GitHub Actions manuel `import-sources.yml` (modes `dry-run` / `import`), secrets `YOUTUBE_API_KEY` et `SUPABASE_SECRET_KEY` dans le dépôt GitHub.
 
-Variables d'environnement : `ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY`, `YOUTUBE_API_KEY`, `RADAR_SEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (batch uniquement, jamais côté interface). Jamais de secret en dur ni dans le repo.
+Variables d'environnement : `ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY`, `YOUTUBE_API_KEY`, `RADAR_SEL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (clé secrète `sb_secret_…`, batch uniquement, jamais côté interface). Jamais de secret en dur ni dans le repo.
 
 ## Structure du repo (cible)
 
