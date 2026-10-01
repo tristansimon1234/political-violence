@@ -34,7 +34,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 
 **YouTube API**
 - Jamais `search.list` (100 unités). Passer par la playlist des uploads (1 unité).
-- Quota : 10 000 unités/jour, remise à zéro à 9 h (Paris). Cible : 1 500 à 3 000/jour. Logger la consommation à chaque run.
+- Quota : 10 000 unités/jour, remise à zéro à 9 h (Paris), non achetable (extension seulement après audit YouTube). Cible : ~3 000/jour en régime normal (collecte quotidienne, budget de run 4 000), jusqu'à ~9 000/jour pendant un backfill, jamais plus de 10 000. Logger la consommation à chaque run.
 - Un seul projet Google Cloud. Multiplier les projets pour cumuler du quota est interdit.
 - Données brutes de l'API (texte des commentaires, titres, descriptions) : 30 jours maximum, puis suppression ou rafraîchissement. Les commentaires supprimés sur YouTube disparaissent chez nous.
 - Métriques dérivées (thèmes, sentiment, vélocité) : rien de public ni de commercial avant l'acceptation du cas d'usage par YouTube.
