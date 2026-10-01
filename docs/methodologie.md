@@ -37,7 +37,7 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 
 **Pré-filtre.** Les métadonnées (titre, description, tags) de toutes les vidéos du panel sont lues. Les commentaires ne sont collectés que pour les vidéos dont ces métadonnées contiennent au moins un mot-clé d'une liste publiée (institutions, élections, partis, personnalités candidates, grandes politiques publiques), et pour toutes les vidéos des chaînes politiques. Ce pré-filtre limite la collecte de données personnelles aux vidéos susceptibles de porter sur la politique ; il est volontairement large, le tri fin intervenant ensuite.
 
-**Commentaires.** Les commentaires de premier niveau (sans les réponses) sont lus sous les vidéos retenues publiées dans les 3 derniers jours, une fois par jour : deux pages de 100 commentaires, classés par pertinence par YouTube, par vidéo longue, une page par Short.
+**Commentaires.** Les commentaires de premier niveau (sans les réponses) sont lus sous les vidéos retenues publiées dans les 3 derniers jours, une fois par jour : deux pages de 100 commentaires, classés par pertinence par YouTube, par vidéo longue, une page par Short. Pour une vidéo très commentée, le Radar lit donc les commentaires que YouTube met en avant (ordre « pertinence » : likes, réponses, récence), pas tous ses commentaires ; le volume de réactions d'une vidéo est lu dans le total de commentaires publié par YouTube, pas dans cet échantillon. Le taux de couverture (commentaires lus / total) est mesuré et publié.
 
 **Vues.** Les vues des Shorts et des vidéos longues ne sont pas comparables : depuis 2025, YouTube compte chaque relecture d'un Short. Les métriques d'attention et d'intensité séparent donc toujours les deux formats.
 

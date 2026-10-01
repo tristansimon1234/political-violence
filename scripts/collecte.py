@@ -38,6 +38,9 @@ def rapport(p: Parametres, b: Bilan, yt: YouTube, debut: datetime) -> str:
         f"- Passent le pré-filtre ou chaîne politique : {b.videos_prefiltre}",
         f"- Éligibles aux commentaires : {b.videos_eligibles} "
         f"({b.pages_estimees} pages ≈ {b.pages_estimees} unités)",
+        f"- Commentaires annoncés par YouTube sur ces vidéos (réponses comprises) : "
+        f"{b.commentaires_annonces} ; tout prendre coûterait au plus "
+        f"~{b.commentaires_annonces // 100 + b.videos_eligibles} unités",
         f"- Vidéos commentées : {b.videos_commentees}, commentaires : {b.commentaires}"
         + (
             f", vidéos indisponibles sautées : {b.videos_indisponibles}"
@@ -127,6 +130,7 @@ def main() -> int:
                     "prefiltre_version": mots_cles.version,
                     "pages_par_format": PAGES_COMMENTAIRES,
                     "videos_indisponibles": bilan.videos_indisponibles,
+                    "commentaires_annonces": bilan.commentaires_annonces,
                 },
             },
         )

@@ -54,6 +54,9 @@ class Bilan:
     videos_commentees: int = 0
     commentaires: int = 0
     pages_estimees: int = 0
+    # Total annoncé par YouTube (statistics.commentCount, réponses comprises) des vidéos
+    # éligibles : mesure ce que coûterait « tout prendre » (1 unité / 100 commentaires).
+    commentaires_annonces: int = 0
     arret_budget: bool = False
     videos_indisponibles: int = 0
     prefiltre_par_type: Counter[str] = field(default_factory=Counter[str])
@@ -228,6 +231,7 @@ def collecter(
         eligibles.sort(key=lambda v: v["publiee_at"])
         bilan.videos_eligibles = len(eligibles)
         bilan.pages_estimees = sum(PAGES_COMMENTAIRES[v["format"]] for v in eligibles)
+        bilan.commentaires_annonces = sum(int(v["nb_commentaires"] or 0) for v in eligibles)
 
         if p.dry_run:
             return bilan
