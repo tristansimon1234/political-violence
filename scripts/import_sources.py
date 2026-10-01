@@ -109,7 +109,7 @@ def ligne_source(
 
 def afficher(resultats: list[tuple[LignePanel, dict[str, Any]]], jours: int) -> None:
     print(
-        f"\n{'type':<12}{'sous_type':<18}{'abonnés':>12}{f'vidéos {jours}j':>12}"
+        f"\n{'type':<20}{'sous_type':<18}{'abonnés':>12}{f'vidéos {jours}j':>12}"
         f"{f'vues {jours}j':>14}"
         f"{'com. ouverts':>13}  nom résolu (handle) [nom attendu si différent]"
     )
@@ -120,7 +120,7 @@ def afficher(resultats: list[tuple[LignePanel, dict[str, Any]]], jours: int) -> 
         abonnes = "-" if s["abonnes"] is None else f"{s['abonnes']:,}"
         attendu = f" [{ligne.nom}]" if ligne.nom and ligne.nom != s["nom"] else ""
         print(
-            f"{s['type']:<12}{s['sous_type']:<18}{abonnes:>12}{s['videos_fenetre']:>12}"
+            f"{s['type']:<20}{s['sous_type']:<18}{abonnes:>12}{s['videos_fenetre']:>12}"
             f"{s['vues_fenetre']:>14,}{'-' if part is None else f'{part:.0%}':>13}"
             f"  {s['nom']} ({s['handle']}){attendu}"
         )
