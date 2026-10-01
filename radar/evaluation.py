@@ -678,23 +678,25 @@ def _type(lignes: list[Ligne], ref: str) -> str:
 def recommandation(
     lignes_seuils: list[tuple[str, float, tuple[int, int]]], cj: float, cc: float, projetes: int
 ) -> str:
-    _, _, (ok_c, n_c) = lignes_seuils[-1]
-    if n_c == 0:
-        return "Pas de recommandation : étiquettes de Tristan absentes ou classement Claude vide."
-    cible = ok_c / n_c - TOLERANCE
-    for nom, part, (ok, n) in lignes_seuils[:-1]:
-        if n and ok / n >= cible:
-            cout = cj + part * cc
+    """Option la moins chère à TOLERANCE près de la meilleure justesse (cascade comprise).
+
+    Les lignes sont rangées par coût croissant : Jev seul, seuils croissants, Claude seul.
+    """
+    mesurees = [(nom, part, ok / n, ok, n) for nom, part, (ok, n) in lignes_seuils if n]
+    if not mesurees:
+        return "Pas de recommandation : étiquettes de Tristan absentes."
+    meilleure = max(j for _, _, j, _, _ in mesurees)
+    nom_m = next(nom for nom, _, j, _, _ in mesurees if j == meilleure)
+    for nom, part, j, ok, n in mesurees:
+        if j >= meilleure - TOLERANCE:
+            cout = cc if nom == "Claude seul" else cj + part * cc
             return (
-                f"Seuil **{nom}** : justesse {_pct(ok, n)}, à moins de "
-                f"{100 * TOLERANCE:.0f} points de Claude seul ({_pct(ok_c, n_c)}), "
+                f"**{nom}** : justesse {_pct(ok, n)}, à moins de {100 * TOLERANCE:.0f} points "
+                f"de la meilleure option ({nom_m}, {100 * meilleure:.0f} %), "
                 f"{100 * part:.0f} % des commentaires repris par Claude, coût projeté "
-                f"{_usd(projetes * cout)} sur la campagne (Claude seul : {_usd(projetes * cc)})."
+                f"{_usd(projetes * cout)} (Claude seul : {_usd(projetes * cc)})."
             )
-    return (
-        f"Aucun seuil n'approche Claude seul ({_pct(ok_c, n_c)}) à {100 * TOLERANCE:.0f} points "
-        f"près : Claude seul, coût projeté {_usd(projetes * cc)} sur la campagne."
-    )
+    raise AssertionError("inatteignable")
 
 
 # --- Fichiers du bucket ---

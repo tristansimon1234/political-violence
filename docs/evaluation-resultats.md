@@ -48,3 +48,24 @@ Constats : Jev meilleur que Claude sauf sur l'émotion ; Claude manque la règle
 **Suite** : arbitrage à l'aveugle des désaccords (`docs/etiquetage.md`), puis test sur la semaine 1 réelle.
 
 **Note (taxonomie v5, 01/10/2026)** : les résultats ci-dessus portent sur l'émotion en six catégories, abandonnée depuis ; les prochains tests mesurent la tonalité et l'hostilité.
+
+## 01/10/2026 — Synthétique v1 reclassé par Tristan, taxonomie v6
+
+Tonalité et hostilité à la place de l'émotion ; natures `opinion` / `debat` ; position seulement sous `opinion` (28 commentaires étiquetés).
+
+| Dimension | Jev | Claude |
+|---|---:|---:|
+| Politique / non politique | 96 % | 91 % |
+| Thème principal | 90 % | 88 % |
+| Au moins un thème commun | 95 % | 90 % |
+| Position | 82 % | 96 % |
+| Tonalité | 81 % | 80 % |
+| Hostilité | 95 % | 95 % |
+| Tout juste | 66 % | 66 % |
+
+Confiance de Jev bien calibrée (47 %, 45 %, 79 %, 94 % par tranche). **Cascade au seuil 0,7 : 75 %**, mieux que chaque modèle seul (66 %), pour ~380 $ / million (Jev seul ~60 $, Claude seul ~690 $). Erreurs de sens opposé, d'où le gain de la cascade : Claude sous-estime le négatif (griefs calmes classés neutres) et rate encore la règle « réaction à l'événement = politique » ; Jev voit du négatif dans des remarques neutres et répond `hors_sujet` sur des nuances. Hostilité : Jev a quelques faux positifs (critique d'une institution), Claude manque des accusations de mauvaise foi.
+
+Correction : la recommandation automatique comparait chaque seuil à Claude seul ; elle retient maintenant l'option la moins chère à 2 points de la meilleure, cascade comprise (ici 0,7).
+
+Réserve : ce jeu a servi à écrire les règles ; à confirmer sur v2 et sur la semaine 1.
+

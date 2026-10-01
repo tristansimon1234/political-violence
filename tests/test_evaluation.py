@@ -706,3 +706,20 @@ def test_arbitrage_a_l_aveugle() -> None:
     assert "| themes | 1 | 100 % (1/1) | 100 % (1/1) | 100 % (1/1) |" in r
     with pytest.raises(ValueError):
         rapport_arbitrage(("\n".join(remplies) + "\nR999;x;tonalite;;;;;;;;A;").encode(), cle)
+
+
+def test_recommandation_cascade_meilleure_que_chaque_modele() -> None:
+    """Cas du test synthétique v1 (taxonomie v6) : la cascade à 0,7 bat Jev seul et Claude seul."""
+    from radar.evaluation import recommandation
+
+    lignes = [
+        ("Jev seul", 0.0, (66, 100)),
+        ("0,5", 0.17, (69, 100)),
+        ("0,6", 0.29, (71, 100)),
+        ("0,7", 0.46, (75, 100)),
+        ("0,8", 0.61, (73, 100)),
+        ("0,9", 0.84, (67, 100)),
+        ("Claude seul", 1.0, (66, 100)),
+    ]
+    r = recommandation(lignes, 0.00006, 0.00069, 1_000_000)
+    assert r.startswith("**0,7**") and "0,7, 75 %" in r
