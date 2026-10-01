@@ -59,13 +59,13 @@ Frontières Média,media_natif,pure_player,@frontieresmedia,0,0,0,-,-,-,écarté
 Rassemblement national,politique,parti,@rassemblementnationalofficiel,179,135,6 729 899,31%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 La France insoumise,politique,parti,@franceinsoumise,36,7,2 457 860,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 Horizons (ID UCoDttl6…),politique,parti,@edouardphilippe,13,26,358 097,59%,,100%,écartée,l'ID « Horizons » résout vers la chaîne d'Édouard Philippe : pas de substitut (règle partis)
-Les Écologistes,politique,parti,@lesecologistesfr,41,1,206 859,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+Les Écologistes,politique,parti,@lesecologistesfr,41,1,206 859,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Marine Tondelier
 PCF,politique,parti,@pcf-particommunistefrancais,34,4,206 802,7%,,100%,entre,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Fabien Roussel
 Parti socialiste,politique,parti,@partisocialiste,44,50,201 138,35%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 MoDem,politique,parti,@mouvement.democrate,49,0,98 231,0%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 UDR,politique,parti,@partiudr,12,16,78 720,63%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 Renaissance,politique,parti,@parti-renaissance,0,23,45 487,100%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
-Les Républicains,politique,parti,@lesrepublicains,1,0,7 260,0%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+Les Républicains,politique,parti,@lesrepublicains,1,0,7 260,0%,,100%,entre,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Bruno Retailleau
 Horizons,politique,parti,@Horizonsleparti,0,0,0,-,,-,sans chaîne active,@Horizonsleparti introuvable via l'API
 Jean-Luc Mélenchon,politique,personnalite,@jlmelenchon,25,39,16 574 839,55%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Florian Philippot,politique,personnalite,@florianphilippot1,103,2,15 715 940,1%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
@@ -77,13 +77,13 @@ Gabriel Attal,politique,personnalite,@gabriel_attal,23,50,570 650,39%,,100%,entr
 François Asselineau,politique,personnalite,@f_asselineau,34,0,520 760,0%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Édouard Philippe,politique,personnalite,@edouardphilippe,13,26,358 084,59%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Nathalie Arthaud,politique,personnalite,@nathaliearthaudlutteouvriere,20,55,241 449,73%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
-Bruno Retailleau,politique,personnalite,@bruno_retailleau,9,0,66 383,0%,,100%,réserve,9 vidéos sur 90 jours < 10
-Francis Lalanne,politique,personnalite,@francislalannefrofficiel,1,0,7 996,0%,,100%,réserve,1 vidéos sur 90 jours < 10
-Olivier Becht,politique,personnalite,@olivierbecht68,6,2,2 520,19%,,100%,réserve,8 vidéos sur 90 jours < 10
+Bruno Retailleau,politique,personnalite,@bruno_retailleau,9,0,66 383,0%,,100%,représenté par LR,"chaîne personnelle sous le seuil (9 vidéos) : représenté par Les Républicains, déjà en parti (règle candidat → parti)"
+Francis Lalanne,politique,personnalite,@francislalannefrofficiel,1,0,7 996,0%,,100%,retiré,"retiré par Tristan (01/10/2026) : pas de chaîne active retenue, ni personnelle ni de parti"
+Olivier Becht,politique,personnalite,@olivierbecht68,6,2,2 520,19%,,100%,retiré,"retiré par Tristan (01/10/2026) : pas de chaîne active retenue, ni personnelle ni de parti"
 Fabien Roussel,politique,personnalite,@fabienroussel9212,0,0,0,-,,-,représenté par PCF,"chaîne personnelle inactive (0 vidéo) : représenté par la chaîne du PCF, déjà dans le panel en parti (règle candidat → parti, 01/10/2026)"
-Marine Tondelier,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
-Delphine Batho,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
-Karim Bouamrane,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
+Marine Tondelier,politique,personnalite,,,,,,,,représentée par Les Écologistes,"pas de chaîne personnelle : représentée par Les Écologistes, déjà en parti (règle candidat → parti)"
+Delphine Batho,politique,personnalite,,,,,,,,retiré,"retiré par Tristan (01/10/2026) : pas de chaîne active retenue, ni personnelle ni de parti"
+Karim Bouamrane,politique,personnalite,,,,,,,,retiré,"retiré par Tristan (01/10/2026) : pas de chaîne active retenue, ni personnelle ni de parti"
 Clara Egger,politique,personnalite,@SolutionDemocratique,,,,,,,à auditer,"pas de chaîne personnelle : chaîne de son mouvement Solution démocratique (règle candidat → parti), confirmée par Tristan"
 Antoine Mikolajczak,politique,personnalite,UC5kUxcR5oqS3UArodBOaqsA,,,,,,,à auditer,pas de chaîne personnelle : chaîne du Parti Équinoxe
 PRAXIS - Reprendre le pouvoir,media_natif,pure_player,@PraxisOfficiel,,,,,,,à auditer,"ajout à la liste v1 (Tristan, 01/10/2026)"
