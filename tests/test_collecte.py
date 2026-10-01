@@ -347,6 +347,97 @@ def test_backfill_arret_propre_puis_reprise_sans_doublon(tmp_path: Path) -> None
     assert yt3.consomme == 0  # tout est fait : rien à refaire
 
 
+def _erreur_http(statut: int, raison: str) -> requests.HTTPError:
+    r = requests.Response()
+    r.status_code = statut
+    r._content = f'{{"error": {{"errors": [{{"reason": "{raison}"}}]}}}}'.encode()  # pyright: ignore[reportPrivateUsage]
+    return requests.HTTPError(response=r)
+
+
+def test_video_indisponible_sautee_et_marquee(tmp_path: Path) -> None:
+    faux = FauxYouTube(J1)
+
+    def transport(url: str, params: dict[str, str]) -> Any:
+        if url.endswith("commentThreads") and params["videoId"] == "m1":
+            raise _erreur_http(404, "videoNotFound")
+        return faux(url, params)
+
+    base = FausseBase(SOURCES)
+    st = StockageLocal(tmp_path)
+    yt = YouTube("cle", 1000, transport=transport)
+    bilan = collecter(_quotidien(), yt, base, st, charger(), SEL, J1)
+    assert bilan.videos_indisponibles == 1 and bilan.commentaires == 6
+    m1 = next(v for v in base.tables["videos"] if v["video_id"] == "m1")
+    assert m1["commentaires_fermes"] and m1["derniere_collecte"] is None
+    assert len(_tous_commentaires(st)) == 6
+
+
+def test_quota_youtube_epuise_arret_propre(tmp_path: Path) -> None:
+    faux = FauxYouTube(J1)
+
+    def transport(url: str, params: dict[str, str]) -> Any:
+        if url.endswith("commentThreads") and params["videoId"] == "m3":
+            raise _erreur_http(403, "quotaExceeded")
+        return faux(url, params)
+
+    st = StockageLocal(tmp_path)
+    yt = YouTube("cle", 1000, transport=transport)
+    bilan = collecter(_quotidien(), yt, FausseBase(SOURCES), st, charger(), SEL, J1)
+    assert bilan.arret_budget and bilan.videos_commentees == 1
+    assert len(_tous_commentaires(st)) == 3  # m1 collectée avant l'arrêt, bien stockée
+
+
+def test_erreur_imprevue_sauve_ce_qui_est_collecte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import radar.collecte
+
+    monkeypatch.setattr(radar.collecte, "LOT_ECRITURE", 1)
+    faux = FauxYouTube(J1)
+
+    def transport(url: str, params: dict[str, str]) -> Any:
+        if url.endswith("commentThreads") and params["videoId"] == "p1":
+            raise requests.ConnectionError("coupure réseau")
+        return faux(url, params)
+
+    base = FausseBase(SOURCES)
+    st = StockageLocal(tmp_path)
+    yt = YouTube("cle", 1000, transport=transport)
+    with pytest.raises(requests.ConnectionError):
+        collecter(_quotidien(), yt, base, st, charger(), SEL, J1)
+    assert len(_tous_commentaires(st)) == 6  # m1 et m3 sauvés avant l'erreur
+    collectees = {v["video_id"] for v in base.tables["videos"] if v["derniere_collecte"]}
+    assert collectees == {"m1", "m3"}
+    # La relance ne refait que p1.
+    bilan = collecter(
+        _quotidien(), YouTube("cle", 1000, transport=faux), base, st, charger(), SEL, J1
+    )
+    assert bilan.videos_commentees == 1 and len(_tous_commentaires(st)) == 9
+
+
+def test_transport_reessaie_et_masque_la_cle(monkeypatch: pytest.MonkeyPatch) -> None:
+    import radar.youtube
+
+    reponses = [500, 200]
+
+    def get(url: str, params: dict[str, str], timeout: int) -> requests.Response:
+        r = requests.Response()
+        r.status_code = reponses.pop(0) if reponses else 404
+        r._content = b'{"items": []}'  # pyright: ignore[reportPrivateUsage]
+        return r
+
+    monkeypatch.setattr(radar.youtube.requests, "get", get)
+
+    def dormir(secondes: float) -> None:
+        return None
+
+    monkeypatch.setattr(radar.youtube.time, "sleep", dormir)
+    assert radar.youtube._transport_http("https://x/videos", {"key": "CLESECRETE"}) == {"items": []}  # pyright: ignore[reportPrivateUsage]
+    with pytest.raises(requests.HTTPError) as e:
+        radar.youtube._transport_http("https://x/videos", {"key": "CLESECRETE"})  # pyright: ignore[reportPrivateUsage]
+    assert "CLESECRETE" not in str(e.value)
+
+
 @pytest.mark.parametrize(
     ("titre", "attendu"),
     [

@@ -7,6 +7,7 @@ search.list (100 unités) n'est jamais utilisé.
 import logging
 import os
 import re
+import time
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any, Literal
@@ -19,6 +20,10 @@ log = logging.getLogger(__name__)
 API = "https://www.googleapis.com/youtube/v3"
 
 Transport = Callable[[str, dict[str, str]], Any]
+
+
+class VideoIndisponible(RuntimeError):
+    """Vidéo supprimée, privée ou réservée (404, 403 hors quota, 400) : on passe à la suivante."""
 
 
 class QuotaDepasse(RuntimeError):
@@ -252,10 +257,36 @@ def _raison_erreur(e: requests.HTTPError) -> str | None:
         return None
 
 
+RAISONS_QUOTA = {"quotaExceeded", "dailyLimitExceeded"}
+_ESSAIS = 4
+
+
 def _transport_http(url: str, params: dict[str, str]) -> Any:
-    r = requests.get(url, params=params, timeout=30)
-    r.raise_for_status()
-    return r.json()
+    """GET avec reprise sur erreurs transitoires (5xx, 429, rateLimitExceeded, réseau)."""
+    for essai in range(_ESSAIS):
+        try:
+            r = requests.get(url, params=params, timeout=30)
+        except (requests.ConnectionError, requests.Timeout):
+            if essai == _ESSAIS - 1:
+                raise
+            time.sleep(2**essai)
+            continue
+        transitoire = r.status_code >= 500 or r.status_code == 429
+        if r.status_code == 403:
+            try:
+                transitoire = "rateLimitExceeded" in r.text
+            except ValueError:
+                transitoire = False
+        if transitoire and essai < _ESSAIS - 1:
+            time.sleep(2**essai)
+            continue
+        if not r.ok:
+            # Message sans l'URL : elle contient la clé d'API.
+            raise requests.HTTPError(
+                f"HTTP {r.status_code} sur {url.rsplit('/', 1)[-1]}", response=r
+            )
+        return r.json()
+    raise AssertionError("inatteignable")
 
 
 class YouTube:
@@ -273,7 +304,13 @@ class YouTube:
         # Compté avant l'appel : un appel en erreur consomme aussi du quota.
         self.consomme += cout
         log.info("youtube %s cout=%d total=%d/%d", ressource, cout, self.consomme, self.budget)
-        return self._transport(f"{API}/{ressource}", {**params, "key": self._api_key})
+        try:
+            return self._transport(f"{API}/{ressource}", {**params, "key": self._api_key})
+        except requests.HTTPError as e:
+            raison = _raison_erreur(e)
+            if raison in RAISONS_QUOTA:
+                raise QuotaDepasse(f"quota YouTube épuisé ({raison})") from e
+            raise
 
     def resoudre_chaine(self, ref: str) -> Chaine:
         cle, valeur = parser_reference(ref)
@@ -384,8 +421,12 @@ class YouTube:
             try:
                 brut = self._appel("commentThreads", params)
             except requests.HTTPError as e:
-                if _raison_erreur(e) == "commentsDisabled":
+                raison = _raison_erreur(e)
+                if raison == "commentsDisabled":
                     return []
+                statut = e.response.status_code if e.response is not None else 0
+                if statut in (400, 403, 404):
+                    raise VideoIndisponible(f"{video_id} : HTTP {statut} ({raison})") from e
                 raise
             rep = _FilsResponse.model_validate(brut)
             for fil in rep.items:
