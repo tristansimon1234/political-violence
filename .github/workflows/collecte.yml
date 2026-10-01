@@ -23,7 +23,7 @@ on:
         default: ""
       budget:
         description: "Quota YouTube max pour ce run"
-        default: "3000"
+        default: "4000"
 
 concurrency:
   group: collecte
@@ -48,7 +48,7 @@ jobs:
       - name: Collecte
         run: |
           set -o pipefail
-          ARGS=(--budget "${{ inputs.budget || '3000' }}")
+          ARGS=(--budget "${{ inputs.budget || '4000' }}")
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
           if [ -n "${{ inputs.depuis }}" ]; then ARGS+=(--depuis "${{ inputs.depuis }}"); fi
           if [ -n "${{ inputs.jusqua }}" ]; then ARGS+=(--jusqua "${{ inputs.jusqua }}"); fi
