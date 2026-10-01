@@ -14,7 +14,6 @@ Rien n'est affiché ni écrit hors du bucket, sauf des agrégats.
 """
 
 import argparse
-import json
 import logging
 import os
 import random
@@ -51,7 +50,7 @@ from radar.evaluation import (
     lire_resultats,
     rapport,
 )
-from radar.llm import ClientClaude, ClientJev, lire_reponse_jev
+from radar.llm import ClientClaude, ClientJev, ReponseInvalide, cle_gateway, lire_reponse_jev
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.supabase_rest import Supabase
 
@@ -69,22 +68,60 @@ def _stockage(args: argparse.Namespace) -> Stockage:
     return StockageSupabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"], BUCKET)
 
 
+GATEWAY = "https://ai-gateway.vercel.sh"
+ZDR = {"providerOptions": {"gateway": {"zeroDataRetention": True}}}
+
+
+def _variantes_jev(corps: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
+    """Variantes de protocole à essayer : (nom, url, corps)."""
+    sans_zdr = {k: v for k, v in corps.items() if k != "providerOptions"}
+    vercel = {
+        **sans_zdr,
+        "questions": {
+            nom: ({**q, "type": "boolean"} if q["type"] == "noul" else q)
+            for nom, q in sans_zdr["questions"].items()
+        },
+    }
+    systemone = f"{GATEWAY}/typesafe/v1/systemone"
+    return [
+        ("TypeSafe + ZDR", systemone, {**sans_zdr, **ZDR}),
+        ("TypeSafe sans ZDR", systemone, sans_zdr),
+        ("TypeSafe jev-latest", systemone, {**sans_zdr, "model": "jev-latest"}),
+        ("Vercel evaluate + ZDR", f"{GATEWAY}/v1/evaluate", {**vercel, **ZDR}),
+        ("Vercel evaluate sans ZDR", f"{GATEWAY}/v1/evaluate", vercel),
+    ]
+
+
 def sonde(args: argparse.Namespace) -> int:
+    """Diagnostic sur un texte fictif : réponses complètes affichées (aucune donnée réelle)."""
+    import requests
+
     jev = ClientJev(budget_usd=0.05)
     questions = questions_jev("opinion_debat")
-    brut = jev.brut(etat_jev(SONDE_CONTEXTE, SONDE_TEXTE), questions)
-    print("Réponse brute de Jev (texte fictif) :")
-    print(json.dumps(brut, ensure_ascii=False, indent=2)[:4000])
-    reps = lire_reponse_jev(questions, brut)
-    print("\nFormat compris :", {k: type(v).__name__ for k, v in reps.items()})
-    claude = ClientClaude(budget_usd=0.05)
-    r = claude.classer(
-        SYSTEME_COMMENTAIRES,
-        message_commentaires(SONDE_CONTEXTE, [SONDE_TEXTE]),
-        ReponseCommentaires,
-    )
-    print("Claude :", r.model_dump())
-    print(f"Coût : Jev {jev.compteur.cout_usd:.6f} $, Claude {claude.compteur.cout_usd:.6f} $")
+    corps = jev.corps(etat_jev(SONDE_CONTEXTE, SONDE_TEXTE), questions)
+    entetes = {"Authorization": f"Bearer {cle_gateway()}", "Content-Type": "application/json"}
+    print("## Jev (texte fictif)\n")
+    for nom, url, c in _variantes_jev(corps):
+        r = requests.post(url, headers=entetes, json=c, timeout=60)
+        print(f"### {nom} : HTTP {r.status_code}\n```\n{r.text[:1500]}\n```")
+        if r.ok:
+            try:
+                reps = lire_reponse_jev(questions, r.json())
+                print("Format compris :", {k: type(v).__name__ for k, v in reps.items()})
+            except ReponseInvalide as e:
+                print("Format non compris :", e)
+    print("\n## Claude (texte fictif)\n")
+    try:
+        claude = ClientClaude(budget_usd=0.05)
+        rep = claude.classer(
+            SYSTEME_COMMENTAIRES,
+            message_commentaires(SONDE_CONTEXTE, [SONDE_TEXTE]),
+            ReponseCommentaires,
+        )
+        print("Réponse :", rep.model_dump())
+        print(f"Coût : {claude.compteur.cout_usd:.6f} $")
+    except Exception as e:  # diagnostic : on affiche toute erreur
+        print("Erreur Claude :", type(e).__name__, str(e)[:500])
     return 0
 
 
