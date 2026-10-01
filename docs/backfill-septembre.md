@@ -2,6 +2,11 @@
 
 ## Premier chantier data : backfill de septembre 2026
 
+**Commandes** (workflow GitHub « Collecte », lancement manuel) :
+1. `dry_run` coché, `depuis` = `2026-09-01`, `jusqua` = `2026-09-07` : estimation du quota et du nombre de vidéos retenues par le pré-filtre.
+2. Même chose sans `dry_run` : collecte réelle de la semaine 1. Si le budget est atteint, le run s'arrête proprement : le relancer reprend là où il s'est arrêté (les uploads déjà parcourus ne sont pas reparcourus, les vidéos déjà collectées sont sautées).
+3. Puis `2026-09-08` → `2026-09-30`, en un ou plusieurs runs.
+
 Objectif : récupérer tout le mois de septembre (du 1er au 30) pour construire le pipeline, calibrer le filtre et la classification, et constituer la baseline de vélocité d'octobre.
 
 - **Périmètre** : vidéos publiées du 01/09/2026 au 30/09/2026 sur les chaînes actives du panel, et leurs commentaires. Pour les chaînes qui publient beaucoup (info en continu), paginer la playlist des uploads jusqu'au 1er septembre (1 unité par page de 50).

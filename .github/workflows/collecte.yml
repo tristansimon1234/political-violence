@@ -1,0 +1,58 @@
+name: Collecte
+
+# Quotidien : tous les jours à 8 h 45 UTC (9 h 45 Paris en hiver, 10 h 45 en été), après la
+# remise à zéro du quota YouTube. Le cron ne tourne que si la variable de dépôt
+# COLLECTE_ACTIVE vaut "true" (Settings > Secrets and variables > Actions > Variables).
+# Manuel : dry-run, quotidien ou backfill (--depuis / --jusqua, bornes incluses).
+# Secrets : YOUTUBE_API_KEY, SUPABASE_SECRET_KEY, RADAR_SEL.
+
+on:
+  schedule:
+    - cron: "45 8 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run : rien n'est écrit, commentaires estimés"
+        type: boolean
+        default: true
+      depuis:
+        description: "Backfill : premier jour (AAAA-MM-JJ). Vide = collecte quotidienne"
+        default: ""
+      jusqua:
+        description: "Backfill : dernier jour inclus (AAAA-MM-JJ)"
+        default: ""
+      budget:
+        description: "Quota YouTube max pour ce run"
+        default: "3000"
+
+concurrency:
+  group: collecte
+  cancel-in-progress: false
+
+jobs:
+  collecte:
+    if: github.event_name == 'workflow_dispatch' || vars.COLLECTE_ACTIVE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      RADAR_SEL: ${{ secrets.RADAR_SEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Collecte
+        run: |
+          set -o pipefail
+          ARGS=(--budget "${{ inputs.budget || '3000' }}")
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          if [ -n "${{ inputs.depuis }}" ]; then ARGS+=(--depuis "${{ inputs.depuis }}"); fi
+          if [ -n "${{ inputs.jusqua }}" ]; then ARGS+=(--jusqua "${{ inputs.jusqua }}"); fi
+          python scripts/collecte.py "${ARGS[@]}" | tee rapport.md
+      - name: Résumé
+        if: always()
+        run: cat rapport.md >> "$GITHUB_STEP_SUMMARY" || true

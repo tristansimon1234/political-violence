@@ -3,10 +3,10 @@ name = "radar"
 version = "0.1.0"
 description = "Radar 2027 : ce qui fait réagir les commentateurs YouTube pendant la présidentielle"
 requires-python = ">=3.11"
-dependencies = ["requests>=2.31", "pydantic>=2.6"]
+dependencies = ["requests>=2.31", "pydantic>=2.6", "pyarrow>=17"]
 
 [project.optional-dependencies]
-dev = ["ruff", "pyright", "pytest", "types-requests"]
+dev = ["ruff", "pyright", "pytest", "types-requests", "pyarrow-stubs"]
 
 [build-system]
 requires = ["setuptools>=68"]

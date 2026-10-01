@@ -35,7 +35,9 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 
 **Vidéos.** Pour chaque chaîne active, les nouvelles vidéos sont lues dans la liste de ses mises en ligne. Chaque vidéo porte un **format** : `short` ou `long`. L'API ne fournit pas ce champ : une vidéo est classée `short` si elle dure 3 minutes ou moins et si son lecteur est vertical ou carré. Limite connue : avant octobre 2024, les Shorts duraient au plus 60 secondes, si bien qu'une vidéo verticale de 1 à 3 minutes publiée avant cette date peut être classée `short` à tort.
 
-**Commentaires.** Les commentaires sont lus sous les vidéos récentes, à plusieurs reprises pendant quelques jours après la publication. Une seule page de commentaires est lue par Short.
+**Pré-filtre.** Les métadonnées (titre, description, tags) de toutes les vidéos du panel sont lues. Les commentaires ne sont collectés que pour les vidéos dont ces métadonnées contiennent au moins un mot-clé d'une liste publiée (institutions, élections, partis, personnalités candidates, grandes politiques publiques), et pour toutes les vidéos des chaînes politiques. Ce pré-filtre limite la collecte de données personnelles aux vidéos susceptibles de porter sur la politique ; il est volontairement large, le tri fin intervenant ensuite.
+
+**Commentaires.** Les commentaires de premier niveau (sans les réponses) sont lus sous les vidéos retenues publiées dans les 3 derniers jours, une fois par jour : deux pages de 100 commentaires, classés par pertinence par YouTube, par vidéo longue, une page par Short.
 
 **Vues.** Les vues des Shorts et des vidéos longues ne sont pas comparables : depuis 2025, YouTube compte chaque relecture d'un Short. Les métriques d'attention et d'intensité séparent donc toujours les deux formats.
 
