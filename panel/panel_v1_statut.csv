@@ -60,7 +60,7 @@ Rassemblement national,politique,parti,@rassemblementnationalofficiel,179,135,6 
 La France insoumise,politique,parti,@franceinsoumise,36,7,2 457 860,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 Horizons (ID UCoDttl6…),politique,parti,@edouardphilippe,13,26,358 097,59%,,100%,écartée,l'ID « Horizons » résout vers la chaîne d'Édouard Philippe : pas de substitut (règle partis)
 Les Écologistes,politique,parti,@lesecologistesfr,41,1,206 859,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
-PCF,politique,parti,@pcf-particommunistefrancais,34,4,206 802,7%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+PCF,politique,parti,@pcf-particommunistefrancais,34,4,206 802,7%,,100%,entre,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Fabien Roussel
 Parti socialiste,politique,parti,@partisocialiste,44,50,201 138,35%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 MoDem,politique,parti,@mouvement.democrate,49,0,98 231,0%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 UDR,politique,parti,@partiudr,12,16,78 720,63%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
@@ -80,9 +80,9 @@ Nathalie Arthaud,politique,personnalite,@nathaliearthaudlutteouvriere,20,55,241 
 Bruno Retailleau,politique,personnalite,@bruno_retailleau,9,0,66 383,0%,,100%,réserve,9 vidéos sur 90 jours < 10
 Francis Lalanne,politique,personnalite,@francislalannefrofficiel,1,0,7 996,0%,,100%,réserve,1 vidéos sur 90 jours < 10
 Olivier Becht,politique,personnalite,@olivierbecht68,6,2,2 520,19%,,100%,réserve,8 vidéos sur 90 jours < 10
-Fabien Roussel,politique,personnalite,@fabienroussel9212,0,0,0,-,,-,réserve,0 vidéos sur 90 jours < 10
+Fabien Roussel,politique,personnalite,@fabienroussel9212,0,0,0,-,,-,représenté par PCF,"chaîne personnelle inactive (0 vidéo) : représenté par la chaîne du PCF, déjà dans le panel en parti (règle candidat → parti, 01/10/2026)"
 Marine Tondelier,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
 Delphine Batho,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
 Karim Bouamrane,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
-Clara Egger,politique,personnalite,,,,,,,,réserve,doute : seule la chaîne du mouvement Solution démocratique existe (substitution ?)
-Antoine Mikolajczak,politique,personnalite,,,,,,,,réserve,doute : handle ambigu (homonyme)
+Clara Egger,politique,personnalite,@PraxisOfficiel,,,,,,,à auditer,pas de chaîne personnelle : chaîne PRAXIS - Reprendre le pouvoir (désignée par Tristan ; lien à confirmer)
+Antoine Mikolajczak,politique,personnalite,UC5kUxcR5oqS3UArodBOaqsA,,,,,,,à auditer,pas de chaîne personnelle : chaîne du Parti Équinoxe

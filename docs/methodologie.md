@@ -17,7 +17,7 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 - Médias traditionnels : les médias nationaux retenus par l'étude de l'Université de Lausanne sur YouTube et les élections françaises (Sosnovik, Violot, Humbert, arXiv 2512.17768, table 14).
 - Médias natifs du web : les pure players de la même étude, complétés par un choix éditorial publié ici avec la liste.
 - Partis : les partis représentés à l'Assemblée nationale.
-- Personnalités : les candidats déclarés à l'élection présidentielle selon la liste tenue par LCP. Les candidats à une primaire n'entrent qu'après le résultat, et seulement le vainqueur.
+- Personnalités : les candidats déclarés à l'élection présidentielle selon la liste tenue par LCP. Les candidats à une primaire n'entrent qu'après le résultat, et seulement le vainqueur. Chaque candidat est suivi par sa chaîne personnelle ; s'il n'en a pas ou si elle est inactive, par la chaîne officielle de son parti ou mouvement. L'inverse n'existe pas : un parti n'est jamais représenté par la chaîne d'un de ses dirigeants.
 
 **Filtres.**
 1. Activité, pour toutes les chaînes sauf les partis : au moins 10 vidéos publiées sur les 90 derniers jours, formats courts (Shorts) compris. Les partis sont gardés quelle que soit leur activité : le silence d'un parti sur YouTube est une donnée.

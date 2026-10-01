@@ -23,7 +23,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
   - `media_natif` (« Médias natifs du web ») : nés sur Internet, sans télévision, radio ou titre de presse derrière, incarnés par une personne ou non (pure players et créateurs). Source : pure players de Lausanne et choix éditorial publié dans la méthodologie. Pas de filtre politique éliminatoire : taux de politisation mesuré et publié.
   - `politique` (« Politiques ») : **lues à part** (chambres d'écho militantes), jamais agrégées aux réactions du public.
     - `parti` : chaînes officielles des partis représentés à l'Assemblée, quelle que soit leur activité. Pas de chaîne de dirigeant en substitut ; un parti sans chaîne est noté « sans chaîne active ».
-    - `personnalite` : candidats déclarés selon la liste LCP qui passent le critère d'activité, sans plafond. Candidats à une primaire : seul le vainqueur peut entrer.
+    - `personnalite` : candidats déclarés selon la liste LCP, sans plafond. Chaîne personnelle si elle passe le critère d'activité, sinon chaîne officielle de leur parti ou mouvement (même critère ; pas de doublon si le parti est déjà en `parti`). Candidats à une primaire : seul le vainqueur peut entrer.
 - Critère commun d'activité : **≥ 10 vidéos sur 90 jours, Shorts compris** (partis exemptés).
 - Chaque source porte `type`, `sous_type`, et le critère (et les sources du vivier) qui justifient sa présence.
 - Réserve : chaînes de la liste qui échouent aux filtres, retestées à chaque revue mensuelle ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
