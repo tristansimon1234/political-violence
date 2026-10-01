@@ -570,3 +570,16 @@ def test_corps_jev_protocole_typesafe() -> None:
     assert q["politique"]["type"] == "noul" and set(q["politique"]["criteria"]) == {"true", "false"}
     assert q["theme"]["type"] == "choice" and "retraites" in q["theme"]["criteria"]
     assert set(q) == {"politique", "theme", "emotion", "position"}
+
+
+def test_cout_jev_reel_de_la_gateway() -> None:
+    """Réponse réelle de la sonde du 01/10/2026 (texte fictif) : coût lu, pas estimé."""
+    from radar.llm import cout_jev
+
+    brut = {
+        "model": "typesafe-ai/jev",
+        "answers": {"politique": {"type": "noul", "noul": 0.95}},
+        "usage": {"input_tokens": 1178, "output_tokens": 290},
+        "provider_metadata": {"gateway": {"cost": "0.000049476", "surchargeCost": "0"}},
+    }
+    assert cout_jev(brut) == (1178, pytest.approx(0.000049476))

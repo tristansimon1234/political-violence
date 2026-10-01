@@ -79,6 +79,6 @@ Existant à reprendre : `radar_youtube.py` (collecte + extraction Claude, à dé
 ## Budget indicatif (jusqu'au second tour)
 
 - YouTube : gratuit
-- Jev : ~17 $ par million de commentaires
+- Jev : ~50 $ par million de commentaires mesuré le 01/10 (≈ 1 200 tokens d'entrée par commentaire, surtout les définitions des catégories ; 0,042 $ par million de tokens, sortie gratuite)
 - Claude : l'essentiel du coût, piloté par le seuil de confiance de reprise
 - Total : ~200 $ (scénario moyen, ~2,5 M commentaires) à ~1 100 $ (large, ~16 M)

@@ -187,7 +187,8 @@ class _ReponseJev(BaseModel):
     model_config = ConfigDict(extra="allow")
     answers: dict[str, _ReponseQuestionJev]
     usage: dict[str, int | float | None] = {}
-    providerMetadata: dict[str, dict[str, Any]] = {}
+    provider_metadata: dict[str, dict[str, Any]] = {}
+    providerMetadata: dict[str, dict[str, Any]] = {}  # variante camelCase
 
 
 def lire_reponse_jev(
@@ -227,13 +228,14 @@ def lire_reponse_jev(
     return resultat
 
 
-def _cout_jev(brut: dict[str, Any]) -> tuple[int, float]:
+def cout_jev(brut: dict[str, Any]) -> tuple[int, float]:
     try:
         rep = _ReponseJev.model_validate(brut)
     except ValidationError:
         return 0, 0.0
     entree = int(rep.usage.get("inputTokens") or rep.usage.get("input_tokens") or 0)
-    cout: Any = rep.providerMetadata.get("gateway", {}).get("cost")
+    meta = rep.provider_metadata or rep.providerMetadata
+    cout: Any = meta.get("gateway", {}).get("cost")
     if isinstance(cout, int | float | str):
         try:
             return entree, float(cout)
@@ -251,7 +253,7 @@ class ClientJev:
         transport: Transport = _post,
     ) -> None:
         self._cle = cle or cle_gateway()
-        self._url = url or os.environ.get("JEV_URL") or URL_JEV
+        self.url = url or os.environ.get("JEV_URL") or URL_JEV
         self._modele = os.environ.get("JEV_MODELE") or MODELE_JEV
         self._transport = transport
         self.compteur = Compteur(budget_usd, _nom="jev")
@@ -277,8 +279,8 @@ class ClientJev:
     def brut(self, etat: Etat, questions: dict[str, Question]) -> dict[str, Any]:
         self.compteur.verifier()
         entetes = {"Authorization": f"Bearer {self._cle}", "Content-Type": "application/json"}
-        reponse = self._transport(self._url, entetes, self.corps(etat, questions))
-        entree, cout = _cout_jev(reponse)
+        reponse = self._transport(self.url, entetes, self.corps(etat, questions))
+        entree, cout = cout_jev(reponse)
         self.compteur.ajouter(entree, 0, cout)
         return reponse
 

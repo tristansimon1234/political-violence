@@ -13,7 +13,7 @@ Règle (`CLAUDE.md`, décision du 01/10/2026) : stockage en UE. Un traitement tr
 | Sous-traitant | Rôle | Localisation du traitement | Conservation | Entraînement | Transfert hors UE |
 |---|---|---|---|---|---|
 | Supabase | Base de données et stockage brut | UE (région du projet) | Brut purgé à 30 jours, agrégats sur la durée de la campagne | Sans objet | Aucun pour les données (hébergement UE) |
-| Vercel (AI Gateway) | Routage des appels à Jev | Global par défaut (non vérifié) | Prompts et réponses non conservés, métadonnées 30 jours (non vérifié) | Option « disallow prompt training » (non vérifié) | DPA avec CCT 2021/914 et certification DPF déclarée (non vérifié) |
+| Vercel (AI Gateway) | Routage des appels à Jev | Global par défaut (non vérifié) ; avec ZDR, Jev servi par TypeSafe (vérifié, sonde du 01/10) | Prompts et réponses non conservés, métadonnées 30 jours (non vérifié) | Option « disallow prompt training » (non vérifié) | DPA avec CCT 2021/914 et certification DPF déclarée (non vérifié) |
 | TypeSafe AI (Jev) | Classement des commentaires | États-Unis, aucune région UE documentée | Zéro conservation via la Gateway, à confirmer | Pas d'entraînement selon leur politique, mais clause de « télémétrie » (non vérifié) | DPA avec CCT selon des sources tierces (non vérifié) |
 | Anthropic (Claude Haiku 4.5) | Nature des vidéos et classement des commentaires | « global » ou États-Unis ; stockage au repos aux États-Unis ; pas d'option UE | Contenu non conservé par défaut selon la doc API (vérifié), mais 30 jours selon la politique de confidentialité commerciale | Interdit par les conditions commerciales (vérifié) | DPA avec CCT modules 2 et 3, intégré d'office (vérifié) ; certification DPF non vérifiée |
 | GitHub (Actions) | Exécution des batchs | États-Unis | Journaux sans données personnelles : agrégats seulement, jamais de texte ni de titre | Sans objet | Aucune donnée personnelle transmise hors exécution |
@@ -21,7 +21,7 @@ Règle (`CLAUDE.md`, décision du 01/10/2026) : stockage en UE. Un traitement tr
 ## Vercel AI Gateway
 
 - **Localisation** : routage global par défaut. Une option de région par requête existe (`inferenceRegion` avec `geoRegion: "eu"`). Si elle ne peut pas être respectée, la requête échoue (non vérifié). Elle n'aide pas pour Jev, qui n'a pas de région UE documentée.
-- **Conservation** : prompts et réponses non conservés, métadonnées (modèle, tokens, coût) gardées 30 jours (non vérifié). Zéro conservation par requête avec `providerOptions.gateway.zeroDataRetention: true` (vérifié dans le code du paquet `@ai-sdk/gateway`) : la requête échoue si le fournisseur ne garantit pas le ZDR. Cette option est réservée aux plans Pro et Enterprise. Elle existe aussi pour toute l'équipe dans le tableau de bord (non vérifié). **Le Radar exige le réglage d'équipe et redemande le ZDR à chaque appel.** Jev est appelé avec le protocole natif TypeSafe (`/typesafe/v1/systemone`), dont le schéma est vérifié dans le paquet officiel `typesafe-sdk` 0.7.2.
+- **Conservation** : prompts et réponses non conservés, métadonnées (modèle, tokens, coût) gardées 30 jours (non vérifié). Zéro conservation par requête avec `providerOptions.gateway.zeroDataRetention: true` (vérifié dans le code du paquet `@ai-sdk/gateway`) : la requête échoue si le fournisseur ne garantit pas le ZDR. Cette option est réservée aux plans Pro et Enterprise. Elle existe aussi pour toute l'équipe dans le tableau de bord (non vérifié). **Vérifié par la sonde du 01/10/2026** : le champ `providerOptions.gateway.zeroDataRetention` est respecté sur `/typesafe/v1/systemone`. La Gateway a écarté DigitalOcean, autre hébergeur de Jev (« zdr_ineligible_model »), et a servi la requête par TypeSafe. **Sans ce champ, Jev peut être servi par DigitalOcean** : le Radar l'envoie donc à chaque appel. Pas de surcoût de la Gateway (`surchargeCost` = 0). Jev est appelé avec le protocole natif TypeSafe (`/typesafe/v1/systemone`), dont le schéma est vérifié dans le paquet officiel `typesafe-sdk` 0.7.2.
 - **Entraînement** : option « disallow prompt training », incluse dans le ZDR (non vérifié).
 - **Transfert** : DPA (vercel.com/legal/dpa) avec CCT 2021/914 et certification DPF déclarée (non vérifié).
 - **Sous-traitants ultérieurs** : security.vercel.com (non vérifié).
@@ -48,6 +48,8 @@ Règle (`CLAUDE.md`, décision du 01/10/2026) : stockage en UE. Un traitement tr
 - Projet `yqzgtkaeodibfujienyj`, région UE. Bucket privé `radar-brut` : pas de versionnage d'objets, suppression définitive, sauvegardes limitées aux métadonnées (voir `docs/architecture.md`).
 
 ## Points ouverts pour l'AIPD
+
+0. DigitalOcean héberge aussi Jev sur la Gateway mais n'est pas éligible au ZDR : il n'est jamais utilisé tant que le champ ZDR est envoyé (vérifié). À mentionner dans l'AIPD comme sous-traitant exclu.
 
 1. Vérifier sur dataprivacyframework.gov la certification DPF de Vercel et d'Anthropic.
 2. Obtenir le DPA de TypeSafe et la confirmation du ZDR pour Jev via la Gateway. Vérifier que le plan Vercel permet le ZDR par requête : sans lui, les appels à Jev échouent.

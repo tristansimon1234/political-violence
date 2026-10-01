@@ -50,7 +50,14 @@ from radar.evaluation import (
     lire_resultats,
     rapport,
 )
-from radar.llm import ClientClaude, ClientJev, ReponseInvalide, cle_gateway, lire_reponse_jev
+from radar.llm import (
+    ClientClaude,
+    ClientJev,
+    ReponseInvalide,
+    cle_gateway,
+    cout_jev,
+    lire_reponse_jev,
+)
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.supabase_rest import Supabase
 
@@ -68,48 +75,25 @@ def _stockage(args: argparse.Namespace) -> Stockage:
     return StockageSupabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"], BUCKET)
 
 
-GATEWAY = "https://ai-gateway.vercel.sh"
-ZDR = {"providerOptions": {"gateway": {"zeroDataRetention": True}}}
-
-
-def _variantes_jev(corps: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
-    """Variantes de protocole à essayer : (nom, url, corps)."""
-    sans_zdr = {k: v for k, v in corps.items() if k != "providerOptions"}
-    vercel = {
-        **sans_zdr,
-        "questions": {
-            nom: ({**q, "type": "boolean"} if q["type"] == "noul" else q)
-            for nom, q in sans_zdr["questions"].items()
-        },
-    }
-    systemone = f"{GATEWAY}/typesafe/v1/systemone"
-    return [
-        ("TypeSafe + ZDR", systemone, {**sans_zdr, **ZDR}),
-        ("TypeSafe sans ZDR", systemone, sans_zdr),
-        ("TypeSafe jev-latest", systemone, {**sans_zdr, "model": "jev-latest"}),
-        ("Vercel evaluate + ZDR", f"{GATEWAY}/v1/evaluate", {**vercel, **ZDR}),
-        ("Vercel evaluate sans ZDR", f"{GATEWAY}/v1/evaluate", vercel),
-    ]
-
-
 def sonde(args: argparse.Namespace) -> int:
-    """Diagnostic sur un texte fictif : réponses complètes affichées (aucune donnée réelle)."""
+    """Un appel Jev et un appel Claude sur un texte fictif ; réponse brute affichée."""
     import requests
 
     jev = ClientJev(budget_usd=0.05)
     questions = questions_jev("opinion_debat")
     corps = jev.corps(etat_jev(SONDE_CONTEXTE, SONDE_TEXTE), questions)
     entetes = {"Authorization": f"Bearer {cle_gateway()}", "Content-Type": "application/json"}
-    print("## Jev (texte fictif)\n")
-    for nom, url, c in _variantes_jev(corps):
-        r = requests.post(url, headers=entetes, json=c, timeout=60)
-        print(f"### {nom} : HTTP {r.status_code}\n```\n{r.text[:1500]}\n```")
-        if r.ok:
-            try:
-                reps = lire_reponse_jev(questions, r.json())
-                print("Format compris :", {k: type(v).__name__ for k, v in reps.items()})
-            except ReponseInvalide as e:
-                print("Format non compris :", e)
+    r = requests.post(jev.url, headers=entetes, json=corps, timeout=60)
+    print(f"## Jev (texte fictif) : HTTP {r.status_code}\n```\n{r.text[:4000]}\n```")
+    if r.ok:
+        brut: dict[str, Any] = r.json()
+        try:
+            reps = lire_reponse_jev(questions, brut)
+            print("Format compris :", {k: type(v).__name__ for k, v in reps.items()})
+        except ReponseInvalide as e:
+            print("Format non compris :", e)
+        entree, cout = cout_jev(brut)
+        print(f"Coût Jev : {cout:.6f} $ ({entree} tokens d'entrée)")
     print("\n## Claude (texte fictif)\n")
     try:
         claude = ClientClaude(budget_usd=0.05)
@@ -119,10 +103,10 @@ def sonde(args: argparse.Namespace) -> int:
             ReponseCommentaires,
         )
         print("Réponse :", rep.model_dump())
-        print(f"Coût : {claude.compteur.cout_usd:.6f} $")
+        print(f"Coût Claude : {claude.compteur.cout_usd:.6f} $")
     except Exception as e:  # diagnostic : on affiche toute erreur
         print("Erreur Claude :", type(e).__name__, str(e)[:500])
-    return 0
+    return 0 if r.ok else 1
 
 
 def preparer(args: argparse.Namespace) -> int:
