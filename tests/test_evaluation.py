@@ -597,7 +597,7 @@ def test_fichier_synthetique_et_commande(
     lignes = charger_synthetique(donnees, date(2026, 10, 2))
     assert len(lignes) == 100 and len({li.ref for li in lignes}) == 100
     assert {li.nature for li in lignes} == {"info_factuelle", "opinion_debat"}
-    assert lire_etiquettes(donnees, lignes) == {}  # livré vide : à étiqueter par Tristan
+    assert len(lire_etiquettes(donnees, lignes)) == 100  # étiqueté par Tristan le 01/10
 
     texte = donnees.decode("utf-8-sig").splitlines()
     rempli = [texte[0]]
