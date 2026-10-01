@@ -18,12 +18,16 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 ## Périmètre
 
 - Plateforme : YouTube uniquement (API Data v3). X / TikTok éventuels plus tard, en source de contrôle.
-- Panel : ~50 chaînes, référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives.
-  - `media` (25) : info en continu, télé/radio, talk-shows, presse nationale, pure players
-  - `influenceur` (12) : vulgarisation, commentateurs, débat
-  - `politique` (13) : partis et personnalités. **Analysées à part** (chambres d'écho militantes), jamais agrégées avec le reste.
+- Panel : ~50 chaînes, référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives. Cibles **indicatives** : s'il manque des chaînes qui passent les critères, on reste en dessous.
+  - `media` (~25) : marque éditoriale non incarnée par une seule personne (rédaction, plusieurs intervenants). Info en continu, télé/radio, talk-shows, presse nationale, pure players.
+  - `influenceur` (~12) : chaîne incarnée par une personne identifiée (nom ou visage), indépendante d'un groupe de presse. Vulgarisation, commentateurs, débat, interview longue.
+  - `politique` (~13) : **analysées à part** (chambres d'écho militantes), jamais agrégées avec le reste.
+    - `parti` : chaînes officielles des partis représentés à l'Assemblée, quelle que soit leur activité. Pas de chaîne de dirigeant en substitut ; un parti sans chaîne est noté « sans chaîne active ».
+    - `personnalite` : toutes les personnalités candidates déclarées qui passent le seuil d'activité, sans plafond.
 - Chaque source porte `type`, `sous_type`, et le critère qui justifie sa présence.
-- Critère de sélection : quotas par sous-type, puis classement par **vues sur les 90 derniers jours** (pas par abonnés), sous condition d'activité (publication politique régulière, commentaires ouverts). Diversité éditoriale vérifiée ensuite (public/privé, lignes éditoriales). Vues et activité calculées automatiquement à l'import dans l'admin.
+- Critère de sélection : quotas par sous-type, puis classement par **vues sur les 90 derniers jours** (pas par abonnés), sous condition d'activité (**≥ 10 vidéos sur 90 jours, Shorts compris**, politique française, commentaires ouverts). Diversité éditoriale vérifiée ensuite (public/privé, lignes éditoriales). Vues et activité calculées automatiquement à l'import dans l'admin.
+- Réserve : chaînes écartées, retestées chaque mois avec les mêmes critères ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
+- Shorts inclus, avec un champ `format` (`short` / `long`). Vues séparées par format dans les métriques.
 - Pas de champ "orientation politique" sur les médias et influenceurs. L'équilibre du panel se vérifie à la main et se documente.
 
 ## Règles non négociables
@@ -89,6 +93,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - `docs/backfill-septembre.md` : premier chantier data.
 - `docs/roadmap.md` : étapes dans l'ordre, préalables hors code, points à décider.
 - `docs/decisions.md` : journal des décisions datées. Y ajouter toute nouvelle décision validée.
+- `docs/methodologie.md` : texte source de la page publique Méthodologie (panel, collecte).
 
 Maquette de référence : artifact Claude Design "Radar 2027" (écrans Cette semaine, Vue d'ensemble, Méthodologie, Admin).
 

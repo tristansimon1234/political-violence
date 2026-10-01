@@ -150,20 +150,23 @@ def ecrire_titres(audits: list[Audit], chemin: Path) -> None:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    p.add_argument("--panel", type=Path, required=True)
-    p.add_argument("--personnalites", type=Path, required=True)
-    p.add_argument("--candidats", type=Path, required=True)
+    p.add_argument("--panel", type=Path)
+    p.add_argument("--personnalites", type=Path)
+    p.add_argument("--candidats", type=Path)
     p.add_argument("--budget", type=int, default=3000, help="quota YouTube max pour tout le lot")
     p.add_argument("--max-pages", type=int, default=100, help="pages d'uploads max par chaîne")
     p.add_argument("--titres", type=Path, default=Path("data/audit_titres.txt"))
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", stream=sys.stderr)
 
-    groupes = {
-        "candidats": lire_csv(args.candidats),
-        "personnalites": lire_csv(args.personnalites),
-        "panel": lire_csv(args.panel),
+    fichiers: dict[str, Path | None] = {
+        "candidats": args.candidats,
+        "personnalites": args.personnalites,
+        "panel": args.panel,
     }
+    groupes = {g: lire_csv(f) for g, f in fichiers.items() if f is not None}
+    if not groupes:
+        p.error("au moins un fichier parmi --panel, --personnalites, --candidats")
     yt = YouTube(cle_api(), budget=args.budget)
     maintenant = datetime.now(UTC)
 
@@ -178,16 +181,20 @@ def main() -> int:
         echecs.append(f"Arrêt propre : {e}. Rapport partiel.")
 
     rapport = [f"# Audit du panel — {maintenant:%d/%m/%Y}, fenêtre {JOURS} jours", ""]
-    rapport += ["## Candidats influenceurs", "", *tableau_classement(resultats["candidats"]), ""]
-    rapport += ["## Personnalités (classement par activité)", ""]
-    rapport += [*tableau_classement(resultats["personnalites"]), ""]
-    rapport += ["## Panel : longues et Shorts", "", *tableau_panel(resultats["panel"]), ""]
+    if "candidats" in groupes:
+        rapport += ["## Candidats", "", *tableau_classement(resultats["candidats"]), ""]
+    if "personnalites" in groupes:
+        rapport += ["## Personnalités (classement par activité)", ""]
+        rapport += [*tableau_classement(resultats["personnalites"]), ""]
+    if "panel" in groupes:
+        rapport += ["## Panel : longues et Shorts", "", *tableau_panel(resultats["panel"]), ""]
     if echecs:
         rapport += ["## Échecs", "", *(f"- {e}" for e in echecs), ""]
     rapport.append(f"Quota YouTube consommé : **{yt.consomme} / {yt.budget}** unités.")
     print("\n".join(rapport))
 
-    ecrire_titres(resultats["candidats"], args.titres)
+    if "candidats" in groupes:
+        ecrire_titres(resultats["candidats"], args.titres)
     log.info("quota consommé : %d / %d — titres dans %s", yt.consomme, yt.budget, args.titres)
     return 0
 

@@ -1,10 +1,11 @@
 # Panel
 
-Généré depuis `panel_radar_2027_v0.xlsx` (onglet « Panel v0 »). Critères : onglet « Critères » du même fichier, repris dans `docs/decisions.md`.
+Généré depuis `panel_radar_2027_v0.xlsx`, puis ajusté par les décisions datées de `docs/decisions.md`. Critères : `docs/methodologie.md`, section Panel.
 
-- `panel_v0.csv` : chaînes retenues (42). À importer.
-- `reserve.csv` : chaînes écartées, avec le motif (ne pas importer).
-- `personnalites_a_decider.csv` : 12 personnalités, à passer en `--dry-run` seulement, pour appliquer le critère d'activité (> 10 vidéos sur 3 mois, puis les 4 plus actives).
-- `confiance_handle` : fiabilité du handle trouvé par recherche web (non vérifié sur YouTube). Colonne ignorée par l'import ; le `--dry-run` affiche le nom résolu à côté du nom attendu pour contrôle.
+- `panel_v0.csv` : médias, influenceurs et partis retenus. À importer.
+- `personnalites_a_decider.csv` : vivier des personnalités candidates. Retenues : celles qui passent le seuil (≥ 10 vidéos sur 90 jours, Shorts compris).
+- `reserve.csv` : chaînes écartées, avec le motif. Retestées chaque mois. Ne pas importer.
+- `candidats.csv` : candidats en cours de test (audit).
+- `confiance_handle` : fiabilité du handle trouvé par recherche web. Colonne ignorée par l'import ; le `--dry-run` et l'audit affichent le nom résolu.
 
-Sans chaîne trouvée : Reconquête (pas de chaîne nationale du parti), Marine Tondelier (pas de chaîne personnelle). Horizons est représenté par la chaîne d'Édouard Philippe (docs/decisions.md, 01/10/2026).
+Sans chaîne : Reconquête (n'est plus dans la catégorie `parti`), Horizons (sans chaîne active), Marine Tondelier (pas de chaîne personnelle trouvée).
