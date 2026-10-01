@@ -9,7 +9,7 @@ La position (accord avec la vidéo) n'est demandée et conservée que pour les v
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from pydantic import BaseModel
@@ -125,8 +125,8 @@ def normaliser(c: ClassementCommentaire, nature: NatureVideo) -> Classement:
 # --- Prompts ---
 
 
-def _liste(definitions: Mapping[str, str]) -> str:
-    return "\n".join(f"- {cle} : {d}" for cle, d in definitions.items())
+def _liste(definitions: Iterable[tuple[str, str]]) -> str:
+    return "\n".join(f"- {cle} : {d}" for cle, d in definitions)
 
 
 SYSTEME_COMMENTAIRES = f"""Tu classes des commentaires YouTube publiés sous des vidéos françaises.
@@ -140,12 +140,12 @@ Pour chaque commentaire numéroté :
   publicité.
 - themes : de 1 à {MAX_THEMES_COMMENTAIRE} thèmes du commentaire lui-même (pas ceux de la
   vidéo), du plus au moins important ; liste vide si est_politique est faux.
-{_liste(DEFINITIONS_THEMES)}
+{_liste(DEFINITIONS_THEMES.items())}
 - position : accord avec le propos de la vidéo, pas opinion sur le sujet.
-{_liste(DEFINITIONS_POSITIONS)}
+{_liste(DEFINITIONS_POSITIONS.items())}
   Uniquement si la vidéo est de nature « opinion_debat » ; null sinon.
 - emotion : l'émotion dominante exprimée.
-{_liste(DEFINITIONS_EMOTIONS)}
+{_liste(DEFINITIONS_EMOTIONS.items())}
 
 Les mentions et les liens ont été masqués. Réponds pour chaque numéro, dans l'ordre."""
 
