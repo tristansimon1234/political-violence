@@ -27,6 +27,7 @@ from radar.youtube import (
     ResolutionImpossible,
     StatsRecentes,
     YouTube,
+    cle_api,
     parser_reference,
 )
 
@@ -137,7 +138,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
     lignes = lire_csv(args.csv)
-    yt = YouTube(os.environ["YOUTUBE_API_KEY"], budget=args.budget)
+    yt = YouTube(cle_api(), budget=args.budget)
     maintenant = datetime.now(UTC)
 
     resultats: list[tuple[LignePanel, dict[str, Any]]] = []

@@ -5,6 +5,7 @@ search.list (100 unités) n'est jamais utilisé.
 """
 
 import logging
+import os
 import re
 from collections.abc import Callable
 from datetime import datetime, timedelta
@@ -167,6 +168,14 @@ def parser_reference(ref: str) -> tuple[Literal["id", "forHandle", "forUsername"
     raise ResolutionImpossible(
         f"Référence non reconnue (URL /@handle, /channel/UC… ou /user/) : {ref}"
     )
+
+
+def cle_api() -> str:
+    """Clé YouTube depuis l'environnement, avec un message clair si elle manque."""
+    cle = os.environ.get("YOUTUBE_API_KEY")
+    if not cle:
+        raise SystemExit("YOUTUBE_API_KEY absente. Lance d'abord : export YOUTUBE_API_KEY=ta_cle")
+    return cle
 
 
 def _transport_http(url: str, params: dict[str, str]) -> Any:

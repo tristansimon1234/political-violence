@@ -13,7 +13,6 @@ Coût : 1 unité par page de 50 uploads + 1 unité par lot de 50 vidéos. Plafon
 
 import argparse
 import logging
-import os
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -22,7 +21,7 @@ from pathlib import Path
 import requests
 from import_sources import LignePanel, lire_csv
 
-from radar.youtube import Chaine, QuotaDepasse, ResolutionImpossible, VideoDetail, YouTube
+from radar.youtube import Chaine, QuotaDepasse, ResolutionImpossible, VideoDetail, YouTube, cle_api
 
 log = logging.getLogger("audit_panel")
 
@@ -165,7 +164,7 @@ def main() -> int:
         "personnalites": lire_csv(args.personnalites),
         "panel": lire_csv(args.panel),
     }
-    yt = YouTube(os.environ["YOUTUBE_API_KEY"], budget=args.budget)
+    yt = YouTube(cle_api(), budget=args.budget)
     maintenant = datetime.now(UTC)
 
     resultats: dict[str, list[Audit]] = {g: [] for g in groupes}
