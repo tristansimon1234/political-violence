@@ -103,6 +103,9 @@ URL_JEV = "https://ai-gateway.vercel.sh/typesafe/v1/systemone"
 # seulement si la Gateway ne renvoie pas le coût réel.
 PRIX_JEV_ENTREE = 0.042
 
+# État évalué par Jev : texte ou objet JSON (champs nommés recommandés par TypeSafe).
+Etat = str | dict[str, Any]
+
 Transport = Callable[[str, dict[str, str], dict[str, Any]], dict[str, Any]]
 
 
@@ -253,7 +256,7 @@ class ClientJev:
         self._transport = transport
         self.compteur = Compteur(budget_usd, _nom="jev")
 
-    def corps(self, etat: str, questions: dict[str, Question]) -> dict[str, Any]:
+    def corps(self, etat: Etat, questions: dict[str, Question]) -> dict[str, Any]:
         qs: dict[str, Any] = {}
         for nom, q in questions.items():
             if isinstance(q, QuestionOuiNon):
@@ -271,7 +274,7 @@ class ClientJev:
             "providerOptions": {"gateway": {"zeroDataRetention": True}},
         }
 
-    def brut(self, etat: str, questions: dict[str, Question]) -> dict[str, Any]:
+    def brut(self, etat: Etat, questions: dict[str, Question]) -> dict[str, Any]:
         self.compteur.verifier()
         entetes = {"Authorization": f"Bearer {self._cle}", "Content-Type": "application/json"}
         reponse = self._transport(self._url, entetes, self.corps(etat, questions))
@@ -279,7 +282,9 @@ class ClientJev:
         self.compteur.ajouter(entree, 0, cout)
         return reponse
 
-    def evaluer(self, etat: str, questions: dict[str, Question]) -> dict[str, RepOuiNon | RepChoix]:
+    def evaluer(
+        self, etat: Etat, questions: dict[str, Question]
+    ) -> dict[str, RepOuiNon | RepChoix]:
         try:
             return lire_reponse_jev(questions, self.brut(etat, questions))
         except ReponseInvalide:

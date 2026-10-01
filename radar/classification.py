@@ -11,6 +11,7 @@ La position (accord avec la vidéo) n'est demandée et conservée que pour les v
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -206,33 +207,30 @@ def questions_jev(nature: NatureVideo) -> dict[str, Question]:
     questions: dict[str, Question] = {
         "politique": QuestionOuiNon(_INSTRUCTIONS_POLITIQUE, _POLITIQUE_OUI, _POLITIQUE_NON),
         "theme": QuestionChoix(
-            "Quel est le thème principal du commentaire lui-même (pas celui de la vidéo) ?",
+            "Quel est le thème principal du commentaire YouTube `commentaire` lui-même "
+            "(pas celui de la vidéo `video`) ?",
             _criteres(DEFINITIONS_THEMES.items()),
         ),
         "emotion": QuestionChoix(
-            "Quelle est l'émotion dominante exprimée par le commentaire ?",
+            "Quelle est l'émotion dominante exprimée par le commentaire YouTube `commentaire` ?",
             _criteres(DEFINITIONS_EMOTIONS.items()),
         ),
     }
     if nature == "opinion_debat":
         questions["position"] = QuestionChoix(
-            "Le commentaire est-il d'accord avec le propos tenu dans la vidéo ? "
-            "Il s'agit de l'accord avec la vidéo, pas de l'opinion sur le sujet.",
+            "Le commentaire YouTube `commentaire` est-il d'accord avec le propos tenu dans la "
+            "vidéo `video` ? Il s'agit de l'accord avec la vidéo, pas de l'opinion sur le sujet.",
             _criteres(DEFINITIONS_POSITIONS.items()),
         )
     return questions
 
 
-def etat_jev(contexte: ContexteVideo, texte: str) -> str:
-    """État évalué par Jev : contexte vidéo + commentaire masqué."""
-    return "\n".join(
-        [
-            f"Chaîne : {contexte.chaine}",
-            f"Titre de la vidéo : {contexte.titre}",
-            f"Nature de la vidéo : {contexte.nature}",
-            f"Commentaire : {masquer(texte)}",
-        ]
-    )
+def etat_jev(contexte: ContexteVideo, texte: str) -> dict[str, Any]:
+    """État évalué par Jev : objet JSON à champs nommés (contexte vidéo + commentaire masqué)."""
+    return {
+        "video": {"chaine": contexte.chaine, "titre": contexte.titre, "nature": contexte.nature},
+        "commentaire": masquer(texte),
+    }
 
 
 def classement_jev(reponses: dict[str, RepOuiNon | RepChoix], nature: NatureVideo) -> Classement:

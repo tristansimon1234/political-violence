@@ -184,7 +184,7 @@ class FauxJev:
 
     def __call__(self, url: str, entetes: dict[str, str], corps: dict[str, Any]) -> dict[str, Any]:
         self.envois.append(json.dumps(corps, ensure_ascii=False))
-        conf = 0.95 if "0" in corps["state"][-3:] else 0.55
+        conf = 0.95 if "0" in corps["state"]["commentaire"][-3:] else 0.55
         answers: dict[str, Any] = {
             "politique": {"probability": conf},
             "theme": {"choice": "retraites", "confidence": conf},
