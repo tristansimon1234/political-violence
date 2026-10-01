@@ -32,39 +32,76 @@ _URL = re.compile(r"(?:https?://|www\.)\S+", re.IGNORECASE)
 MAX_CARACTERES_COMMENTAIRE = 2000
 MAX_CARACTERES_DESCRIPTION = 1500
 
-# Définitions publiées avec la méthodologie (neutres, sans jugement sur le fond).
+# Définitions envoyées aux modèles, en anglais (consignes mieux suivies) ; traduction française
+# publiée dans docs/etiquetage.md et la méthodologie. Neutres, sans jugement sur le fond.
 DEFINITIONS_THEMES: dict[Theme, str] = {
-    "pouvoir_achat": "prix, salaires, inflation, carburant, factures, fiscalité des ménages",
-    "securite": "délinquance, police, justice pénale, terrorisme",
-    "immigration": "immigration, asile, intégration, nationalité",
-    "retraites": "système de retraite, âge de départ, pensions",
-    "sante": "hôpital, médecins, assurance maladie, politique de santé",
-    "education": "école, enseignants, université, jeunesse",
-    "ecologie_energie": "climat, environnement, énergie, nucléaire, transports",
-    "economie_emploi": "croissance, entreprises, emploi, chômage, dette et budget publics",
-    "logement": "logement, loyers, construction, accès à la propriété",
-    "institutions": "élections, candidats, partis, gouvernement, Parlement, Constitution",
-    "international_defense": "politique étrangère, Union européenne, conflits, armée",
-    "agriculture": "agriculteurs, alimentation, politique agricole",
-    "societe": "laïcité, religion, famille, mœurs, discriminations, médias",
-    "autre": "sujet politique ou d'intérêt public qui n'entre dans aucun thème ci-dessus",
+    "pouvoir_achat": "Purchasing power: prices, inflation, wages versus cost of living, fuel "
+    "and energy bills, household taxes.",
+    "securite": "Public safety: crime, violence, police, criminal justice and sentencing, "
+    "terrorism.",
+    "immigration": "Immigration: migration flows, asylum, removal orders, integration, "
+    "nationality, regularisation of undocumented workers.",
+    "retraites": "Pensions: retirement age, pension system and its reforms, pension amounts.",
+    "sante": "Health: hospitals and emergency services, doctors and medical deserts, health "
+    "insurance, care workers, health policy.",
+    "education": "Education: schools, teachers and their pay, curricula, exams, universities, "
+    "young people in education.",
+    "ecologie_energie": "Environment and energy: climate change, heatwaves, pollution, energy "
+    "sources (nuclear, renewables), transport policy.",
+    "economie_emploi": "Economy and jobs: growth, companies, employment and unemployment, "
+    "labour shortages, working conditions, public debt and budget.",
+    "logement": "Housing: rents, property prices, access to home ownership, construction.",
+    "institutions": "Political life and institutions: elections, candidates, parties and their "
+    "programmes, government, Parliament, how laws are passed, Constitution, democracy.",
+    "international_defense": "International affairs and defence: foreign policy, European "
+    "Union, wars and conflicts, armed forces, international trade rules.",
+    "agriculture": "Agriculture: farmers, their protests and incomes, food production, "
+    "agricultural standards and subsidies.",
+    "societe": "Society: secularism (laïcité), religion, family, customs, discrimination, "
+    "social cohesion.",
+    "autre": "Another political or public-interest topic that fits none of the themes above, "
+    "for example the balance or bias of political coverage in the media.",
 }
 
 DEFINITIONS_POSITIONS: dict[Position, str] = {
-    "accord_video": "le commentaire approuve le propos tenu dans la vidéo",
-    "nuance": "le commentaire approuve en partie, avec des réserves",
-    "desaccord_video": "le commentaire conteste le propos tenu dans la vidéo",
-    "hors_sujet": "le commentaire ne se prononce pas sur le propos de la vidéo",
+    "accord_video": "Agreement: the comment approves the video's thesis, or praises the video "
+    "or its guests.",
+    "nuance": "Partial agreement: 'yes, but', agreement with reservations, or a point the video "
+    "did not consider without rejecting it.",
+    "desaccord_video": "Disagreement: the comment rejects the video's thesis, or criticises the "
+    "video, its guests, its framing or its balance.",
+    "hors_sujet": "No stance: the comment takes no position on the video or its thesis "
+    "(practical question, unrelated remark).",
 }
 
 DEFINITIONS_EMOTIONS: dict[Emotion, str] = {
-    "colere": "colère, indignation",
-    "moquerie": "ironie, sarcasme, dérision",
-    "inquietude": "peur, inquiétude",
-    "enthousiasme": "soutien, joie, admiration",
-    "lassitude": "résignation, fatigue, désintérêt",
-    "neutre": "aucune émotion marquée",
+    "colere": "Anger: indignation, outrage, accusations, 'it's a scandal'.",
+    "moquerie": "Mockery: irony, sarcasm, derision, mocking emojis.",
+    "inquietude": "Worry: fear or concern about the future, safety or one's situation.",
+    "enthousiasme": "Enthusiasm: support, praise, joy, admiration, encouragement.",
+    "lassitude": "Weariness: resignation, disillusion, 'nothing ever changes', fatigue.",
+    "neutre": "Neutral: calm statement of facts or opinion, simple question, no marked "
+    "emotion. An opinion stated calmly is neutral.",
 }
+
+# Règles de lecture, communes à Jev et Claude (tirées de l'étiquetage de Tristan, 01/10/2026).
+REGLE_POLITIQUE = (
+    "A comment is political when it addresses politics or a public-interest issue: public "
+    "policy, elections, institutions, politicians, social debates, or a reaction to the "
+    "public-interest event shown in the video, even if the comment does not name the topic. "
+    "It is not political when it is only about the video itself (praise, sound, graphics, "
+    "music, casting), personal chatter, greetings, sport, consumer products or advertising."
+)
+REGLE_THEMES = (
+    "Themes describe the comment itself, not the video. When the comment reacts to the "
+    "video's event without naming a topic, use the theme of that event."
+)
+REGLE_POSITION = (
+    "Position is agreement with the video, never the commenter's opinion on the topic. It "
+    "applies to every comment under an opinion or debate video, including comments about the "
+    "video itself. For a debate video presenting several views, judge against the question "
+    "or thesis stated in its title."
+)
 
 
 def masquer(texte: str) -> str:
@@ -119,7 +156,7 @@ def normaliser(c: ClassementCommentaire, nature: NatureVideo) -> Classement:
     return Classement(
         est_politique=c.est_politique,
         themes=tuple(themes[:MAX_THEMES_COMMENTAIRE]) if c.est_politique else (),
-        position=c.position if nature == "opinion_debat" else None,
+        position=(c.position or "hors_sujet") if nature == "opinion_debat" else None,
         emotion=c.emotion,
     )
 
@@ -128,28 +165,25 @@ def normaliser(c: ClassementCommentaire, nature: NatureVideo) -> Classement:
 
 
 def _liste(definitions: Iterable[tuple[str, str]]) -> str:
-    return "\n".join(f"- {cle} : {d}" for cle, d in definitions)
+    return "\n".join(f"  - {cle}: {d}" for cle, d in definitions)
 
 
-SYSTEME_COMMENTAIRES = f"""Tu classes des commentaires YouTube publiés sous des vidéos françaises.
-Tu décris ce que dit chaque commentaire, sans jamais juger s'il a raison ou tort, et sans
-tenir compte de l'orientation politique de la vidéo, de la chaîne ou du commentaire.
+SYSTEME_COMMENTAIRES = f"""You classify YouTube comments posted under French videos. The
+comments are in French. Describe what each comment says: never judge whether it is right or
+wrong, and ignore the political leaning of the video, the channel or the comment.
 
-Pour chaque commentaire numéroté :
-- est_politique : vrai si le commentaire parle de politique ou d'un enjeu d'intérêt public
-  (politiques publiques, élections, institutions, personnalités politiques, débat de société).
-  Faux pour une réaction sur la forme de la vidéo, un message personnel, une salutation, une
-  publicité.
-- themes : de 1 à {MAX_THEMES_COMMENTAIRE} thèmes du commentaire lui-même (pas ceux de la
-  vidéo), du plus au moins important ; liste vide si est_politique est faux.
+For each numbered comment:
+- est_politique: true or false. {REGLE_POLITIQUE}
+- themes: 1 to {MAX_THEMES_COMMENTAIRE} themes, most important first; empty list when
+  est_politique is false. {REGLE_THEMES}
 {_liste(DEFINITIONS_THEMES.items())}
-- position : accord avec le propos de la vidéo, pas opinion sur le sujet.
+- position: required when the video type is opinion_debat, null when it is
+  info_factuelle. {REGLE_POSITION}
 {_liste(DEFINITIONS_POSITIONS.items())}
-  Uniquement si la vidéo est de nature « opinion_debat » ; null sinon.
-- emotion : l'émotion dominante exprimée.
+- emotion: the dominant emotion expressed.
 {_liste(DEFINITIONS_EMOTIONS.items())}
 
-Les mentions et les liens ont été masqués. Réponds pour chaque numéro, dans l'ordre."""
+Mentions and links have been masked. Answer for every number, in order."""
 
 assert set(DEFINITIONS_THEMES) == set(THEMES)
 assert set(DEFINITIONS_POSITIONS) == set(POSITIONS)
@@ -159,31 +193,31 @@ assert set(DEFINITIONS_EMOTIONS) == set(EMOTIONS)
 def message_commentaires(contexte: ContexteVideo, textes: list[str]) -> str:
     """Message utilisateur : contexte vidéo + commentaires masqués, numérotés 1..n."""
     lignes = [
-        f"Chaîne : {contexte.chaine}",
-        f"Titre de la vidéo : {contexte.titre}",
-        f"Nature de la vidéo : {contexte.nature}",
+        f"Channel: {contexte.chaine}",
+        f"Video title: {contexte.titre}",
+        f"Video type: {contexte.nature}",
         "",
-        "Commentaires :",
+        "Comments:",
     ]
     for i, t in enumerate(textes, start=1):
         lignes.append(f"[{i}] {masquer(t)}")
     return "\n".join(lignes)
 
 
-SYSTEME_NATURE_VIDEO = """Tu indiques la nature d'une vidéo YouTube française à partir de son titre,
-de sa description et de sa chaîne, sans jugement sur le fond.
-- info_factuelle : la vidéo rapporte des faits (journal, reportage, extrait de discours ou de
-  séance sans commentaire, annonce).
-- opinion_debat : la vidéo défend un point de vue, commente ou fait débattre (éditorial, débat,
-  plateau, interview, chronique, analyse engagée)."""
+SYSTEME_NATURE_VIDEO = """You give the type of a French YouTube video from its title, description
+and channel, without judging its content.
+- info_factuelle: the video reports facts (news bulletin, report, unedited excerpt of a speech
+  or session, announcement).
+- opinion_debat: the video defends a point of view, comments or hosts a debate (editorial,
+  debate, panel show, interview, column, opinionated analysis)."""
 
 
 def message_nature_video(titre: str, description: str, chaine: str) -> str:
     return "\n".join(
         [
-            f"Chaîne : {chaine}",
-            f"Titre : {titre}",
-            f"Description : {masquer(description)[:MAX_CARACTERES_DESCRIPTION]}",
+            f"Channel: {chaine}",
+            f"Title: {titre}",
+            f"Description: {masquer(description)[:MAX_CARACTERES_DESCRIPTION]}",
         ]
     )
 
@@ -192,11 +226,18 @@ def message_nature_video(titre: str, description: str, chaine: str) -> str:
 
 SEUIL_THEME_SECONDAIRE = 0.3  # probabilité minimale d'un thème secondaire (Jev)
 
-_INSTRUCTIONS_POLITIQUE = "Le commentaire parle-t-il de politique ou d'un enjeu d'intérêt public ?"
-_POLITIQUE_OUI = (
-    "Politiques publiques, élections, institutions, personnalités politiques, débat de société."
+_INSTRUCTIONS_POLITIQUE = (
+    "Is the French YouTube comment `comment` about politics or a public-interest issue? "
+    + REGLE_POLITIQUE
 )
-_POLITIQUE_NON = "Réaction sur la forme de la vidéo, message personnel, salutation ou publicité."
+_POLITIQUE_OUI = (
+    "Public policy, elections, institutions, politicians, social debates, or a reaction to "
+    "the public-interest event shown in `video`."
+)
+_POLITIQUE_NON = (
+    "Only about the video itself, personal chatter, greetings, sport, consumer products or "
+    "advertising."
+)
 
 
 def _criteres(definitions: Iterable[tuple[str, str]]) -> dict[str, str]:
@@ -207,19 +248,18 @@ def questions_jev(nature: NatureVideo) -> dict[str, Question]:
     questions: dict[str, Question] = {
         "politique": QuestionOuiNon(_INSTRUCTIONS_POLITIQUE, _POLITIQUE_OUI, _POLITIQUE_NON),
         "theme": QuestionChoix(
-            "Quel est le thème principal du commentaire YouTube `commentaire` lui-même "
-            "(pas celui de la vidéo `video`) ?",
+            "What is the main theme of the French YouTube comment `comment`? " + REGLE_THEMES,
             _criteres(DEFINITIONS_THEMES.items()),
         ),
         "emotion": QuestionChoix(
-            "Quelle est l'émotion dominante exprimée par le commentaire YouTube `commentaire` ?",
+            "What is the dominant emotion expressed by the French YouTube comment `comment`?",
             _criteres(DEFINITIONS_EMOTIONS.items()),
         ),
     }
     if nature == "opinion_debat":
         questions["position"] = QuestionChoix(
-            "Le commentaire YouTube `commentaire` est-il d'accord avec le propos tenu dans la "
-            "vidéo `video` ? Il s'agit de l'accord avec la vidéo, pas de l'opinion sur le sujet.",
+            "What is the stance of the French YouTube comment `comment` towards the video "
+            "`video`? " + REGLE_POSITION,
             _criteres(DEFINITIONS_POSITIONS.items()),
         )
     return questions
@@ -228,8 +268,8 @@ def questions_jev(nature: NatureVideo) -> dict[str, Question]:
 def etat_jev(contexte: ContexteVideo, texte: str) -> dict[str, Any]:
     """État évalué par Jev : objet JSON à champs nommés (contexte vidéo + commentaire masqué)."""
     return {
-        "video": {"chaine": contexte.chaine, "titre": contexte.titre, "nature": contexte.nature},
-        "commentaire": masquer(texte),
+        "video": {"channel": contexte.chaine, "title": contexte.titre, "type": contexte.nature},
+        "comment": masquer(texte),
     }
 
 

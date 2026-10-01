@@ -184,7 +184,7 @@ class FauxJev:
 
     def __call__(self, url: str, entetes: dict[str, str], corps: dict[str, Any]) -> dict[str, Any]:
         self.envois.append(json.dumps(corps, ensure_ascii=False))
-        conf = 0.95 if "0" in corps["state"]["commentaire"][-3:] else 0.55
+        conf = 0.95 if "0" in corps["state"]["comment"][-3:] else 0.55
         answers: dict[str, Any] = {
             "politique": {"probability": conf},
             "theme": {"choice": "retraites", "confidence": conf},
@@ -263,7 +263,7 @@ def test_minimisation_des_envois() -> None:
     envois = faux_jev.envois + faux_claude.envois
     for e in envois:
         assert "UgxCOMMENTID" not in e  # jamais l'identifiant du commentaire
-        assert AUTEUR_HASH not in e and "auteur" not in e.lower()
+        assert AUTEUR_HASH not in e and "auteur" not in e.lower() and "author" not in e.lower()
         assert "PseudoCite" not in e and "lien.fr" not in e  # mentions et URL masquées
     assert any(TEXTE in e and TITRE in e and CHAINE in e for e in envois)  # contexte vidéo
     zdr = [
@@ -623,3 +623,12 @@ def test_fichier_synthetique_et_commande(
     sortie = capsys.readouterr().out
     assert "Coût / million" in sortie and "Désaccords avec tes étiquettes" in sortie
     assert len(faux_jev.envois) == 100
+
+
+def test_position_obligatoire_sur_video_d_opinion() -> None:
+    """Claude sans position sous une vidéo d'opinion : repli sur hors_sujet, jamais None."""
+    c = ClassementCommentaire(
+        numero=1, est_politique=False, themes=[], position=None, emotion="enthousiasme"
+    )
+    assert normaliser(c, "opinion_debat").position == "hors_sujet"
+    assert normaliser(c, "info_factuelle").position is None

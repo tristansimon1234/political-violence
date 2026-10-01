@@ -22,7 +22,16 @@ Ne modifier que les trois dernières colonnes. Les autres servent de contexte : 
 - **`emotion`** : émotion dominante.
   Valeurs : `colere`, `moquerie`, `inquietude`, `enthousiasme`, `lassitude`, `neutre`.
 
-Définitions complètes : celles des prompts (`radar/classification.py`), publiées avec la méthodologie. Une ligne laissée vide est ignorée. Une valeur inconnue fait échouer `evaluer`, qui liste les lignes à corriger.
+## Règles de lecture (01/10/2026)
+
+Tirées du premier étiquetage, et données telles quelles aux modèles :
+
+1. **Politique** : un commentaire est politique s'il parle de politique ou d'un enjeu d'intérêt public, **y compris quand il réagit à l'événement d'intérêt public montré dans la vidéo sans nommer le sujet**. Il ne l'est pas s'il ne parle que de la vidéo elle-même (compliment, son, graphiques, musique, choix des invités), de la vie personnelle, de sport, d'un produit ou d'une publicité.
+2. **Thèmes** : ceux du commentaire, pas ceux de la vidéo. Un commentaire qui réagit à l'événement de la vidéo sans nommer de sujet prend le thème de cet événement.
+3. **Position** : accord avec la vidéo, jamais l'opinion sur le sujet. Elle s'applique à **tout** commentaire sous une vidéo d'opinion, y compris un commentaire sur la vidéo elle-même (compliment = accord ; critique de la vidéo, des invités ou de l'équilibre = désaccord). Pour un débat à plusieurs voix, on juge par rapport à la question ou à la thèse du titre.
+4. **Émotion** : une opinion exprimée calmement est `neutre`.
+
+Définitions complètes : celles des prompts (`radar/classification.py`, en anglais), publiées avec la méthodologie. Une ligne laissée vide est ignorée. Une valeur inconnue fait échouer `evaluer`, qui liste les lignes à corriger.
 
 ## Test synthétique (avant les vraies données)
 
