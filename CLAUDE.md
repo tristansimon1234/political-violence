@@ -43,7 +43,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 **RGPD** (opinions politiques = données sensibles)
 - Auteurs hashés avec un sel secret (`RADAR_SEL`). Aucun pseudo stocké ni affiché.
 - Travail en agrégé uniquement.
-- Hébergement en UE.
+- Stockage en UE. Traitement transitoire hors UE autorisé seulement chez un sous-traitant couvert par un DPA avec clauses contractuelles types ou par le Data Privacy Framework, sans conservation ni entraînement, avec des données minimisées (texte masqué, jamais d'auteur ni d'identifiant de commentaire). Chaque sous-traitant est listé dans `docs/sous-traitants.md` et dans l'AIPD.
 - Exports et rapports : agrégats seulement, **jamais de texte brut, de citation ni de titre de vidéo**.
 - Drilldown verbatims : 30 derniers jours, texte non modifié, lien vers la vidéo source, pas de pseudo, quelques exemples par sujet plutôt que des listes complètes.
 
@@ -94,6 +94,8 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - `docs/roadmap.md` : étapes dans l'ordre, préalables hors code, points à décider.
 - `docs/decisions.md` : journal des décisions datées. Y ajouter toute nouvelle décision validée.
 - `docs/methodologie.md` : texte source de la page publique Méthodologie (panel, collecte).
+- `docs/etiquetage.md` : étiquetage manuel de la vérité terrain (étape 4).
+- `docs/sous-traitants.md` : sous-traitants (localisation, conservation, entraînement, transferts), prêt pour l'AIPD.
 
 Maquette de référence : artifact Claude Design "Radar 2027" (écrans Cette semaine, Vue d'ensemble, Méthodologie, Admin).
 

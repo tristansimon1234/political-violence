@@ -26,7 +26,7 @@ YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶
 
 - Python 3.11+, typage partout, schémas Pydantic pour toute sortie de modèle
 - `anthropic` (structured outputs via `messages.parse(..., output_format=Model)` → `parsed_output`)
-- Jev via **Vercel AI Gateway** (`typesafe-ai/jev`), appelé avec `evaluate` d'AI SDK 7 (TypeScript). L'étape de classification Jev est donc un petit worker TypeScript (schémas en Zod, miroirs des modèles Pydantic), ou un appel HTTP à la Gateway depuis Python si l'endpoint le permet : vérifier la doc avant de coder, le modèle est récent
+- Jev via **Vercel AI Gateway** (`typesafe-ai/jev`), appelé en HTTP depuis Python (`requests`, API d'évaluation de la Gateway, zéro conservation demandée à chaque requête) : un appel par commentaire, questions fermées, probabilités et confiance par question. Client : `radar/llm.py`
 - `requests` pour l'API YouTube
 - DuckDB + Parquet (pyarrow)
 - Supabase (Postgres, région UE) pour les agrégats servis à l'interface
@@ -59,12 +59,12 @@ radar-2027/
 │   ├── schemas.py           # taxonomie + modèles Pydantic (source de vérité)
 │   ├── youtube.py           # client API + suivi du quota
 │   ├── filtre.py            # entonnoir politique
-│   ├── classify_jev.py
-│   ├── classify_claude.py
+│   ├── llm.py               # clients Jev et Claude (coût journalisé, budget)
+│   ├── classification.py    # prompts neutres, minimisation, sorties typées
+│   ├── evaluation.py        # test Jev / Claude / vérité terrain
 │   ├── stories.py           # détection et cycle de vie des sujets d'actu
 │   ├── storage.py           # Parquet, DuckDB, purge 30 jours
 │   └── aggregate.py         # vélocité, attention, intensité, décalage, récupération politique
-├── workers/jev/             # worker TypeScript AI SDK (Jev via Vercel AI Gateway), schémas Zod générés depuis schemas.py
 ├── web/                     # app Next.js sur Vercel
 │   ├── app/(public)/        # Cette semaine, Vue d'ensemble, Méthodologie, Journal
 │   └── app/admin/           # gestion des sources et des sujets d'actu

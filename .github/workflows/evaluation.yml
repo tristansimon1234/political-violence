@@ -1,0 +1,57 @@
+name: Évaluation Jev / Claude
+
+# Lancement manuel uniquement (étape 4). Ordre : sonde → preparer → (étiquetage) → evaluer.
+# Secrets : SUPABASE_SECRET_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY.
+# Les fichiers de travail restent dans le bucket privé `radar-brut` (dossier evaluation/,
+# purgé à 30 jours) ; le résumé n'affiche que des agrégats.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commande:
+        description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport"
+        type: choice
+        options: [sonde, preparer, evaluer]
+        default: sonde
+      budget_claude:
+        description: "Dollars max pour Claude"
+        default: "3"
+      budget_jev:
+        description: "Dollars max pour Jev"
+        default: "1"
+      option:
+        description: "Facultatif : --remplacer (preparer) ou --reclasser (evaluer)"
+        default: ""
+
+concurrency:
+  group: evaluation
+  cancel-in-progress: false
+
+jobs:
+  evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Évaluation
+        run: |
+          set -o pipefail
+          ARGS=("${{ inputs.commande }}" --budget-claude "${{ inputs.budget_claude }}" --budget-jev "${{ inputs.budget_jev }}")
+          case "${{ inputs.option }}" in
+            --remplacer|--reclasser) ARGS+=("${{ inputs.option }}") ;;
+            "") ;;
+            *) echo "option inconnue"; exit 1 ;;
+          esac
+          python scripts/evaluation.py "${ARGS[@]}" | tee rapport.md
+      - name: Résumé
+        if: always()
+        run: cat rapport.md >> "$GITHUB_STEP_SUMMARY" || true

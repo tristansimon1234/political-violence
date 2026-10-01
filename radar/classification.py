@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 
+from radar.llm import Question, QuestionChoix, QuestionOuiNon, RepChoix, RepOuiNon
 from radar.schemas import (
     EMOTIONS,
     MAX_THEMES_COMMENTAIRE,
@@ -184,3 +185,109 @@ def message_nature_video(titre: str, description: str, chaine: str) -> str:
             f"Description : {masquer(description)[:MAX_CARACTERES_DESCRIPTION]}",
         ]
     )
+
+
+# --- Jev : questions fermées, un appel par commentaire ---
+
+SEUIL_THEME_SECONDAIRE = 0.3  # probabilité minimale d'un thème secondaire (Jev)
+
+_INSTRUCTIONS_POLITIQUE = (
+    "Le commentaire parle-t-il de politique ou d'un enjeu d'intérêt public (politiques "
+    "publiques, élections, institutions, personnalités politiques, débat de société) ? "
+    "Non pour une réaction sur la forme de la vidéo, un message personnel, une salutation "
+    "ou une publicité."
+)
+
+
+def _criteres(definitions: Iterable[tuple[str, str]]) -> dict[str, str]:
+    return dict(definitions)
+
+
+def questions_jev(nature: NatureVideo) -> dict[str, Question]:
+    questions: dict[str, Question] = {
+        "politique": QuestionOuiNon(_INSTRUCTIONS_POLITIQUE),
+        "theme": QuestionChoix(
+            "Quel est le thème principal du commentaire lui-même (pas celui de la vidéo) ?",
+            _criteres(DEFINITIONS_THEMES.items()),
+        ),
+        "emotion": QuestionChoix(
+            "Quelle est l'émotion dominante exprimée par le commentaire ?",
+            _criteres(DEFINITIONS_EMOTIONS.items()),
+        ),
+    }
+    if nature == "opinion_debat":
+        questions["position"] = QuestionChoix(
+            "Le commentaire est-il d'accord avec le propos tenu dans la vidéo ? "
+            "Il s'agit de l'accord avec la vidéo, pas de l'opinion sur le sujet.",
+            _criteres(DEFINITIONS_POSITIONS.items()),
+        )
+    return questions
+
+
+def etat_jev(contexte: ContexteVideo, texte: str) -> str:
+    """État évalué par Jev : contexte vidéo + commentaire masqué."""
+    return "\n".join(
+        [
+            f"Chaîne : {contexte.chaine}",
+            f"Titre de la vidéo : {contexte.titre}",
+            f"Nature de la vidéo : {contexte.nature}",
+            f"Commentaire : {masquer(texte)}",
+        ]
+    )
+
+
+def classement_jev(reponses: dict[str, RepOuiNon | RepChoix], nature: NatureVideo) -> Classement:
+    """Convertit les réponses de Jev ; confiance = la plus faible des questions utiles."""
+    politique, theme, emotion = reponses["politique"], reponses["theme"], reponses["emotion"]
+    assert isinstance(politique, RepOuiNon)
+    assert isinstance(theme, RepChoix) and isinstance(emotion, RepChoix)
+    est_politique = politique.probabilite_oui >= 0.5
+    confiances = [politique.confiance, emotion.confiance]
+    themes: tuple[Theme, ...] = ()
+    if est_politique:
+        confiances.append(theme.confiance)
+        secondaires = sorted(
+            (
+                (p, t)
+                for t, p in theme.probabilites.items()
+                if t != theme.choix and p >= SEUIL_THEME_SECONDAIRE
+            ),
+            reverse=True,
+        )
+        noms = [theme.choix, *(t for _, t in secondaires)][:MAX_THEMES_COMMENTAIRE]
+        themes = tuple(t for t in THEMES if t in noms)
+        themes = (en_theme(theme.choix), *(t for t in themes if t != theme.choix))
+    position: Position | None = None
+    if nature == "opinion_debat":
+        rep = reponses["position"]
+        assert isinstance(rep, RepChoix)
+        position = en_position(rep.choix)
+        confiances.append(rep.confiance)
+    return Classement(
+        est_politique=est_politique,
+        themes=themes,
+        position=position,
+        emotion=en_emotion(emotion.choix),
+        confiance=min(confiances),
+    )
+
+
+def en_theme(v: str) -> Theme:
+    for t in THEMES:
+        if t == v:
+            return t
+    raise ValueError(v)
+
+
+def en_position(v: str) -> Position:
+    for p in POSITIONS:
+        if p == v:
+            return p
+    raise ValueError(v)
+
+
+def en_emotion(v: str) -> Emotion:
+    for e in EMOTIONS:
+        if e == v:
+            return e
+    raise ValueError(v)
