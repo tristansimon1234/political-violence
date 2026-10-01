@@ -1,0 +1,45 @@
+name: Import des sources
+
+# Lancement manuel uniquement (onglet Actions > Import des sources > Run workflow).
+# Secrets requis : YOUTUBE_API_KEY, SUPABASE_SECRET_KEY.
+# Coût : ~1 800 unités de quota YouTube par run (statistiques sur 90 jours).
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run : aucune écriture ; import : écrit dans la table sources"
+        type: choice
+        options: [dry-run, import]
+        default: dry-run
+      budget:
+        description: "Quota YouTube max pour ce run"
+        default: "3000"
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Import
+        run: |
+          set -o pipefail
+          FLAG=""
+          if [ "${{ inputs.mode }}" = "dry-run" ]; then FLAG="--dry-run"; fi
+          python scripts/import_sources.py panel/panel_v1.csv --budget "${{ inputs.budget }}" $FLAG \
+            2> >(tee journal.txt >&2) | tee resultat.txt
+      - name: Résumé
+        if: always()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat resultat.txt >> "$GITHUB_STEP_SUMMARY" || true
+          grep -E "ÉCHEC|quota youtube consommé" journal.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

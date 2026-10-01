@@ -1,0 +1,83 @@
+url,type,sous_type,critere,nom,sources,confiance_handle
+@blastinfo,media_natif,pure_player,Lausanne 2025 (table 14),BLAST,Lausanne 2025 (table 14),vérifié API 30/09
+https://www.youtube.com/channel/UCT67YOMntJxfRnO_9bXDpvw,media_natif,pure_player,Lausanne 2025 (table 14),Le Média,Lausanne 2025 (table 14),vérifié API 30/09
+https://www.youtube.com/channel/UCdnaDhU-LDQrIEEmSIfq0-Q,media_natif,pure_player,Lausanne 2025 (table 14),Mediapart,Lausanne 2025 (table 14),ID fourni dans la liste v1
+@LeHuffPost,media_natif,pure_player,Lausanne 2025 (table 14),LeHuffPost,Lausanne 2025 (table 14),moyenne (recherche web)
+@BrutFR,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),Brut,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+https://www.youtube.com/channel/UCbXWhsd805LfcbAy7xL9d-A,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),Le Crayon,Choix éditorial v1 (publié dans la méthodologie),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCYkZbyXcVmtdRUpCBi713vw,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),Pure Politique,Choix éditorial v1 (publié dans la méthodologie),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCq-CfAlGjCuXyBVTzQgWYRg,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),Les Incorrectibles,Choix éditorial v1 (publié dans la méthodologie),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCkgO4A3Fzm5D9Xu1Y_4vCKQ,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),ÉLUCID,Choix éditorial v1 (publié dans la méthodologie),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCyamXi0qEQJghCjJbj__aWQ,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),TVL (TV Libertés),Choix éditorial v1 (publié dans la méthodologie),"doute (« Chaîne officielle TVL », recherche web ; autres chaînes TV Libertés existent)"
+@thinkerview,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),Thinkerview,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+@PaduTeam,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),La PaduTeam,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+@hugodecrypteactus,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie) · AFP 31/05/2026,HugoDécrypte - Actus du jour,Choix éditorial v1 (publié dans la méthodologie) · AFP 31/05/2026,vérifié API 30/09
+https://www.youtube.com/channel/UCI-8QMy9n3I5Pv6mTmXoAXA,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),Gaspard G,Choix éditorial v1 (publié dans la méthodologie),ID fourni dans la liste v1
+@samzirah,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie) · AFP 31/05/2026,Sam Zirah,Choix éditorial v1 (publié dans la méthodologie) · AFP 31/05/2026,vérifié API 30/09
+@GrandeBavardeuse,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie) · AFP 31/05/2026,Grande Bavardeuse,Choix éditorial v1 (publié dans la méthodologie) · AFP 31/05/2026,vérifié API 30/09
+@Clemovitch,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),Clément Viktorovitch,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+@JeanMassietReplay,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),Jean Massiet Replay,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+@TatianaventoseTV,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),Tatiana Ventôse,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+https://www.youtube.com/channel/UCMQSwUNSnMOP4IRysfeg8EA,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),Simon Puech,Choix éditorial v1 (publié dans la méthodologie),ID fourni dans la liste v1
+@lespritcritique,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),L'Esprit Critique,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+@Osonscauser,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),Osons Causer,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+@LeRaptor,media_natif,createur,Choix éditorial v1 (publié dans la méthodologie),Le Raptor Dissident,Choix éditorial v1 (publié dans la méthodologie),vérifié API 30/09
+@Frontieresoff,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),Frontières (candidat 1/2 : @Frontieresoff),Choix éditorial v1,doute : à départager avec @FrontieresMedia
+@FrontieresMedia,media_natif,pure_player,Choix éditorial v1 (publié dans la méthodologie),Frontières (candidat 2/2 : @FrontieresMedia),Choix éditorial v1,doute : à départager avec @Frontieresoff
+https://www.youtube.com/channel/UCKHKSD-yanY2ZwwU_4Tgf0w,politique,parti,Assemblée nationale (parti représenté),La France insoumise,Assemblée nationale (parti représenté),ID fourni dans la liste v1
+@partisocialiste,politique,parti,Assemblée nationale (parti représenté),Parti socialiste,Assemblée nationale (parti représenté),vérifié API 30/09
+@LesEcologistesFR,politique,parti,Assemblée nationale (parti représenté),Les Écologistes,Assemblée nationale (parti représenté),vérifié API 30/09
+https://www.youtube.com/channel/UCSwPcnzaMTuDcTgjRiJvZnw,politique,parti,Assemblée nationale (parti représenté),PCF,Assemblée nationale (parti représenté),vérifié API 30/09
+@parti-renaissance,politique,parti,Assemblée nationale (parti représenté),Renaissance,Assemblée nationale (parti représenté),vérifié API 30/09
+@Mouvement.Democrate,politique,parti,Assemblée nationale (parti représenté),MoDem,Assemblée nationale (parti représenté),moyenne (recherche web)
+@Horizonsleparti,politique,parti,Assemblée nationale (parti représenté),Horizons,Assemblée nationale (parti représenté),introuvable via l'API le 30/09 ; retesté
+https://www.youtube.com/channel/UC3Ma4tRFxx85oZI_XKVTPwg,politique,parti,Assemblée nationale (parti représenté),Les Républicains,Assemblée nationale (parti représenté),vérifié API 30/09
+@RassemblementNationalOfficiel,politique,parti,Assemblée nationale (parti représenté),Rassemblement national,Assemblée nationale (parti représenté),vérifié API 30/09
+https://www.youtube.com/channel/UCzWh602__JIO6U445LSS4sw,politique,parti,Assemblée nationale (parti représenté),UDR (Union des droites pour la République),Assemblée nationale (parti représenté),"moyenne (chaîne « UDR », recherche web)"
+https://www.youtube.com/channel/UCk-_PEY3iC6DIGJKuoEe9bw,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Jean-Luc Mélenchon,Candidat déclaré (à confirmer sur la liste LCP),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCHQbUAkpnkf_Yg6-xAqj-ZA,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Fabien Roussel,Candidat déclaré (à confirmer sur la liste LCP),"doute (vérifiée API le 30/09 : 1 000 abonnés, 0 vidéo)"
+@gabriel_attal,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Gabriel Attal,Candidat déclaré (à confirmer sur la liste LCP),vérifié API 30/09
+@EdouardPhilippe,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Édouard Philippe,Candidat déclaré (à confirmer sur la liste LCP),vérifié API 30/09
+@Bruno_Retailleau,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Bruno Retailleau,Candidat déclaré (à confirmer sur la liste LCP),vérifié API 30/09
+@MarineLePenOfficiel,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Marine Le Pen,Candidat déclaré (à confirmer sur la liste LCP),vérifié API 30/09
+@EricZemmourOff,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Éric Zemmour,Candidat déclaré (à confirmer sur la liste LCP),vérifié API 30/09
+@FLORIANPHILIPPOT1,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Florian Philippot,Candidat déclaré (à confirmer sur la liste LCP),vérifié API 30/09
+https://www.youtube.com/channel/UCfA5DnCDX3Ixy5QOAMGtBlA,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Nicolas Dupont-Aignan,Candidat déclaré (à confirmer sur la liste LCP),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCJEJTYYZkYjLnGCgRDqnIGA,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),François Asselineau,Candidat déclaré (à confirmer sur la liste LCP),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCZsh-MrJftAOP_-ZgRgLScw,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Nathalie Arthaud,Candidat déclaré (à confirmer sur la liste LCP),moyenne (recherche web)
+@david_lisnard,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),David Lisnard,Candidat déclaré (à confirmer sur la liste LCP),haute (recherche web)
+@OlivierBecht68,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Olivier Becht,Candidat déclaré (à confirmer sur la liste LCP),moyenne (recherche web)
+@FrancislalanneFrOfficiel,politique,personnalite,Candidat déclaré (à confirmer sur la liste LCP),Francis Lalanne,Candidat déclaré (à confirmer sur la liste LCP),moyenne (chaîne d'artiste officielle)
+https://www.youtube.com/channel/UCoDttl6w1T-Stuw_pvNOvLA,politique,parti,Assemblée nationale (parti représenté),Horizons (chaîne « Horizons » à vérifier),Assemblée nationale,doute : peut-être la chaîne de campagne d'Édouard Philippe
+https://www.youtube.com/channel/UC8EzKGkEiusTm7g0mTfkWkg,media_traditionnel,talk_show,Lausanne 2025 (table 14),28 minutes - ARTE,Lausanne 2025 (table 14),moyenne (ID trouvé par recherche web)
+@AFPfr,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),AFP,Lausanne 2025 (table 14),moyenne (handle d'un extrait web ; nombreuses chaînes AFP homonymes)
+@arte,media_traditionnel,tv_radio,Lausanne 2025 (table 14),ARTE,Lausanne 2025 (table 14),haute (recherche web)
+@Cdanslairofficiel,media_traditionnel,talk_show,Lausanne 2025 (table 14),C dans l'air,Lausanne 2025 (table 14),vérifié API 30/09
+@cavousofficiel,media_traditionnel,talk_show,Lausanne 2025 (table 14),C à vous,Lausanne 2025 (table 14),vérifié API 30/09
+@FRANCE24,media_traditionnel,info_continu,Lausanne 2025 (table 14),FRANCE 24,Lausanne 2025 (table 14),vérifié API 30/09
+@FranceInter,media_traditionnel,tv_radio,Lausanne 2025 (table 14),France Inter,Lausanne 2025 (table 14),vérifié API 30/09
+https://www.youtube.com/channel/UCHGFbA0KWBgf6gMbyUCZeCQ,media_traditionnel,tv_radio,Lausanne 2025 (table 14),LCP,Lausanne 2025 (table 14),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCYpRDnhk5H8h16jpS84uqsA,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Le Monde,Lausanne 2025 (table 14),vérifié API 30/09
+@NouvelObs,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Le Nouvel Obs,Lausanne 2025 (table 14),haute (recherche web)
+@liberation,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Libération,Lausanne 2025 (table 14),vérifié API 30/09
+https://www.youtube.com/channel/UC4V5osIDMjFwtCRxMm2e0LA,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Marianne,Lausanne 2025 (table 14),ID fourni dans la liste v1
+@publicsenat,media_traditionnel,tv_radio,Lausanne 2025 (table 14),Public Sénat,Lausanne 2025 (table 14),vérifié API 30/09
+@RFI_Fr,media_traditionnel,tv_radio,Lausanne 2025 (table 14),RFI,Lausanne 2025 (table 14),moyenne (recherche web)
+@rtl_france,media_traditionnel,tv_radio,Lausanne 2025 (table 14),RTL,Lausanne 2025 (table 14),vérifié API 30/09
+@TF1INFO,media_traditionnel,tv_radio,Lausanne 2025 (table 14),TF1 INFO,Lausanne 2025 (table 14),vérifié API 30/09
+@TV5MONDEInfo,media_traditionnel,info_continu,Lausanne 2025 (table 14),TV5MONDE Info,Lausanne 2025 (table 14),haute (recherche web)
+https://www.youtube.com/channel/UCW2QcKZiU8aUGg4yxCIditg,media_traditionnel,info_continu,Lausanne 2025 (table 14),euronews (en français),Lausanne 2025 (table 14),ID fourni dans la liste v1
+@franceinfo,media_traditionnel,info_continu,Lausanne 2025 (table 14),franceinfo,Lausanne 2025 (table 14),vérifié API 30/09
+@BFMTV,media_traditionnel,info_continu,Lausanne 2025 (table 14),BFMTV,Lausanne 2025 (table 14),vérifié API 30/09
+https://www.youtube.com/channel/UCXKJrYczY2_fJEZgFPGY0HQ,media_traditionnel,info_continu,Lausanne 2025 (table 14),CNEWS,Lausanne 2025 (table 14),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCIMGfEAERXjmWwQeg15BFsg,media_traditionnel,tv_radio,Lausanne 2025 (table 14),Europe 1,Lausanne 2025 (table 14),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCewhc0fvja891XkpIPGRMxQ,media_traditionnel,info_continu,Lausanne 2025 (table 14),LCI,Lausanne 2025 (table 14),ID fourni dans la liste v1
+https://www.youtube.com/channel/UCp2kK3DyhpgFOdILF3BBC9A,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),L'Express,Lausanne 2025 (table 14),ID fourni dans la liste v1
+@LeFigaro,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Le Figaro,Lausanne 2025 (table 14),vérifié API 30/09
+@LeParisien,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Le Parisien,Lausanne 2025 (table 14),vérifié API 30/09
+@lepoint,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Le Point,Lausanne 2025 (table 14),haute (recherche web)
+@LesEchosTV,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Les Echos,Lausanne 2025 (table 14),moyenne (recherche web)
+@RMC,media_traditionnel,tv_radio,Lausanne 2025 (table 14),RMC,Lausanne 2025 (table 14),vérifié API 30/09
+@SudRadioOfficiel,media_traditionnel,tv_radio,Lausanne 2025 (table 14),Sud Radio,Lausanne 2025 (table 14),vérifié API 30/09
+@VAplusmedia,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),VA Plus,Lausanne 2025 (table 14),vérifié API 30/09
+https://www.youtube.com/channel/UCar0yo-PpeMk51m116826pQ,media_traditionnel,presse_nationale,Lausanne 2025 (table 14),Journal l'Humanité,Lausanne 2025 (table 14),ID fourni dans la liste v1

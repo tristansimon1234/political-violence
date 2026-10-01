@@ -1,0 +1,14 @@
+__pycache__/
+*.egg-info/
+.venv/
+.env
+.env.*
+data/
+*.duckdb
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.next/
+# Sorties locales d'audit et de dry-run (peuvent contenir des données brutes)
+audit*.md
+sortie_*.txt

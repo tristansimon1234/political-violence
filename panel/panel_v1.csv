@@ -1,0 +1,74 @@
+url,type,sous_type,critere,nom
+@franceinfo,media_traditionnel,info_continu,critère d'activité,franceinfo
+@france24,media_traditionnel,info_continu,critère d'activité,FRANCE 24
+@bfmtv,media_traditionnel,info_continu,critère d'activité,BFMTV
+@cnewsofficiel,media_traditionnel,info_continu,critère d'activité,CNEWS
+@tv5mondeinfo,media_traditionnel,info_continu,critère d'activité,TV5MONDE Info
+@lci,media_traditionnel,info_continu,critère d'activité,LCI
+@euronewsfr,media_traditionnel,info_continu,critère d'activité,euronews (en français)
+@leparisien,media_traditionnel,presse_nationale,critère d'activité,Le Parisien
+@lemondefr,media_traditionnel,presse_nationale,critère d'activité,Le Monde
+@vaplusmedia,media_traditionnel,presse_nationale,critère d'activité,VA Plus
+@lhumanitefr,media_traditionnel,presse_nationale,critère d'activité,Journal l'Humanité
+@lesechostv,media_traditionnel,presse_nationale,critère d'activité,Les Echos
+@afpfr,media_traditionnel,presse_nationale,critère d'activité,AFP
+@lefigaro,media_traditionnel,presse_nationale,critère d'activité,Le Figaro
+@nouvelobs,media_traditionnel,presse_nationale,critère d'activité,Le Nouvel Obs
+@liberation,media_traditionnel,presse_nationale,critère d'activité,Libération
+@lexpress,media_traditionnel,presse_nationale,critère d'activité,L'Express
+@lepoint,media_traditionnel,presse_nationale,critère d'activité,Le Point
+@mariannetv,media_traditionnel,presse_nationale,critère d'activité,Marianne
+@cavousofficiel,media_traditionnel,talk_show,critère d'activité,C à vous
+@cdanslairofficiel,media_traditionnel,talk_show,critère d'activité,C dans l'air
+@28minutesarte,media_traditionnel,talk_show,critère d'activité,28 minutes - ARTE
+@tf1info,media_traditionnel,tv_radio,critère d'activité,TF1 INFO
+@rtl_france,media_traditionnel,tv_radio,critère d'activité,RTL
+@arte,media_traditionnel,tv_radio,critère d'activité,ARTE
+@europe1,media_traditionnel,tv_radio,critère d'activité,Europe 1
+@rmc,media_traditionnel,tv_radio,critère d'activité,RMC
+@franceinter,media_traditionnel,tv_radio,critère d'activité,France Inter
+@rfi_fr,media_traditionnel,tv_radio,critère d'activité,RFI
+@publicsenat,media_traditionnel,tv_radio,critère d'activité,Public Sénat
+@sudradioofficiel,media_traditionnel,tv_radio,critère d'activité,Sud Radio
+@lcpassembleenationale,media_traditionnel,tv_radio,critère d'activité,LCP - Assemblée nationale
+@hugodecrypteactus,media_natif,createur,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",HugoDécrypte - Actus du jour
+@samzirah,media_natif,createur,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Sam Zirah
+@spuech,media_natif,createur,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Simon Puech
+@gaspardg,media_natif,createur,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Gaspard G
+@clemovitch,media_natif,createur,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Clément Viktorovitch
+@grandebavardeuse,media_natif,createur,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Grande Bavardeuse
+@jeanmassietreplay,media_natif,createur,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Jean Massiet Replay
+@brutfr,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Brut
+@lehuffpost,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",LeHuffPost
+@blastinfo,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",BLAST
+@frontieresoff,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Frontières
+@chaineofficielletvl,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",TV Libertés (chaîne officielle TVL)
+@lecrayonmedia,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Le Crayon
+@lemedia-tv,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Le Média
+@mediapart,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Mediapart
+@paduteam,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",PaduTeam
+@lesincorrectibles,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Les Incorrectibles
+@elucidmedia,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",ÉLUCID
+@purepolitique,media_natif,pure_player,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)",Pure Politique
+@rassemblementnationalofficiel,politique,parti,parti représenté à l'Assemblée (activité non requise),Rassemblement national
+@franceinsoumise,politique,parti,parti représenté à l'Assemblée (activité non requise),La France insoumise
+@lesecologistesfr,politique,parti,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Marine Tondelier,Les Écologistes
+@pcf-particommunistefrancais,politique,parti,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Fabien Roussel,PCF
+@partisocialiste,politique,parti,parti représenté à l'Assemblée (activité non requise),Parti socialiste
+@mouvement.democrate,politique,parti,parti représenté à l'Assemblée (activité non requise),MoDem
+@partiudr,politique,parti,parti représenté à l'Assemblée (activité non requise),UDR
+@parti-renaissance,politique,parti,parti représenté à l'Assemblée (activité non requise),Renaissance
+@lesrepublicains,politique,parti,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Bruno Retailleau,Les Républicains
+@jlmelenchon,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Jean-Luc Mélenchon
+@florianphilippot1,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Florian Philippot
+@dupontaignannicolas,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Nicolas Dupont-Aignan
+@david_lisnard,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",David Lisnard
+@marinelepenofficiel,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Marine Le Pen
+@ericzemmouroff,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Éric Zemmour
+@gabriel_attal,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Gabriel Attal
+@f_asselineau,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",François Asselineau
+@edouardphilippe,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Édouard Philippe
+@nathaliearthaudlutteouvriere,politique,personnalite,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)",Nathalie Arthaud
+@SolutionDemocratique,politique,personnalite,critère d'activité ; candidate déclarée (LCP) représentée par Solution démocratique,Clara Egger
+https://www.youtube.com/channel/UC5kUxcR5oqS3UArodBOaqsA,politique,personnalite,critère d'activité ; candidat déclaré (LCP) représenté par le Parti Équinoxe,Antoine Mikolajczak
+@PraxisOfficiel,media_natif,pure_player,"critère d'activité (10 vidéos) ; part politique mesurée, non éliminatoire",PRAXIS - Reprendre le pouvoir

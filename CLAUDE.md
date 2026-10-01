@@ -18,13 +18,17 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 ## Périmètre
 
 - Plateforme : YouTube uniquement (API Data v3). X / TikTok éventuels plus tard, en source de contrôle.
-- Panel : ~50 chaînes, référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives.
-  - `media` (25) : info en continu, télé/radio, talk-shows, presse nationale, pure players
-  - `influenceur` (12) : vulgarisation, commentateurs, débat
-  - `politique` (13) : partis et personnalités. **Analysées à part** (chambres d'écho militantes), jamais agrégées avec le reste.
-- Chaque source porte `type`, `sous_type`, et le critère qui justifie sa présence.
-- Critère de sélection : quotas par sous-type, puis classement par **vues sur les 90 derniers jours** (pas par abonnés), sous condition d'activité (publication politique régulière, commentaires ouverts). Diversité éditoriale vérifiée ensuite (public/privé, lignes éditoriales). Vues et activité calculées automatiquement à l'import dans l'admin.
-- Pas de champ "orientation politique" sur les médias et influenceurs. L'équilibre du panel se vérifie à la main et se documente.
+- Panel : référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives. **Liste fermée v1** (`panel/sources/panel_v1_liste_fermee.csv`, `docs/decisions.md` du 01/10/2026) : aucune autre chaîne n'est recherchée ; filtres appliqués mécaniquement ; revue mensuelle. **Pas de cible de nombre** : tout ce qui passe entre, le reste va en réserve.
+  - `media_traditionnel` (« Médias traditionnels ») : chaîne rattachée à une télévision, une radio ou un titre de presse. Source : les médias nationaux de l'étude de Lausanne (arXiv 2512.17768, table 14).
+  - `media_natif` (« Médias natifs du web ») : nés sur Internet, sans télévision, radio ou titre de presse derrière, incarnés par une personne ou non (pure players et créateurs). Source : pure players de Lausanne et choix éditorial publié dans la méthodologie. Pas de filtre politique éliminatoire : taux de politisation mesuré et publié.
+  - `politique` (« Politiques ») : **lues à part** (chambres d'écho militantes), jamais agrégées aux réactions du public.
+    - `parti` : chaînes officielles des partis représentés à l'Assemblée, quelle que soit leur activité. Pas de chaîne de dirigeant en substitut ; un parti sans chaîne est noté « sans chaîne active ».
+    - `personnalite` : candidats déclarés selon la liste LCP, sans plafond. Chaîne personnelle si elle passe le critère d'activité, sinon chaîne officielle de leur parti ou mouvement (même critère ; pas de doublon si le parti est déjà en `parti`). Candidats à une primaire : seul le vainqueur peut entrer.
+- Critère commun d'activité : **≥ 10 vidéos sur 90 jours, Shorts compris** (partis exemptés).
+- Chaque source porte `type`, `sous_type`, et le critère (et les sources du vivier) qui justifient sa présence.
+- Réserve : chaînes de la liste qui échouent aux filtres, retestées à chaque revue mensuelle ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
+- Shorts inclus partout, avec un champ `format` (`short` / `long`). Une seule page de commentaires par Short. Vues séparées par format dans les métriques d'attention et d'intensité.
+- Pas de champ "orientation politique" sur les médias. L'équilibre du panel se vérifie à la main et se documente.
 
 ## Règles non négociables
 
@@ -89,6 +93,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - `docs/backfill-septembre.md` : premier chantier data.
 - `docs/roadmap.md` : étapes dans l'ordre, préalables hors code, points à décider.
 - `docs/decisions.md` : journal des décisions datées. Y ajouter toute nouvelle décision validée.
+- `docs/methodologie.md` : texte source de la page publique Méthodologie (panel, collecte).
 
 Maquette de référence : artifact Claude Design "Radar 2027" (écrans Cette semaine, Vue d'ensemble, Méthodologie, Admin).
 
