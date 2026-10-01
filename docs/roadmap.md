@@ -18,4 +18,5 @@
 - Couverture des commentaires : 200 par vidéo en ordre « pertinence » (actuel) ou tout prendre (lecture chronologique incrémentale), selon le total annoncé par YouTube mesuré sur la semaine 1.
 - Classification : Jev seul, cascade Jev → Claude (quel seuil) ou Claude seul, après le test de la semaine 1 et l'arbitrage (`docs/evaluation-resultats.md`).
 - ~~Émotion~~ : tranché le 01/10/2026, tonalité + hostilité (taxonomie v5).
+- Taxonomie des thèmes (remarques de Tristan, 01/10) : justice rangée dans `securite`, Europe dans `international_defense`, pas de thème « finances publiques » (dette rangée dans `economie_emploi`). À trancher avant le test de la semaine 1 : changer la liste casse la comparaison avec les tests déjà faits.
 - Sentiment par cible (« ABSA ») : proposé par Tristan, déconseillé par Claude (proche d'un sondage, risque de neutralité sur les personnalités) ; non retenu à ce stade.

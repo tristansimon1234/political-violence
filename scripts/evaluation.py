@@ -72,7 +72,7 @@ log = logging.getLogger("evaluation")
 BUCKET = "radar-brut"
 
 # Texte fictif, sans donnée personnelle, pour vérifier les clés et le format des réponses.
-SONDE_CONTEXTE = ContexteVideo("Débat sur le budget de l'État", "Chaîne fictive", "opinion_debat")
+SONDE_CONTEXTE = ContexteVideo("Mon avis sur le budget de l'État", "Chaîne fictive", "opinion")
 SONDE_TEXTE = "Encore des impôts en plus, ça ne finira jamais. Bravo pour le débat quand même."
 
 
@@ -87,7 +87,7 @@ def sonde(args: argparse.Namespace) -> int:
     import requests
 
     jev = ClientJev(budget_usd=0.05)
-    questions = questions_jev("opinion_debat")
+    questions = questions_jev("opinion")
     corps = jev.corps(etat_jev(SONDE_CONTEXTE, SONDE_TEXTE), questions)
     entetes = {"Authorization": f"Bearer {cle_gateway()}", "Content-Type": "application/json"}
     r = requests.post(jev.url, headers=entetes, json=corps, timeout=60)

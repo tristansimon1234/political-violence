@@ -2,6 +2,7 @@
 
 import json
 import random
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any, cast
@@ -78,9 +79,12 @@ def test_position_nulle_sur_video_factuelle() -> None:
         hostilite=True,
     )
     assert normaliser(c, "info_factuelle").position is None
-    assert normaliser(c, "opinion_debat").position == "accord_video"
+    assert normaliser(c, "debat").position is None  # débat contradictoire : pas de thèse
+    assert normaliser(c, "opinion").position == "accord_video"
     assert "position" not in questions_jev("info_factuelle")
-    assert "position" in questions_jev("opinion_debat")
+    assert "position" not in questions_jev("debat")
+    assert "position" in questions_jev("opinion")
+    assert classement_jev(_reps(0.9), "debat").position is None
 
 
 def _reps(p_politique: float, conf_theme: float = 0.9) -> dict[str, RepOuiNon | RepChoix]:
@@ -98,7 +102,7 @@ def _reps(p_politique: float, conf_theme: float = 0.9) -> dict[str, RepOuiNon | 
 
 
 def test_classement_jev() -> None:
-    c = classement_jev(_reps(0.9), "opinion_debat")
+    c = classement_jev(_reps(0.9), "opinion")
     assert c.themes == ("retraites", "economie_emploi")  # principal d'abord, secondaire ≥ 0,3
     assert c.position == "nuance" and c.confiance == 0.7
     f = classement_jev(_reps(0.9), "info_factuelle")
@@ -116,9 +120,9 @@ def test_normaliser_limite_les_themes() -> None:
         tonalite="neutre",
         hostilite=False,
     )
-    assert normaliser(c, "opinion_debat").themes == ("sante", "logement", "education")
+    assert normaliser(c, "opinion").themes == ("sante", "logement", "education")
     c2 = c.model_copy(update={"est_politique": False})
-    assert normaliser(c2, "opinion_debat").themes == ()
+    assert normaliser(c2, "opinion").themes == ()
 
 
 # --- Réponses Jev ---
@@ -248,7 +252,7 @@ def _lignes(n: int = 12) -> list[Ligne]:
             video_id=f"v{i % 3}",
             type_source=["media_traditionnel", "media_natif", "politique"][i % 3],
             format="long" if i % 2 else "short",
-            nature="opinion_debat" if i % 4 else "info_factuelle",
+            nature="opinion" if i % 4 else "info_factuelle",
             chaine=CHAINE,
             titre=TITRE,
             texte=masquer(f"{TEXTE} {i} @PseudoCite https://lien.fr"),
@@ -268,7 +272,8 @@ def test_minimisation_des_envois() -> None:
     envois = faux_jev.envois + faux_claude.envois
     for e in envois:
         assert "UgxCOMMENTID" not in e  # jamais l'identifiant du commentaire
-        assert AUTEUR_HASH not in e and "auteur" not in e.lower() and "author" not in e.lower()
+        assert AUTEUR_HASH not in e and "auteur" not in e.lower()
+        assert not re.search(r"\bauthor", e.lower().replace("authorities", ""))
         assert "PseudoCite" not in e and "lien.fr" not in e  # mentions et URL masquées
     assert any(TEXTE in e and TITRE in e and CHAINE in e for e in envois)  # contexte vidéo
     zdr = [
@@ -313,8 +318,7 @@ def _corpus() -> tuple[list[Candidate], dict[str, list[dict[str, Any]]]]:
 def test_echantillon_stratifie() -> None:
     cands, comms = _corpus()
     natures = {
-        c.video_id: ("opinion_debat" if int(c.video_id[-1]) % 2 else "info_factuelle")
-        for c in cands
+        c.video_id: ("opinion" if int(c.video_id[-1]) % 2 else "info_factuelle") for c in cands
     }
     lignes = echantillonner(cast(Any, natures), cands, comms, random.Random(1), n=120, n_verite=24)
     assert len(lignes) == 120 and sum(li.verite for li in lignes) == 24
@@ -359,7 +363,7 @@ def test_etiquetage_aller_retour() -> None:
         ref = champs[0]
         nature = next(li.nature for li in lignes if li.ref == ref)
         champs[7] = "retraites+sante" if ref != "C002" else "aucun"
-        champs[8] = "desaccord_video" if nature == "opinion_debat" else "-"
+        champs[8] = "desaccord_video" if nature == "opinion" else "-"
         champs[9] = "negative"
         champs[10] = "oui" if ref == "C001" else ("" if ref == "C003" else "non")
         remplies.append(";".join(champs))
@@ -424,7 +428,7 @@ def test_rapport_sans_texte_ni_titre(tmp_path: Path) -> None:
         li.ref: Etiquette(
             True,
             ("retraites",),
-            "accord_video" if li.nature == "opinion_debat" else None,
+            "accord_video" if li.nature == "opinion" else None,
             "negative",
             False,
         )
@@ -482,7 +486,7 @@ class FauxAnthropicNature(FauxAnthropic):
     def parse(self, **kwargs: Any) -> _Reponse:
         if kwargs["output_format"].__name__ == "ReponseNatureVideo":
             self.envois.append(kwargs["messages"][0]["content"])
-            return _Reponse(kwargs["output_format"](nature_video="opinion_debat"))
+            return _Reponse(kwargs["output_format"](nature_video="opinion"))
         return super().parse(**kwargs)
 
 
@@ -580,7 +584,7 @@ def test_script_preparer_evaluer(
 def test_corps_jev_protocole_typesafe() -> None:
     """Schéma de requête du paquet officiel typesafe-sdk 0.7.2 (POST /v1/systemone)."""
     jev = ClientJev(1.0, cle="x", transport=FauxJev())
-    corps = jev.corps("état", questions_jev("opinion_debat"))
+    corps = jev.corps("état", questions_jev("opinion"))
     assert corps["model"] == "typesafe-ai/jev" and corps["state"] == "état"
     q = corps["questions"]
     assert q["politique"]["type"] == "noul" and set(q["politique"]["criteria"]) == {"true", "false"}
@@ -614,14 +618,14 @@ def test_fichier_synthetique_et_commande(
     donnees = source.read_bytes()
     lignes = charger_synthetique(donnees, date(2026, 10, 2))
     assert len(lignes) == 100 and len({li.ref for li in lignes}) == 100
-    assert {li.nature for li in lignes} == {"info_factuelle", "opinion_debat"}
+    assert {li.nature for li in lignes} == {"info_factuelle", "opinion", "debat"}
     assert len(lire_etiquettes(donnees, lignes)) == 100  # étiqueté par Tristan le 01/10
 
     texte = donnees.decode("utf-8-sig").splitlines()
     rempli = [texte[0]]
     for x in texte[1:]:
         champs = x.split(";")
-        position = "nuance" if champs[3] == "opinion_debat" else "-"
+        position = "nuance" if champs[3] == "opinion" else "-"
         rempli.append(";".join([*champs[:7], "retraites", position, "negative", "oui"]))
     fichier = tmp_path / "rempli.csv"
     fichier.write_text("\n".join(rempli), encoding="utf-8")
@@ -661,7 +665,7 @@ def test_position_obligatoire_sur_video_d_opinion() -> None:
         tonalite="positive",
         hostilite=False,
     )
-    assert normaliser(c, "opinion_debat").position == "hors_sujet"
+    assert normaliser(c, "opinion").position == "hors_sujet"
     assert normaliser(c, "info_factuelle").position is None
 
 

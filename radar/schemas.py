@@ -5,7 +5,7 @@ Toute modification d'une liste fermée incrémente VERSION_TAXONOMIE.
 
 from typing import Final, Literal, get_args
 
-VERSION_TAXONOMIE: Final = 5
+VERSION_TAXONOMIE: Final = 6
 
 # --- Sources du panel (docs/decisions.md, 01/10/2026) ---
 
@@ -61,10 +61,17 @@ Theme = Literal[
 ]
 THEMES: Final[tuple[Theme, ...]] = get_args(Theme)
 
-NatureVideo = Literal["info_factuelle", "opinion_debat"]
+# v6 (01/10/2026) : « opinion_debat » scindé en `opinion` (une thèse) et `debat` (plusieurs voix).
+NatureVideo = Literal["info_factuelle", "opinion", "debat"]
 NATURES_VIDEO: Final[tuple[NatureVideo, ...]] = get_args(NatureVideo)
 
-# Accord avec le propos de la vidéo, pas opinion sur le sujet. Jamais sur une vidéo factuelle.
+
+def position_applicable(nature: NatureVideo) -> bool:
+    """Position seulement sous une vidéo qui défend une thèse (jamais factuelle ni débat)."""
+    return nature == "opinion"
+
+
+# Accord avec le propos de la vidéo, pas opinion sur le sujet.
 Position = Literal["accord_video", "nuance", "desaccord_video", "hors_sujet"]
 POSITIONS: Final[tuple[Position, ...]] = get_args(Position)
 

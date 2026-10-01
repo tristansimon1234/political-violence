@@ -1,7 +1,7 @@
 // Fichier généré par scripts/generer_taxonomie_ts.py depuis radar/schemas.py.
 // Ne pas éditer à la main.
 
-export const VERSION_TAXONOMIE = 5;
+export const VERSION_TAXONOMIE = 6;
 
 export const TYPES_SOURCE = ["media_traditionnel", "media_natif", "politique"] as const;
 export type TypeSource = (typeof TYPES_SOURCE)[number];
@@ -20,7 +20,7 @@ export type FormatVideo = (typeof FORMATS_VIDEO)[number];
 export const THEMES = ["pouvoir_achat", "securite", "immigration", "retraites", "sante", "education", "ecologie_energie", "economie_emploi", "logement", "institutions", "international_defense", "agriculture", "societe", "autre"] as const;
 export type Theme = (typeof THEMES)[number];
 
-export const NATURES_VIDEO = ["info_factuelle", "opinion_debat"] as const;
+export const NATURES_VIDEO = ["info_factuelle", "opinion", "debat"] as const;
 export type NatureVideo = (typeof NATURES_VIDEO)[number];
 
 export const POSITIONS = ["accord_video", "nuance", "desaccord_video", "hors_sujet"] as const;

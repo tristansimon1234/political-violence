@@ -13,26 +13,26 @@ Le fichier contient du texte brut : il reste dans le bucket, il est purgé avec 
 
 ## Colonnes à remplir
 
-Ne modifier que les trois dernières colonnes. Les autres servent de contexte : `ref`, catégorie, format, nature de la vidéo (classée par Claude), chaîne, titre, commentaire (mentions et liens masqués, comme pour les modèles).
+Ne modifier que les quatre colonnes `themes`, `position`, `tonalite`, `hostilite`. Les autres servent de contexte : `ref`, catégorie, format, nature de la vidéo (`info_factuelle`, `opinion` ou `debat`, classée par Claude), chaîne, titre, commentaire (mentions et liens masqués, comme pour les modèles).
 
 - **`themes`** : le ou les thèmes **du commentaire lui-même** (pas de la vidéo), du plus au moins important, séparés par `+` (3 au plus). Exemple : `retraites+economie_emploi`. Écrire `aucun` si le commentaire ne parle pas de politique ni d'un enjeu d'intérêt public.
   Valeurs : `pouvoir_achat`, `securite`, `immigration`, `retraites`, `sante`, `education`, `ecologie_energie`, `economie_emploi`, `logement`, `institutions`, `international_defense`, `agriculture`, `societe`, `autre`.
-- **`position`** : accord avec le **propos de la vidéo**, pas opinion sur le sujet. Seulement pour les vidéos `opinion_debat`. Pour les vidéos factuelles, la case contient déjà `-` : ne pas la modifier.
-  Valeurs : `accord_video`, `nuance`, `desaccord_video`, `hors_sujet` (ne se prononce pas sur le propos).
+- **`position`** : accord avec la **thèse défendue par la vidéo**, pas opinion sur le sujet ni jugement sur la forme. Seulement pour les vidéos `opinion`. Pour les vidéos `info_factuelle` et `debat`, la case contient déjà `-` : ne pas la modifier. Sous une vidéo `opinion`, `-` = position volontairement non étiquetée (ignorée).
+  Valeurs : `accord_video`, `nuance`, `desaccord_video`, `hors_sujet` (pas d'avis sur la thèse, y compris un commentaire sur la seule forme de la vidéo).
 - **`tonalite`** : ton général du commentaire.
   Valeurs : `positive`, `neutre`, `negative`.
 - **`hostilite`** : `oui` ou `non` (vide = pas encore tranché, la dimension est alors ignorée).
-  Oui : insulte, attaque personnelle, mépris ou déshumanisation visant une personne ou un groupe, menace, appel à la violence, colère agressive contre quelqu'un. Non : désaccord même ferme, critique d'une politique ou d'une institution, ironie légère sur une situation, indignation sans attaque (« c'est un scandale »).
+  Oui : insulte, attaque personnelle, mépris ou déshumanisation visant une personne ou un groupe, menace, appel à la violence, colère agressive contre quelqu'un ; accusation de mentir, manipuler ou truquer visant une personne, un média ou une institution ; généralisation dénigrante d'un groupe ; moquerie méprisante envers une personne, un groupe ou les autorités. Non : désaccord même ferme, critique d'une politique, d'une mesure, d'une règle ou d'une décision, grief ou indignation sans attaque (« c'est un scandale »), ironie légère sur une situation.
 
 ## Règles de lecture (01/10/2026)
 
 Tirées du premier étiquetage, et données telles quelles aux modèles :
 
-1. **Politique** : un commentaire est politique s'il parle de politique ou d'un enjeu d'intérêt public, **y compris quand il réagit à l'événement d'intérêt public montré dans la vidéo sans nommer le sujet**. Il ne l'est pas s'il ne parle que de la vidéo elle-même (compliment, son, graphiques, musique, choix des invités), de la vie personnelle, de sport, d'un produit ou d'une publicité.
+1. **Politique** : un commentaire est politique s'il parle de politique ou d'un enjeu d'intérêt public, **y compris quand il réagit à l'événement d'intérêt public montré dans la vidéo sans nommer le sujet**. Il ne l'est pas s'il ne parle que de la vidéo ou du média lui-même (compliment, son, graphiques, musique, choix des invités, équilibre d'un plateau, choix des sujets traités), de la vie personnelle, de sport, d'un produit ou d'une publicité.
 2. **Thèmes** : ceux du commentaire, pas ceux de la vidéo. Un commentaire qui réagit à l'événement de la vidéo sans nommer de sujet prend le thème de cet événement.
-3. **Position** : accord avec la vidéo, jamais l'opinion sur le sujet. Elle s'applique à **tout** commentaire sous une vidéo d'opinion, y compris un commentaire sur la vidéo elle-même (compliment = accord ; critique de la vidéo, des invités ou de l'équilibre = désaccord). Pour un débat à plusieurs voix, on juge par rapport à la question ou à la thèse du titre.
+3. **Position** : accord avec la thèse défendue par la vidéo, jamais l'opinion sur le sujet ni un jugement sur la forme. Seulement sous une vidéo `opinion` (une thèse) ; jamais sous `info_factuelle` ni sous `debat` (plusieurs voix, pas de thèse unique). Un compliment ou une critique de la forme (qualité, son, invités, équilibre) = `hors_sujet` (v6, 01/10/2026).
 4. **Tonalité** : une opinion exprimée calmement est `neutre`, même en désaccord.
-5. **Hostilité** : la moquerie n'est hostile que si elle vise une personne ou un groupe avec mépris (« les boomers… ») ; pas si c'est une ironie sur une situation (« Génial, merci pour ce cadeau »).
+5. **Hostilité** : attaque, mépris ou accusation de mauvaise foi. La moquerie n'est hostile que si elle vise une personne, un groupe ou les autorités avec mépris (« les boomers… », 🤡) ; pas si c'est une ironie sur une situation (« Génial, merci pour ce cadeau »). Accuser un média, une personne ou une institution de mentir, manipuler ou truquer est hostile (« les chiffres sont truqués ») ; critiquer une mesure ne l'est pas (v6).
 
 Définitions complètes : celles des prompts (`radar/classification.py`, en anglais), publiées avec la méthodologie. Une ligne laissée vide est ignorée. Une valeur inconnue fait échouer `evaluer`, qui liste les lignes à corriger.
 

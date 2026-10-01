@@ -45,7 +45,7 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 
 ## Classification
 
-**Ce qui est classé.** Chaque commentaire collecté est décrit par un modèle de langage selon une grille fermée : s'il parle de politique ou d'un enjeu d'intérêt public, ses thèmes (1 à 3, parmi 14), sa tonalité (positive, neutre ou négative), s'il est hostile (insulte, attaque ou mépris visant une personne ou un groupe, menace ; un désaccord, même ferme, n'est pas hostile) et, sous les vidéos d'opinion seulement, son accord avec le propos de la vidéo. Il ne s'agit jamais de l'opinion de son auteur sur le sujet. Sous une vidéo factuelle (journal, reportage), aucune position n'est calculée.
+**Ce qui est classé.** Chaque commentaire collecté est décrit par un modèle de langage selon une grille fermée : s'il parle de politique ou d'un enjeu d'intérêt public, ses thèmes (1 à 3, parmi 14), sa tonalité (positive, neutre ou négative), s'il est hostile (attaque, mépris ou accusation de mauvaise foi visant une personne, un groupe, un média ou une institution ; un désaccord, même ferme, ou la critique d'une mesure ne sont pas hostiles) et, sous les vidéos qui défendent une thèse seulement, son accord avec cette thèse. Il ne s'agit jamais de l'opinion de son auteur sur le sujet. Sous une vidéo factuelle (journal, reportage) ou un débat entre plusieurs points de vue, aucune position n'est calculée : il n'y a pas de thèse unique à approuver ou contester.
 
 **Neutralité.** Les consignes données aux modèles décrivent ce que dit le commentaire, sans juger s'il a raison et sans tenir compte de l'orientation de la vidéo ou de la chaîne. Les définitions des catégories sont publiées ici avant toute utilisation.
 
@@ -53,4 +53,4 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 
 **Contrôle de qualité.** Avant l'usage, les modèles sont comparés à un étiquetage manuel d'un échantillon stratifié par catégorie de chaîne, format et nature de vidéo.
 
-**Hostilité.** La part de commentaires hostiles est publiée par catégorie de chaînes et par sujet d'actualité, jamais chaîne par chaîne : un taux par chaîne se lirait comme un jugement sur son public, alors qu'il dépend aussi de la modération propre à chaque chaîne.
+**Hostilité.** Elle inclut les accusations de mauvaise foi (« les chiffres sont truqués ») : elle mesure donc aussi une part de défiance envers les médias et les institutions, pas seulement l'agressivité. La part de commentaires hostiles est publiée par catégorie de chaînes et par sujet d'actualité, jamais chaîne par chaîne : un taux par chaîne se lirait comme un jugement sur son public, alors qu'il dépend aussi de la modération propre à chaque chaîne.

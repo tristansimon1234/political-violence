@@ -34,6 +34,7 @@ from radar.classification import (
     ReponseCommentaires,
     ReponseNatureVideo,
     classement_jev,
+    en_nature,
     en_position,
     en_theme,
     en_tonalite,
@@ -56,6 +57,7 @@ from radar.schemas import (
     Position,
     Theme,
     Tonalite,
+    position_applicable,
 )
 from radar.storage import DOSSIER_EVALUATION, Stockage, date_fichier
 
@@ -351,7 +353,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
     w = csv.writer(tampon, delimiter=";")
     w.writerow(COLONNES_ETIQUETAGE)
     for li in sorted((li for li in lignes if li.verite), key=lambda li: li.ref):
-        position = "" if li.nature == "opinion_debat" else SANS_POSITION
+        position = "" if position_applicable(li.nature) else SANS_POSITION
         w.writerow(
             [
                 li.ref,
@@ -372,7 +374,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
 
 def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etiquette]:
     """Lit le CSV rempli ; lignes vides ignorées ; lève ValueError listant les erreurs."""
-    natures = {li.ref: li.nature for li in lignes if li.verite}
+    natures: dict[str, NatureVideo] = {li.ref: li.nature for li in lignes if li.verite}
     texte = donnees.decode("utf-8-sig")
     separateur = (
         ";" if texte.split("\n", 1)[0].count(";") >= texte.split("\n", 1)[0].count(",") else ","
@@ -404,7 +406,7 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
                 erreurs.append(f"{ref} : thèmes vides (écrire « {AUCUN_THEME} » si non politique)")
         position: Position | None = None
         # « - » sous une vidéo d'opinion : position volontairement non étiquetée (ignorée).
-        if nature == "opinion_debat" and brut_position != SANS_POSITION:
+        if position_applicable(nature) and brut_position != SANS_POSITION:
             position = next((p for p in POSITIONS if p == brut_position), None)
             if position is None:
                 erreurs.append(f"{ref} : position attendue ({', '.join(POSITIONS)} ou -)")
@@ -778,9 +780,7 @@ def charger_synthetique(donnees: bytes, aujourdhui: date) -> list[Ligne]:
     texte = donnees.decode("utf-8-sig")
     lignes: list[Ligne] = []
     for r in csv.DictReader(io.StringIO(texte), delimiter=";"):
-        nature: NatureVideo = (
-            "opinion_debat" if r["nature_video"] == "opinion_debat" else ("info_factuelle")
-        )
+        nature = en_nature(r["nature_video"])
         lignes.append(
             Ligne(
                 ref=r["ref"],
@@ -892,7 +892,7 @@ def fichier_arbitrage(
         if any(v is None for v in sources.values()):
             continue
         for dim in DIMENSIONS_ARBITRAGE:
-            if dim == "position" and li.nature != "opinion_debat":
+            if dim == "position" and not position_applicable(li.nature):
                 continue
             options: dict[str, list[str]] = {}
             for nom, c in sources.items():

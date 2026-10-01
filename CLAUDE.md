@@ -74,7 +74,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - Aucun pseudo ni identifiant d'auteur en clair ; hash stable avec le même sel.
 - "Où ça réagit" et les réactions du public n'incluent jamais les chaînes politiques.
 - Un commentaire multi-thèmes compte pour 1/n dans chacun : les totaux par thème égalent le total des commentaires.
-- La position n'est jamais calculée sur une vidéo `info_factuelle`.
+- La position n'est jamais calculée sur une vidéo `info_factuelle` ni `debat`.
 - Un run ne dépasse jamais le budget de quota configuré.
 
 **CI** : GitHub Actions lance lint, typage et tests à chaque push. Pas de merge si c'est rouge.

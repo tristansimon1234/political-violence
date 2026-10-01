@@ -4,8 +4,8 @@ Minimisation (RGPD) : un modèle ne reçoit que le texte du commentaire, mention
 masquées, et le contexte de la vidéo (titre, chaîne, nature). Jamais l'auteur, même hashé,
 ni l'identifiant du commentaire : les commentaires d'une requête sont numérotés 1..n.
 
-La position (accord avec la vidéo) n'est demandée et conservée que pour les vidéos
-`opinion_debat` ; elle vaut toujours None sur une vidéo `info_factuelle`.
+La position (accord avec la vidéo) n'est demandée et conservée que pour les vidéos `opinion` ;
+elle vaut toujours None sur une vidéo `info_factuelle` ou `debat`.
 """
 
 import re
@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from radar.llm import Question, QuestionChoix, QuestionOuiNon, RepChoix, RepOuiNon
 from radar.schemas import (
     MAX_THEMES_COMMENTAIRE,
+    NATURES_VIDEO,
     POSITIONS,
     THEMES,
     TONALITES,
@@ -25,6 +26,7 @@ from radar.schemas import (
     Position,
     Theme,
     Tonalite,
+    position_applicable,
 )
 
 _MENTION = re.compile(r"(?<![\w.])@[\w.\-]+")
@@ -59,19 +61,17 @@ DEFINITIONS_THEMES: dict[Theme, str] = {
     "agricultural standards and subsidies.",
     "societe": "Society: secularism (laïcité), religion, family, customs, discrimination, "
     "social cohesion.",
-    "autre": "Another political or public-interest topic that fits none of the themes above, "
-    "for example the balance or bias of political coverage in the media.",
+    "autre": "Another political or public-interest topic that fits none of the themes above.",
 }
 
 DEFINITIONS_POSITIONS: dict[Position, str] = {
-    "accord_video": "Agreement: the comment approves the video's thesis, or praises the video "
-    "or its guests.",
+    "accord_video": "Agreement: the comment approves the thesis defended in the video.",
     "nuance": "Partial agreement: 'yes, but', agreement with reservations, or a point the video "
-    "did not consider without rejecting it.",
-    "desaccord_video": "Disagreement: the comment rejects the video's thesis, or criticises the "
-    "video, its guests, its framing or its balance.",
-    "hors_sujet": "No stance: the comment takes no position on the video or its thesis "
-    "(practical question, unrelated remark).",
+    "did not consider without rejecting its thesis.",
+    "desaccord_video": "Disagreement: the comment rejects the thesis defended in the video.",
+    "hors_sujet": "No stance on the thesis: practical question, unrelated remark, or a comment "
+    "only about the form of the video (praise or criticism of its quality, sound, graphics, "
+    "guests or balance).",
 }
 
 DEFINITIONS_TONALITES: dict[Tonalite, str] = {
@@ -83,12 +83,15 @@ DEFINITIONS_TONALITES: dict[Tonalite, str] = {
 
 HOSTILITE_OUI = (
     "Insult, slur, personal attack, contempt or dehumanisation aimed at a person or a group, "
-    "threat, call to violence, or anger expressed aggressively against someone. Mockery "
-    "counts only when it targets a person or a group with contempt."
+    "threat, call to violence, or anger expressed aggressively against someone. Also hostile: "
+    "accusing a person, a media outlet or an institution of lying, manipulating or rigging; "
+    "denigrating a group through a generalisation; contemptuous mockery of a person, a group "
+    "or the authorities."
 )
 HOSTILITE_NON = (
-    "Disagreement, even firm; criticism of a policy, an institution or a decision; light "
-    "irony about a situation; indignation without attacking anyone ('it's a scandal')."
+    "Disagreement, even firm; criticism of a policy, a measure, a rule or a decision; a "
+    "grievance or indignation without attacking anyone ('it's a scandal'); light irony about "
+    "a situation."
 )
 
 # Règles de lecture, communes à Jev et Claude (tirées de l'étiquetage de Tristan, 01/10/2026).
@@ -96,18 +99,18 @@ REGLE_POLITIQUE = (
     "A comment is political when it addresses politics or a public-interest issue: public "
     "policy, elections, institutions, politicians, social debates, or a reaction to the "
     "public-interest event shown in the video, even if the comment does not name the topic. "
-    "It is not political when it is only about the video itself (praise, sound, graphics, "
-    "music, casting), personal chatter, greetings, sport, consumer products or advertising."
+    "It is not political when it is only about the video or the media itself (praise, sound, "
+    "graphics, music, casting, balance of a panel, choice of topics covered), personal "
+    "chatter, greetings, sport, consumer products or advertising."
 )
 REGLE_THEMES = (
     "Themes describe the comment itself, not the video. When the comment reacts to the "
     "video's event without naming a topic, use the theme of that event."
 )
 REGLE_POSITION = (
-    "Position is agreement with the video, never the commenter's opinion on the topic. It "
-    "applies to every comment under an opinion or debate video, including comments about the "
-    "video itself. For a debate video presenting several views, judge against the question "
-    "or thesis stated in its title."
+    "Position is agreement with the thesis defended in the video, never the commenter's "
+    "opinion on the topic, and never a judgement on the form of the video. It is only asked "
+    "for opinion videos, which defend a single thesis."
 )
 
 
@@ -165,7 +168,7 @@ def normaliser(c: ClassementCommentaire, nature: NatureVideo) -> Classement:
     return Classement(
         est_politique=c.est_politique,
         themes=tuple(themes[:MAX_THEMES_COMMENTAIRE]) if c.est_politique else (),
-        position=(c.position or "hors_sujet") if nature == "opinion_debat" else None,
+        position=(c.position or "hors_sujet") if position_applicable(nature) else None,
         tonalite=c.tonalite,
         hostilite=c.hostilite,
     )
@@ -187,8 +190,8 @@ For each numbered comment:
 - themes: 1 to {MAX_THEMES_COMMENTAIRE} themes, most important first; empty list when
   est_politique is false. {REGLE_THEMES}
 {_liste(DEFINITIONS_THEMES.items())}
-- position: required when the video type is opinion_debat, null when it is
-  info_factuelle. {REGLE_POSITION}
+- position: required when the video type is opinion, null when it is info_factuelle or
+  debat. {REGLE_POSITION}
 {_liste(DEFINITIONS_POSITIONS.items())}
 - tonalite: the overall tone of the comment.
 {_liste(DEFINITIONS_TONALITES.items())}
@@ -220,8 +223,10 @@ SYSTEME_NATURE_VIDEO = """You give the type of a French YouTube video from its t
 and channel, without judging its content.
 - info_factuelle: the video reports facts (news bulletin, report, unedited excerpt of a speech
   or session, announcement).
-- opinion_debat: the video defends a point of view, comments or hosts a debate (editorial,
-  debate, panel show, interview, column, opinionated analysis)."""
+- opinion: the video defends one point of view (editorial, column, rant, opinionated
+  analysis, video of a party or a candidate, interview of a single guest presenting views).
+- debat: the video confronts several points of view (debate show, panel with opposing guests,
+  face-to-face)."""
 
 
 def message_nature_video(titre: str, description: str, chaine: str) -> str:
@@ -271,7 +276,7 @@ def questions_jev(nature: NatureVideo) -> dict[str, Question]:
             "Is the French YouTube comment `comment` hostile?", HOSTILITE_OUI, HOSTILITE_NON
         ),
     }
-    if nature == "opinion_debat":
+    if position_applicable(nature):
         questions["position"] = QuestionChoix(
             "What is the stance of the French YouTube comment `comment` towards the video "
             "`video`? " + REGLE_POSITION,
@@ -311,7 +316,7 @@ def classement_jev(reponses: dict[str, RepOuiNon | RepChoix], nature: NatureVide
         themes = tuple(t for t in THEMES if t in noms)
         themes = (en_theme(theme.choix), *(t for t in themes if t != theme.choix))
     position: Position | None = None
-    if nature == "opinion_debat":
+    if position_applicable(nature):
         rep = reponses["position"]
         assert isinstance(rep, RepChoix)
         position = en_position(rep.choix)
@@ -331,6 +336,13 @@ def en_theme(v: str) -> Theme:
         if t == v:
             return t
     raise ValueError(v)
+
+
+def en_nature(v: str) -> NatureVideo:
+    for n in NATURES_VIDEO:
+        if n == v:
+            return n
+    raise ValueError(f"nature de vidéo inconnue : {v}")
 
 
 def en_position(v: str) -> Position:
