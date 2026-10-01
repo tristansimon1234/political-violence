@@ -23,3 +23,13 @@ Ne modifier que les trois dernières colonnes. Les autres servent de contexte : 
   Valeurs : `colere`, `moquerie`, `inquietude`, `enthousiasme`, `lassitude`, `neutre`.
 
 Définitions complètes : celles des prompts (`radar/classification.py`), publiées avec la méthodologie. Une ligne laissée vide est ignorée. Une valeur inconnue fait échouer `evaluer`, qui liste les lignes à corriger.
+
+## Test synthétique (avant les vraies données)
+
+`evaluation/synthetique_v1.csv` : 100 commentaires **fictifs**, écrits par Claude, sous 25 vidéos fictives (chaînes et titres inventés, aucun nom réel). Mêmes colonnes et mêmes valeurs que ci-dessus. Les données sont fictives : le fichier est versionné dans Git, et le rapport détaille les désaccords commentaire par commentaire.
+
+1. Remplir `themes`, `position`, `emotion` sans regarder les réponses des modèles.
+2. Remplacer le fichier sur la branche de travail (GitHub → Add file → Upload files, même chemin), ou l'envoyer à Claude.
+3. Workflow « Évaluation Jev / Claude », commande `synthetique`.
+
+Limites : des commentaires écrits par Claude sont probablement plus faciles pour Claude que de vrais commentaires ; pas de projection de coût de campagne (coût exprimé pour 1 million de commentaires). Le test sur la semaine 1 reste la référence.

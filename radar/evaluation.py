@@ -597,15 +597,23 @@ def rapport(
     out.append("")
 
     jours, projetes = volume.campagne(aujourdhui)
+    if volume.commentaires:
+        projection = (
+            f"Projection : {volume.commentaires} commentaires collectés sur {volume.jours} jours "
+            f"de publication, soit ~{projetes:,} commentaires sur les {jours} jours restants "
+            f"jusqu'au second tour ({FIN_CAMPAGNE:%d/%m/%Y})."
+        ).replace(",", " ")
+        colonne = "Coût campagne"
+    else:
+        projetes = 1_000_000
+        projection = "Pas de volume réel (données synthétiques) : coût exprimé pour 1 million."
+        colonne = "Coût / million"
     out += [
         "## Seuil de reprise par Claude",
         "",
-        f"Projection : {volume.commentaires} commentaires collectés sur {volume.jours} jours de "
-        f"publication, soit ~{projetes:,} commentaires sur les {jours} jours restants jusqu'au "
-        f"second tour ({FIN_CAMPAGNE:%d/%m/%Y}).".replace(",", " "),
+        projection,
         "",
-        "| Seuil | Part reprise par Claude | Justesse (tout juste) | Coût / 1 000 | "
-        "Coût campagne |",
+        f"| Seuil | Part reprise par Claude | Justesse (tout juste) | Coût / 1 000 | {colonne} |",
         "|---|---:|---:|---:|---:|",
     ]
     cj, cc = couts.jev_par_commentaire, couts.claude_par_commentaire
@@ -736,3 +744,65 @@ def ecrire_json(st: Stockage, jour: date, nom: str, donnees: Mapping[str, Any]) 
 def lire_json(st: Stockage, jour: date, nom: str) -> dict[str, Any]:
     resultat: dict[str, Any] = json.loads(st.lire(chemin(jour, nom)))
     return resultat
+
+
+# --- Test synthétique (commentaires fictifs, versionnés dans Git) ---
+
+
+def charger_synthetique(donnees: bytes, aujourdhui: date) -> list[Ligne]:
+    """Commentaires fictifs au format du fichier d'étiquetage ; tous à comparer."""
+    texte = donnees.decode("utf-8-sig")
+    lignes: list[Ligne] = []
+    for r in csv.DictReader(io.StringIO(texte), delimiter=";"):
+        nature: NatureVideo = (
+            "opinion_debat" if r["nature_video"] == "opinion_debat" else ("info_factuelle")
+        )
+        lignes.append(
+            Ligne(
+                ref=r["ref"],
+                comment_id=r["ref"],
+                video_id=r["titre_video"],
+                type_source=r["categorie"],
+                format=r["format"],
+                nature=nature,
+                chaine=r["chaine"],
+                titre=r["titre_video"],
+                texte=masquer(r["commentaire"]),
+                verite=True,
+                recupere_le=aujourdhui,
+            )
+        )
+    return lignes
+
+
+def _etiquette(c: Reference) -> str:
+    themes = "+".join(c.themes) or AUCUN_THEME
+    return f"{themes} / {c.position or SANS_POSITION} / {c.emotion}"
+
+
+def desaccords(
+    lignes: list[Ligne],
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> str:
+    """Désaccords avec les étiquettes, texte affiché : réservé aux données synthétiques."""
+    out = [
+        "## Désaccords avec tes étiquettes (données synthétiques)",
+        "",
+        "| Réf | Commentaire | Tristan | Jev (confiance) | Claude |",
+        "|---|---|---|---|---|",
+    ]
+    for li in sorted(lignes, key=lambda li: li.ref):
+        e = etiquettes.get(li.ref)
+        j, c = jev.get(li.ref), claude.get(li.ref)
+        if e is None or j is None or c is None:
+            continue
+        if comparer(j, e)["complet"] and comparer(c, e)["complet"]:
+            continue
+        conf = f" ({j.confiance:.2f})" if j.confiance is not None else ""
+        texte = li.texte.replace("|", "/")
+        out.append(
+            f"| {li.ref} | {texte} | {_etiquette(e)} | {_etiquette(j)}{conf} | {_etiquette(c)} |"
+        )
+    return "\n".join(out)

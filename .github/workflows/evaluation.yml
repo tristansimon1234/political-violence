@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       commande:
-        description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport"
+        description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport ; synthetique : 100 commentaires fictifs"
         type: choice
-        options: [sonde, preparer, evaluer]
+        options: [sonde, preparer, evaluer, synthetique]
         default: sonde
       budget_claude:
         description: "Dollars max pour Claude"

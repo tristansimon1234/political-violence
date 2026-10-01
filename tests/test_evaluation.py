@@ -476,7 +476,6 @@ def test_script_preparer_evaluer(
     import sys
 
     import evaluation as script
-
     from radar.storage import enregistrer
 
     st = StockageLocal(tmp_path)
@@ -583,3 +582,44 @@ def test_cout_jev_reel_de_la_gateway() -> None:
         "provider_metadata": {"gateway": {"cost": "0.000049476", "surchargeCost": "0"}},
     }
     assert cout_jev(brut) == (1178, pytest.approx(0.000049476))
+
+
+def test_fichier_synthetique_et_commande(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import sys
+
+    import evaluation as script
+    from radar.evaluation import charger_synthetique
+
+    source = Path(__file__).parents[1] / "evaluation" / "synthetique_v1.csv"
+    donnees = source.read_bytes()
+    lignes = charger_synthetique(donnees, date(2026, 10, 2))
+    assert len(lignes) == 100 and len({li.ref for li in lignes}) == 100
+    assert {li.nature for li in lignes} == {"info_factuelle", "opinion_debat"}
+    assert lire_etiquettes(donnees, lignes) == {}  # livré vide : à étiqueter par Tristan
+
+    texte = donnees.decode("utf-8-sig").splitlines()
+    rempli = [texte[0]]
+    for x in texte[1:]:
+        champs = x.split(";")
+        position = "nuance" if champs[3] == "opinion_debat" else "-"
+        rempli.append(";".join([*champs[:7], "retraites", position, "colere"]))
+    fichier = tmp_path / "rempli.csv"
+    fichier.write_text("\n".join(rempli), encoding="utf-8")
+
+    faux_claude, faux_jev = FauxAnthropic(), FauxJev()
+
+    def claude(budget_usd: float) -> ClientClaude:
+        return ClientClaude(budget_usd, client=cast(Any, faux_claude))
+
+    def jev(budget_usd: float) -> ClientJev:
+        return ClientJev(budget_usd, cle="x", transport=faux_jev)
+
+    monkeypatch.setattr(script, "ClientClaude", claude)
+    monkeypatch.setattr(script, "ClientJev", jev)
+    monkeypatch.setattr(sys, "argv", ["evaluation", "synthetique", "--fichier", str(fichier)])
+    assert script.main() == 0
+    sortie = capsys.readouterr().out
+    assert "Coût / million" in sortie and "Désaccords avec tes étiquettes" in sortie
+    assert len(faux_jev.envois) == 100

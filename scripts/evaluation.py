@@ -3,6 +3,7 @@
     python scripts/evaluation.py sonde      # 1 appel Jev + 1 appel Claude sur un texte fictif
     python scripts/evaluation.py preparer   # échantillon + fichier d'étiquetage dans le bucket
     python scripts/evaluation.py evaluer    # classement Jev et Claude, rapport en agrégats
+    python scripts/evaluation.py synthetique  # 100 commentaires fictifs étiquetés (versionnés)
 
 Variables : SUPABASE_URL, SUPABASE_SECRET_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY.
 Fichiers dans le bucket privé `radar-brut`, dossier `evaluation/` (purgés à 30 jours avec le brut) :
@@ -34,11 +35,13 @@ from radar.evaluation import (
     Couts,
     Volume,
     candidates,
+    charger_synthetique,
     chemin,
     classer_claude,
     classer_jev,
     classer_natures,
     dernier_echantillon,
+    desaccords,
     echantillonner,
     ecrire_echantillon,
     ecrire_json,
@@ -212,9 +215,41 @@ def evaluer(args: argparse.Namespace) -> int:
     return 0
 
 
+def synthetique(args: argparse.Namespace) -> int:
+    """Commentaires fictifs étiquetés par Tristan (fichier versionné) : Jev et Claude comparés."""
+    donnees = args.fichier.read_bytes()
+    aujourdhui = date.today()
+    lignes = charger_synthetique(donnees, aujourdhui)
+    etiquettes = lire_etiquettes(donnees, lignes)
+    if not etiquettes:
+        print(f"Aucune étiquette dans {args.fichier} : remplir themes / position / emotion.")
+        return 1
+    jev_client = ClientJev(budget_usd=args.budget_jev)
+    claude_client = ClientClaude(budget_usd=args.budget_claude)
+    jev = classer_jev(jev_client, lignes)
+    claude = classer_claude(claude_client, lignes)
+    couts = Couts(
+        jev_client.compteur.cout_usd,
+        len(jev),
+        claude_client.compteur.cout_usd,
+        len(claude),
+        0.0,
+    )
+    print(rapport(lignes, jev, claude, etiquettes, couts, Volume(0, 0), aujourdhui))
+    print()
+    print(desaccords(lignes, jev, claude, etiquettes))
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    p.add_argument("commande", choices=["sonde", "preparer", "evaluer"])
+    p.add_argument("commande", choices=["sonde", "preparer", "evaluer", "synthetique"])
+    p.add_argument(
+        "--fichier",
+        type=Path,
+        default=Path(__file__).parents[1] / "evaluation" / "synthetique_v1.csv",
+        help="synthetique : fichier de commentaires fictifs étiquetés",
+    )
     p.add_argument("--budget-claude", type=float, default=3.0, help="dollars max pour Claude")
     p.add_argument("--budget-jev", type=float, default=1.0, help="dollars max pour Jev")
     p.add_argument("--graine", type=int, default=20260901, help="graine du tirage")
@@ -224,7 +259,13 @@ def main() -> int:
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     log.info("début %s", datetime.now(UTC).isoformat())
-    return {"sonde": sonde, "preparer": preparer, "evaluer": evaluer}[args.commande](args)
+    commandes = {
+        "sonde": sonde,
+        "preparer": preparer,
+        "evaluer": evaluer,
+        "synthetique": synthetique,
+    }
+    return commandes[args.commande](args)
 
 
 if __name__ == "__main__":
