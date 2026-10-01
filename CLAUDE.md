@@ -94,7 +94,8 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - `docs/roadmap.md` : étapes dans l'ordre, préalables hors code, points à décider.
 - `docs/decisions.md` : journal des décisions datées. Y ajouter toute nouvelle décision validée.
 - `docs/methodologie.md` : texte source de la page publique Méthodologie (panel, collecte).
-- `docs/etiquetage.md` : étiquetage manuel de la vérité terrain (étape 4).
+- `docs/etiquetage.md` : étiquetage manuel de la vérité terrain et arbitrage à l'aveugle (étape 4).
+- `docs/evaluation-resultats.md` : journal des tests de classification (agrégats).
 - `docs/sous-traitants.md` : sous-traitants (localisation, conservation, entraînement, transferts), prêt pour l'AIPD.
 
 Maquette de référence : artifact Claude Design "Radar 2027" (écrans Cette semaine, Vue d'ensemble, Méthodologie, Admin).

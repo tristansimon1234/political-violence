@@ -13,4 +13,9 @@
 
 **Préalables hors code (avant tout lancement public)** : projet développé sur machine et comptes personnels, situation clarifiée avec l'employeur, AIPD rédigée, acceptation YouTube "métriques dérivées" obtenue.
 
-**À décider** : page publique "Le panel" listant les 50 chaînes avec type et critère d'inclusion.
+**À décider** :
+- Page publique "Le panel" listant les chaînes avec type et critère d'inclusion.
+- Couverture des commentaires : 200 par vidéo en ordre « pertinence » (actuel) ou tout prendre (lecture chronologique incrémentale), selon le total annoncé par YouTube mesuré sur la semaine 1.
+- Classification : Jev seul, cascade Jev → Claude (quel seuil) ou Claude seul, après le test de la semaine 1 et l'arbitrage (`docs/evaluation-resultats.md`).
+- Émotion : garder 6 catégories, les regrouper, ou compter les probabilités de Jev plutôt qu'une étiquette unique (dimension la moins fiable, y compris pour l'étiquetage humain).
+- Sentiment par cible (« ABSA ») : proposé par Tristan, déconseillé par Claude (proche d'un sondage, risque de neutralité sur les personnalités) ; non retenu à ce stade.
