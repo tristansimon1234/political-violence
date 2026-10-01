@@ -21,7 +21,7 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 
 **Filtres.**
 1. Activité, pour toutes les chaînes sauf les partis : au moins 10 vidéos publiées sur les 90 derniers jours, formats courts (Shorts) compris. Les partis sont gardés quelle que soit leur activité : le silence d'un parti sur YouTube est une donnée.
-2. Médias natifs du web : en plus, au moins la moitié des titres de leurs 20 dernières vidéos porte sur la politique française.
+2. Médias natifs du web : pas de filtre éliminatoire sur le contenu. Leur **taux de politisation** (part de leurs vidéos qui portent sur la politique française) est mesuré et publié ; seules leurs vidéos politiques alimentent les mesures du Radar.
 
 **Chaîne officielle.** Pour chaque nom de la liste, seule la chaîne officielle est retenue. Aucune chaîne de dirigeant ne remplace celle d'un parti : un parti sans chaîne active est signalé comme tel. En cas de doute sur la bonne chaîne, le cas est signalé et tranché à la main, publiquement.
 

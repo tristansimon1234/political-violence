@@ -1,83 +1,88 @@
-nom,categorie,sous_type,url,part_politique_fr_20_titres,verdict,raison
-BLAST,media_natif,pure_player,@blastinfo,75%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Le Média,media_natif,pure_player,https://www.youtube.com/channel/UCT67YOMntJxfRnO_9bXDpvw,75%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Mediapart,media_natif,pure_player,https://www.youtube.com/channel/UCdnaDhU-LDQrIEEmSIfq0-Q,50%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-LeHuffPost,media_natif,pure_player,@LeHuffPost,20%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Brut,media_natif,pure_player,@BrutFR,55%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Le Crayon,media_natif,pure_player,https://www.youtube.com/channel/UCbXWhsd805LfcbAy7xL9d-A,50%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Pure Politique,media_natif,pure_player,https://www.youtube.com/channel/UCYkZbyXcVmtdRUpCBi713vw,100%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Les Incorrectibles,media_natif,pure_player,https://www.youtube.com/channel/UCq-CfAlGjCuXyBVTzQgWYRg,65%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-ÉLUCID,media_natif,pure_player,https://www.youtube.com/channel/UCkgO4A3Fzm5D9Xu1Y_4vCKQ,27%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-TVL (TV Libertés),media_natif,pure_player,https://www.youtube.com/channel/UCyamXi0qEQJghCjJbj__aWQ,45%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Thinkerview,media_natif,pure_player,@thinkerview,14%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-La PaduTeam,media_natif,pure_player,@PaduTeam,95%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-HugoDécrypte - Actus du jour,media_natif,createur,@hugodecrypteactus,55%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Gaspard G,media_natif,createur,https://www.youtube.com/channel/UCI-8QMy9n3I5Pv6mTmXoAXA,25%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Sam Zirah,media_natif,createur,@samzirah,5%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Grande Bavardeuse,media_natif,createur,@GrandeBavardeuse,5%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Clément Viktorovitch,media_natif,createur,@Clemovitch,42%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Jean Massiet Replay,media_natif,createur,@JeanMassietReplay,69%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Tatiana Ventôse,media_natif,createur,@TatianaventoseTV,44%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Simon Puech,media_natif,createur,https://www.youtube.com/channel/UCMQSwUNSnMOP4IRysfeg8EA,8%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-L'Esprit Critique,media_natif,createur,@lespritcritique,22%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Osons Causer,media_natif,createur,@Osonscauser,33% (3 vidéos),entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Le Raptor Dissident,media_natif,createur,@LeRaptor,-,réserve,aucune vidéo sur 90 jours ; écarté par Tristan (01/10/2026)
-Frontières,media_natif,pure_player,@Frontieresoff,100%,entre,décision Tristan (01/10/2026) : tous les médias natifs de la liste v1 sauf Le Raptor et @FrontieresMedia
-Frontières (candidat 2/2 : @FrontieresMedia),media_natif,pure_player,@FrontieresMedia,-,écartée,doublon de Frontières ; @Frontieresoff retenu par Tristan (01/10/2026)
-La France insoumise,politique,parti,https://www.youtube.com/channel/UCKHKSD-yanY2ZwwU_4Tgf0w,,en attente,tableau d'audit (activité) non transmis
-Parti socialiste,politique,parti,@partisocialiste,,en attente,tableau d'audit (activité) non transmis
-Les Écologistes,politique,parti,@LesEcologistesFR,,en attente,tableau d'audit (activité) non transmis
-PCF,politique,parti,https://www.youtube.com/channel/UCSwPcnzaMTuDcTgjRiJvZnw,,en attente,tableau d'audit (activité) non transmis
-Renaissance,politique,parti,@parti-renaissance,,en attente,tableau d'audit (activité) non transmis
-MoDem,politique,parti,@Mouvement.Democrate,,en attente,tableau d'audit (activité) non transmis
-Horizons,politique,parti,@Horizonsleparti,,en attente,tableau d'audit (activité) non transmis
-Les Républicains,politique,parti,https://www.youtube.com/channel/UC3Ma4tRFxx85oZI_XKVTPwg,,en attente,tableau d'audit (activité) non transmis
-Rassemblement national,politique,parti,@RassemblementNationalOfficiel,,en attente,tableau d'audit (activité) non transmis
-UDR (Union des droites pour la République),politique,parti,https://www.youtube.com/channel/UCzWh602__JIO6U445LSS4sw,,en attente,tableau d'audit (activité) non transmis
-Jean-Luc Mélenchon,politique,personnalite,https://www.youtube.com/channel/UCk-_PEY3iC6DIGJKuoEe9bw,,en attente,tableau d'audit (activité) non transmis
-Fabien Roussel,politique,personnalite,https://www.youtube.com/channel/UCHQbUAkpnkf_Yg6-xAqj-ZA,,en attente,tableau d'audit (activité) non transmis
-Gabriel Attal,politique,personnalite,@gabriel_attal,,en attente,tableau d'audit (activité) non transmis
-Édouard Philippe,politique,personnalite,@EdouardPhilippe,,en attente,tableau d'audit (activité) non transmis
-Bruno Retailleau,politique,personnalite,@Bruno_Retailleau,,en attente,tableau d'audit (activité) non transmis
-Marine Le Pen,politique,personnalite,@MarineLePenOfficiel,,en attente,tableau d'audit (activité) non transmis
-Éric Zemmour,politique,personnalite,@EricZemmourOff,,en attente,tableau d'audit (activité) non transmis
-Florian Philippot,politique,personnalite,@FLORIANPHILIPPOT1,,en attente,tableau d'audit (activité) non transmis
-Nicolas Dupont-Aignan,politique,personnalite,https://www.youtube.com/channel/UCfA5DnCDX3Ixy5QOAMGtBlA,,en attente,tableau d'audit (activité) non transmis
-François Asselineau,politique,personnalite,https://www.youtube.com/channel/UCJEJTYYZkYjLnGCgRDqnIGA,,en attente,tableau d'audit (activité) non transmis
-Nathalie Arthaud,politique,personnalite,https://www.youtube.com/channel/UCZsh-MrJftAOP_-ZgRgLScw,,en attente,tableau d'audit (activité) non transmis
-David Lisnard,politique,personnalite,@david_lisnard,,en attente,tableau d'audit (activité) non transmis
-Olivier Becht,politique,personnalite,@OlivierBecht68,,en attente,tableau d'audit (activité) non transmis
-Francis Lalanne,politique,personnalite,@FrancislalanneFrOfficiel,,en attente,tableau d'audit (activité) non transmis
-Horizons (chaîne « Horizons » à vérifier),politique,parti,https://www.youtube.com/channel/UCoDttl6w1T-Stuw_pvNOvLA,,en attente,tableau d'audit (activité) non transmis
-28 minutes - ARTE,media_traditionnel,talk_show,https://www.youtube.com/channel/UC8EzKGkEiusTm7g0mTfkWkg,,en attente,tableau d'audit (activité) non transmis
-AFP,media_traditionnel,presse_nationale,@AFPfr,,en attente,tableau d'audit (activité) non transmis
-ARTE,media_traditionnel,tv_radio,@arte,,en attente,tableau d'audit (activité) non transmis
-C dans l'air,media_traditionnel,talk_show,@Cdanslairofficiel,,en attente,tableau d'audit (activité) non transmis
-C à vous,media_traditionnel,talk_show,@cavousofficiel,,en attente,tableau d'audit (activité) non transmis
-FRANCE 24,media_traditionnel,info_continu,@FRANCE24,,en attente,tableau d'audit (activité) non transmis
-France Inter,media_traditionnel,tv_radio,@FranceInter,,en attente,tableau d'audit (activité) non transmis
-LCP,media_traditionnel,tv_radio,https://www.youtube.com/channel/UCHGFbA0KWBgf6gMbyUCZeCQ,,en attente,tableau d'audit (activité) non transmis
-Le Monde,media_traditionnel,presse_nationale,https://www.youtube.com/channel/UCYpRDnhk5H8h16jpS84uqsA,,en attente,tableau d'audit (activité) non transmis
-Le Nouvel Obs,media_traditionnel,presse_nationale,@NouvelObs,,en attente,tableau d'audit (activité) non transmis
-Libération,media_traditionnel,presse_nationale,@liberation,,en attente,tableau d'audit (activité) non transmis
-Marianne,media_traditionnel,presse_nationale,https://www.youtube.com/channel/UC4V5osIDMjFwtCRxMm2e0LA,,en attente,tableau d'audit (activité) non transmis
-Public Sénat,media_traditionnel,tv_radio,@publicsenat,,en attente,tableau d'audit (activité) non transmis
-RFI,media_traditionnel,tv_radio,@RFI_Fr,,en attente,tableau d'audit (activité) non transmis
-RTL,media_traditionnel,tv_radio,@rtl_france,,en attente,tableau d'audit (activité) non transmis
-TF1 INFO,media_traditionnel,tv_radio,@TF1INFO,,en attente,tableau d'audit (activité) non transmis
-TV5MONDE Info,media_traditionnel,info_continu,@TV5MONDEInfo,,en attente,tableau d'audit (activité) non transmis
-euronews (en français),media_traditionnel,info_continu,https://www.youtube.com/channel/UCW2QcKZiU8aUGg4yxCIditg,,en attente,tableau d'audit (activité) non transmis
-franceinfo,media_traditionnel,info_continu,@franceinfo,,en attente,tableau d'audit (activité) non transmis
-BFMTV,media_traditionnel,info_continu,@BFMTV,,en attente,tableau d'audit (activité) non transmis
-CNEWS,media_traditionnel,info_continu,https://www.youtube.com/channel/UCXKJrYczY2_fJEZgFPGY0HQ,,en attente,tableau d'audit (activité) non transmis
-Europe 1,media_traditionnel,tv_radio,https://www.youtube.com/channel/UCIMGfEAERXjmWwQeg15BFsg,,en attente,tableau d'audit (activité) non transmis
-LCI,media_traditionnel,info_continu,https://www.youtube.com/channel/UCewhc0fvja891XkpIPGRMxQ,,en attente,tableau d'audit (activité) non transmis
-L'Express,media_traditionnel,presse_nationale,https://www.youtube.com/channel/UCp2kK3DyhpgFOdILF3BBC9A,,en attente,tableau d'audit (activité) non transmis
-Le Figaro,media_traditionnel,presse_nationale,@LeFigaro,,en attente,tableau d'audit (activité) non transmis
-Le Parisien,media_traditionnel,presse_nationale,@LeParisien,,en attente,tableau d'audit (activité) non transmis
-Le Point,media_traditionnel,presse_nationale,@lepoint,,en attente,tableau d'audit (activité) non transmis
-Les Echos,media_traditionnel,presse_nationale,@LesEchosTV,,en attente,tableau d'audit (activité) non transmis
-RMC,media_traditionnel,tv_radio,@RMC,,en attente,tableau d'audit (activité) non transmis
-Sud Radio,media_traditionnel,tv_radio,@SudRadioOfficiel,,en attente,tableau d'audit (activité) non transmis
-VA Plus,media_traditionnel,presse_nationale,@VAplusmedia,,en attente,tableau d'audit (activité) non transmis
-Journal l'Humanité,media_traditionnel,presse_nationale,https://www.youtube.com/channel/UCar0yo-PpeMk51m116826pQ,,en attente,tableau d'audit (activité) non transmis
+nom,categorie,sous_type,handle,longues_90j,shorts_90j,vues_90j,part_vues_shorts,part_politique_fr_20_titres,commentaires_ouverts,verdict,raison
+franceinfo,media_traditionnel,info_continu,@franceinfo,2098,1286,141 883 873,42%,,100%,entre,critère d'activité
+FRANCE 24,media_traditionnel,info_continu,@france24,2638,611,115 203 126,18%,,100%,entre,critère d'activité
+BFMTV,media_traditionnel,info_continu,@bfmtv,502,1402,84 324 850,78%,,100%,entre,critère d'activité
+CNEWS,media_traditionnel,info_continu,@cnewsofficiel,4050,329,77 496 009,15%,,100%,entre,critère d'activité
+TV5MONDE Info,media_traditionnel,info_continu,@tv5mondeinfo,1492,423,51 806 531,32%,,100%,entre,critère d'activité
+LCI,media_traditionnel,info_continu,@lci,510,57,38 066 447,13%,,100%,entre,critère d'activité
+euronews (en français),media_traditionnel,info_continu,@euronewsfr,1762,489,17 234 027,17%,,100%,entre,critère d'activité
+Le Parisien,media_traditionnel,presse_nationale,@leparisien,203,631,116 516 312,68%,,100%,entre,critère d'activité
+Le Monde,media_traditionnel,presse_nationale,@lemondefr,93,217,28 135 859,53%,,100%,entre,critère d'activité
+VA Plus,media_traditionnel,presse_nationale,@vaplusmedia,30,255,25 228 055,85%,,100%,entre,critère d'activité
+Journal l'Humanité,media_traditionnel,presse_nationale,@lhumanitefr,182,133,20 346 800,62%,,100%,entre,critère d'activité
+Les Echos,media_traditionnel,presse_nationale,@lesechostv,32,96,15 459 856,64%,,100%,entre,critère d'activité
+AFP,media_traditionnel,presse_nationale,@afpfr,875,355,10 334 652,32%,,100%,entre,critère d'activité
+Le Figaro,media_traditionnel,presse_nationale,@lefigaro,124,139,8 021 932,28%,,100%,entre,critère d'activité
+Le Nouvel Obs,media_traditionnel,presse_nationale,@nouvelobs,13,62,4 475 226,96%,,100%,entre,critère d'activité
+Libération,media_traditionnel,presse_nationale,@liberation,20,114,4 424 751,91%,,100%,entre,critère d'activité
+L'Express,media_traditionnel,presse_nationale,@lexpress,21,114,2 191 507,65%,,100%,entre,critère d'activité
+Le Point,media_traditionnel,presse_nationale,@lepoint,24,70,1 815 439,88%,,100%,entre,critère d'activité
+Marianne,media_traditionnel,presse_nationale,@mariannetv,0,45,598 026,100%,,100%,entre,critère d'activité
+C à vous,media_traditionnel,talk_show,@cavousofficiel,740,413,54 798 451,67%,,100%,entre,critère d'activité
+C dans l'air,media_traditionnel,talk_show,@cdanslairofficiel,465,128,34 837 906,26%,,100%,entre,critère d'activité
+28 minutes - ARTE,media_traditionnel,talk_show,@28minutesarte,183,61,7 546 545,12%,,100%,entre,critère d'activité
+TF1 INFO,media_traditionnel,tv_radio,@tf1info,394,744,150 343 845,81%,,100%,entre,critère d'activité
+RTL,media_traditionnel,tv_radio,@rtl_france,1615,1244,91 066 318,40%,,100%,entre,critère d'activité
+ARTE,media_traditionnel,tv_radio,@arte,393,132,54 457 723,13%,,100%,entre,critère d'activité
+Europe 1,media_traditionnel,tv_radio,@europe1,2874,266,53 047 758,10%,,100%,entre,critère d'activité
+RMC,media_traditionnel,tv_radio,@rmc,302,190,40 313 461,66%,,100%,entre,critère d'activité
+France Inter,media_traditionnel,tv_radio,@franceinter,663,885,36 719 896,76%,,100%,entre,critère d'activité
+RFI,media_traditionnel,tv_radio,@rfi_fr,650,231,14 833 726,17%,,100%,entre,critère d'activité
+Public Sénat,media_traditionnel,tv_radio,@publicsenat,331,300,8 345 235,54%,,100%,entre,critère d'activité
+Sud Radio,media_traditionnel,tv_radio,@sudradioofficiel,2234,75,6 346 115,9%,,100%,entre,critère d'activité
+LCP - Assemblée nationale,media_traditionnel,tv_radio,@lcpassembleenationale,152,80,4 552 851,77%,,100%,entre,critère d'activité
+HugoDécrypte - Actus du jour,media_natif,createur,@hugodecrypteactus,77,370,88 337 507,67%,55%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Sam Zirah,media_natif,createur,@samzirah,101,152,12 147 056,29%,5%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Simon Puech,media_natif,createur,@spuech,2,10,9 986 475,81%,8%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+L'Esprit Critique,media_natif,createur,@lespritcritique,0,9,5 884 375,100%,22%,100%,réserve,9 vidéos sur 90 jours < 10
+Gaspard G,media_natif,createur,@gaspardg,3,28,5 655 510,71%,25%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Clément Viktorovitch,media_natif,createur,@clemovitch,8,11,4 271 619,33%,42%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Tatiana Ventôse,media_natif,createur,@tatianaventosetv,4,5,1 303 548,42%,44%,100%,réserve,9 vidéos sur 90 jours < 10
+Grande Bavardeuse,media_natif,createur,@grandebavardeuse,5,42,666 853,51%,5%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Osons Causer,media_natif,createur,@osonscauser,3,0,101 232,0%,33%,100%,réserve,3 vidéos sur 90 jours < 10
+Jean Massiet Replay,media_natif,createur,@jeanmassietreplay,16,0,95 339,0%,69%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Le Raptor,media_natif,createur,@leraptor,0,0,0,-,-,-,réserve,0 vidéos sur 90 jours < 10
+Brut,media_natif,pure_player,@brutfr,70,644,72 074 022,87%,55%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+LeHuffPost,media_natif,pure_player,@lehuffpost,316,281,50 172 994,51%,20%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+BLAST,media_natif,pure_player,@blastinfo,74,9,19 892 048,4%,75%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Frontières,media_natif,pure_player,@frontieresoff,60,437,14 183 323,85%,100%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+TV Libertés (chaîne officielle TVL),media_natif,pure_player,@chaineofficielletvl,190,40,13 435 977,8%,45%,97%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Le Crayon,media_natif,pure_player,@lecrayonmedia,27,293,13 247 125,73%,50%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Le Média,media_natif,pure_player,@lemedia-tv,141,0,13 043 820,0%,75%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Mediapart,media_natif,pure_player,@mediapart,34,49,8 018 209,45%,50%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+PaduTeam,media_natif,pure_player,@paduteam,71,44,4 986 630,18%,95%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Les Incorrectibles,media_natif,pure_player,@lesincorrectibles,13,65,3 405 709,44%,65%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+ÉLUCID,media_natif,pure_player,@elucidmedia,11,0,2 842 775,0%,27%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Pure Politique,media_natif,pure_player,@purepolitique,16,1,2 509 467,3%,100%,100%,entre,"critère d'activité ; part politique mesurée, non éliminatoire (décision 01/10)"
+Thinkerview,media_natif,pure_player,@thinkerview,7,0,2 462 155,0%,14%,100%,réserve,7 vidéos sur 90 jours < 10
+Frontières Média,media_natif,pure_player,@frontieresmedia,0,0,0,-,-,-,écartée,doublon : Frontières = @frontieresoff (décision Tristan 01/10)
+Rassemblement national,politique,parti,@rassemblementnationalofficiel,179,135,6 729 899,31%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+La France insoumise,politique,parti,@franceinsoumise,36,7,2 457 860,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+Horizons (ID UCoDttl6…),politique,parti,@edouardphilippe,13,26,358 097,59%,,100%,écartée,l'ID « Horizons » résout vers la chaîne d'Édouard Philippe : pas de substitut (règle partis)
+Les Écologistes,politique,parti,@lesecologistesfr,41,1,206 859,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+PCF,politique,parti,@pcf-particommunistefrancais,34,4,206 802,7%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+Parti socialiste,politique,parti,@partisocialiste,44,50,201 138,35%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+MoDem,politique,parti,@mouvement.democrate,49,0,98 231,0%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+UDR,politique,parti,@partiudr,12,16,78 720,63%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+Renaissance,politique,parti,@parti-renaissance,0,23,45 487,100%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+Les Républicains,politique,parti,@lesrepublicains,1,0,7 260,0%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
+Horizons,politique,parti,@Horizonsleparti,0,0,0,-,,-,sans chaîne active,@Horizonsleparti introuvable via l'API
+Jean-Luc Mélenchon,politique,personnalite,@jlmelenchon,25,39,16 574 839,55%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Florian Philippot,politique,personnalite,@florianphilippot1,103,2,15 715 940,1%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Nicolas Dupont-Aignan,politique,personnalite,@dupontaignannicolas,21,58,2 262 436,82%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+David Lisnard,politique,personnalite,@david_lisnard,17,74,2 242 575,68%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Marine Le Pen,politique,personnalite,@marinelepenofficiel,16,11,2 167 981,32%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Éric Zemmour,politique,personnalite,@ericzemmouroff,4,13,1 043 074,46%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Gabriel Attal,politique,personnalite,@gabriel_attal,23,50,570 650,39%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+François Asselineau,politique,personnalite,@f_asselineau,34,0,520 760,0%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Édouard Philippe,politique,personnalite,@edouardphilippe,13,26,358 084,59%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Nathalie Arthaud,politique,personnalite,@nathaliearthaudlutteouvriere,20,55,241 449,73%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
+Bruno Retailleau,politique,personnalite,@bruno_retailleau,9,0,66 383,0%,,100%,réserve,9 vidéos sur 90 jours < 10
+Francis Lalanne,politique,personnalite,@francislalannefrofficiel,1,0,7 996,0%,,100%,réserve,1 vidéos sur 90 jours < 10
+Olivier Becht,politique,personnalite,@olivierbecht68,6,2,2 520,19%,,100%,réserve,8 vidéos sur 90 jours < 10
+Fabien Roussel,politique,personnalite,@fabienroussel9212,0,0,0,-,,-,réserve,0 vidéos sur 90 jours < 10
+Marine Tondelier,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
+Delphine Batho,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
+Karim Bouamrane,politique,personnalite,,,,,,,,réserve,aucune chaîne personnelle trouvée
+Clara Egger,politique,personnalite,,,,,,,,réserve,doute : seule la chaîne du mouvement Solution démocratique existe (substitution ?)
+Antoine Mikolajczak,politique,personnalite,,,,,,,,réserve,doute : handle ambigu (homonyme)
