@@ -12,3 +12,14 @@ Objectif : récupérer tout le mois de septembre (du 1er au 30) pour construire 
 - **Usage** : septembre est un mois de **calibrage**. Pas de vélocité exploitable sur septembre (pas de baseline antérieure) ; il sert de baseline pour octobre.
 - **Vérité terrain** pour la détection des sujets d'actu : des événements datés de la rentrée, par exemple la candidature officialisée par Fabien Roussel (6 septembre) et celle d'Éric Zemmour (17 septembre). Si le pipeline ne voit pas de pic autour de ces dates, quelque chose cloche.
 - **Usage privé uniquement** tant que l'acceptation YouTube n'est pas obtenue : rien n'est publié.
+
+## Test : rattrapage du filtre politique par les commentaires (à évaluer, pas à intégrer)
+
+Question : le filtre politique (titres, descriptions, tags) laisse-t-il passer des vidéos classées `hors_sujet` sous lesquelles le public parle en fait de politique ?
+
+- **Quand** : une seule fois, sur les données du backfill de septembre, dès que la classification Jev est branchée (étape 4 de la feuille de route).
+- **Échantillon** : vidéos classées `hors_sujet` appartenant au top 20 % de leur chaîne en nombre de commentaires.
+- **Mesure** : une page de commentaires par vidéo (100 commentaires, 1 unité de quota), classée par Jev (`est_politique`). Une vidéo est **reclassée** si au moins 1/3 de ses commentaires sont politiques.
+- **Livrable pour Tristan** : nombre de vidéos testées, taux de reclassement, 10 exemples reclassés (titre + chaîne) pour vérification manuelle. Usage interne uniquement : les titres ne sont ni commités ni publiés, et suivent la règle des 30 jours.
+- **Décision ensuite** : intégration au pipeline seulement si le rattrapage est utile (seuil indicatif : > 5 % de vraies vidéos politiques rattrapées, après vérification manuelle).
+- **Coût** : 1 unité YouTube par vidéo testée, plus la classification Jev d'environ 100 commentaires par vidéo.
