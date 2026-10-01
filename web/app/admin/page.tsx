@@ -20,9 +20,16 @@ const date = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") 
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null);
   const [chargee, setChargee] = useState(false);
+  const [configuration, setConfiguration] = useState("");
 
   useEffect(() => {
-    const client = supabase();
+    let client;
+    try {
+      client = supabase();
+    } catch (e) {
+      setConfiguration(e instanceof Error ? e.message : String(e));
+      return;
+    }
     client.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setChargee(true);
@@ -31,6 +38,16 @@ export default function Admin() {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  if (configuration)
+    return (
+      <main>
+        <h1>Radar 2027 · Admin</h1>
+        <p className="erreur">Configuration manquante : {configuration}</p>
+        <p className="discret">
+          Ajouter les variables dans Vercel (Settings → Environment Variables), puis redéployer.
+        </p>
+      </main>
+    );
   if (!chargee) return <main className="discret">Chargement…</main>;
   if (!session) return <Connexion />;
   return <Espace email={session.user.email ?? ""} />;
