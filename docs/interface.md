@@ -40,6 +40,8 @@ L'interface lit uniquement les agrégats (Supabase). Maquette de référence : a
 
 Page `/admin` de l'app Next.js, réservée à Tristan (Supabase Auth, un seul compte admin, RLS : écriture sur `sources` pour l'admin uniquement).
 
+**Version 1 (01/10/2026)** : `web/app/admin`, déployée sur Vercel (dossier racine `web`). Connexion par lien e-mail (comptes créés à la main dans Supabase, pas d'inscription libre), accès vérifié par `est_admin()`. Trois vues : Panel (statistiques 90 jours, mise en pause / réactivation), Équilibre (chaînes, abonnés et vues par catégorie et sous-type), Journal (`sources_journal`). L'ajout de source n'est pas dans l'admin : le panel est une liste fermée, modifiée par `panel/` + workflow `import-sources.yml`. Variables Vercel : `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (jamais la clé secrète). Taxonomie côté TypeScript générée depuis `radar/schemas.py` (`scripts/generer_taxonomie_ts.py`).
+
 **Ajouter une source**
 1. Coller l'URL ou le handle de la chaîne.
 2. Résolution via l'API (`channels.list` avec `forHandle` ou `id`, 1 unité) → aperçu : nom, abonnés, dernière vidéo, fréquence de publication.
