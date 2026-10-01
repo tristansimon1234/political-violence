@@ -58,7 +58,7 @@ Thinkerview,media_natif,pure_player,@thinkerview,7,0,2 462 155,0%,14%,100%,rése
 Frontières Média,media_natif,pure_player,@frontieresmedia,0,0,0,-,-,-,écartée,doublon : Frontières = @frontieresoff (décision Tristan 01/10)
 Rassemblement national,politique,parti,@rassemblementnationalofficiel,179,135,6 729 899,31%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 La France insoumise,politique,parti,@franceinsoumise,36,7,2 457 860,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
-Horizons (ID UCoDttl6…),politique,parti,@edouardphilippe,13,26,358 097,59%,,100%,fusionnée,même chaîne que @edouardphilippe (personnalité) : une seule ligne dans le panel
+Horizons (ID UCoDttl6…),politique,parti,@edouardphilippe,13,26,358 097,59%,,100%,écartée,l'ID « Horizons » résout vers la chaîne d'Édouard Philippe : pas de substitut (règle partis)
 Les Écologistes,politique,parti,@lesecologistesfr,41,1,206 859,6%,,100%,entre,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Marine Tondelier
 PCF,politique,parti,@pcf-particommunistefrancais,34,4,206 802,7%,,100%,entre,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Fabien Roussel
 Parti socialiste,politique,parti,@partisocialiste,44,50,201 138,35%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
@@ -66,7 +66,7 @@ MoDem,politique,parti,@mouvement.democrate,49,0,98 231,0%,,100%,entre,parti repr
 UDR,politique,parti,@partiudr,12,16,78 720,63%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 Renaissance,politique,parti,@parti-renaissance,0,23,45 487,100%,,100%,entre,parti représenté à l'Assemblée (activité non requise)
 Les Républicains,politique,parti,@lesrepublicains,1,0,7 260,0%,,100%,entre,parti représenté à l'Assemblée (activité non requise) ; représente aussi la candidature de Bruno Retailleau
-Horizons,politique,parti,@Horizonsleparti,0,0,0,-,,-,représenté par @edouardphilippe,chaîne commune au parti et à son candidat : l'ID « Horizons » résout vers @edouardphilippe (décision Tristan 01/10/2026)
+Horizons,politique,parti,@Horizonsleparti,0,0,0,-,,-,sans chaîne active,@Horizonsleparti introuvable via l'API
 Jean-Luc Mélenchon,politique,personnalite,@jlmelenchon,25,39,16 574 839,55%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Florian Philippot,politique,personnalite,@florianphilippot1,103,2,15 715 940,1%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Nicolas Dupont-Aignan,politique,personnalite,@dupontaignannicolas,21,58,2 262 436,82%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
@@ -75,7 +75,7 @@ Marine Le Pen,politique,personnalite,@marinelepenofficiel,16,11,2 167 981,32%,,1
 Éric Zemmour,politique,personnalite,@ericzemmouroff,4,13,1 043 074,46%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Gabriel Attal,politique,personnalite,@gabriel_attal,23,50,570 650,39%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 François Asselineau,politique,personnalite,@f_asselineau,34,0,520 760,0%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
-Édouard Philippe,politique,personnalite,@edouardphilippe,13,26,358 084,59%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits) ; représente aussi Horizons (chaîne commune)"
+Édouard Philippe,politique,personnalite,@edouardphilippe,13,26,358 084,59%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Nathalie Arthaud,politique,personnalite,@nathaliearthaudlutteouvriere,20,55,241 449,73%,,100%,entre,"critère d'activité ; candidat déclaré (liste LCP, lue par extraits)"
 Bruno Retailleau,politique,personnalite,@bruno_retailleau,9,0,66 383,0%,,100%,représenté par LR,"chaîne personnelle sous le seuil (9 vidéos) : représenté par Les Républicains, déjà en parti (règle candidat → parti)"
 Francis Lalanne,politique,personnalite,@francislalannefrofficiel,1,0,7 996,0%,,100%,retiré,"retiré par Tristan (01/10/2026) : pas de chaîne active retenue, ni personnelle ni de parti"
