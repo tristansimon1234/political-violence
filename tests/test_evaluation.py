@@ -618,11 +618,19 @@ def test_fichier_synthetique_et_commande(
 
     monkeypatch.setattr(script, "ClientClaude", claude)
     monkeypatch.setattr(script, "ClientJev", jev)
-    monkeypatch.setattr(sys, "argv", ["evaluation", "synthetique", "--fichier", str(fichier)])
+    sortie_dir = tmp_path / "arbitrage"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["evaluation", "synthetique", "--fichier", str(fichier), "--sortie", str(sortie_dir)],
+    )
     assert script.main() == 0
     sortie = capsys.readouterr().out
     assert "Coût / million" in sortie and "Désaccords avec tes étiquettes" in sortie
     assert len(faux_jev.envois) == 100
+    assert (sortie_dir / "arbitrage_rempli.csv").exists() and (
+        sortie_dir / "cle_rempli.json"
+    ).exists()
 
 
 def test_position_obligatoire_sur_video_d_opinion() -> None:
@@ -632,3 +640,40 @@ def test_position_obligatoire_sur_video_d_opinion() -> None:
     )
     assert normaliser(c, "opinion_debat").position == "hors_sujet"
     assert normaliser(c, "info_factuelle").position is None
+
+
+def test_arbitrage_a_l_aveugle() -> None:
+    from radar.evaluation import fichier_arbitrage, rapport_arbitrage
+
+    lignes = _lignes(4)  # C001..C004 ; C004 factuelle (pas de position)
+    tristan = {li.ref: Etiquette(True, ("retraites",), None, "colere") for li in lignes}
+    tristan["C001"] = Etiquette(True, ("retraites",), "accord_video", "colere")
+    tristan["C002"] = Etiquette(True, ("retraites",), "accord_video", "colere")
+    tristan["C003"] = Etiquette(True, ("retraites",), "accord_video", "colere")
+    jev = {
+        li.ref: Classement(True, ("retraites",), tristan[li.ref].position, "colere", 0.9)
+        for li in lignes
+    }
+    claude = dict(jev)
+    jev["C001"] = Classement(True, ("retraites",), "accord_video", "lassitude", 0.4)
+    claude["C002"] = Classement(True, ("sante",), "accord_video", "colere")
+    donnees, cle = fichier_arbitrage(lignes, jev, claude, tristan, random.Random(0))
+    texte = donnees.decode("utf-8-sig")
+    assert len(cle) == 2  # C001 émotion, C002 thèmes ; le reste fait l'unanimité
+    assert "jev" not in texte and "claude" not in texte and "tristan" not in texte  # anonyme
+    # L'arbitre retient la réponse de Jev pour C001, et les deux pour C002.
+    lignes_csv = texte.splitlines()
+    remplies = [lignes_csv[0]]
+    for x in lignes_csv[1:]:
+        champs = x.split(";")
+        options = cle[champs[0]]
+        if champs[1] == "C001":
+            champs[10] = next(lettre for lettre, src in options.items() if "jev" in src)
+        else:
+            champs[10] = "A+B"
+        remplies.append(";".join(champs))
+    r = rapport_arbitrage("\n".join(remplies).encode(), cle)
+    assert "| emotion | 1 | 0 % (0/1) | 100 % (1/1) | 0 % (0/1) |" in r
+    assert "| themes | 1 | 100 % (1/1) | 100 % (1/1) | 100 % (1/1) |" in r
+    with pytest.raises(ValueError):
+        rapport_arbitrage(("\n".join(remplies) + "\nR999;x;emotion;;;;;;;;A;").encode(), cle)

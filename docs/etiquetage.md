@@ -42,3 +42,12 @@ Définitions complètes : celles des prompts (`radar/classification.py`, en angl
 3. Workflow « Évaluation Jev / Claude », commande `synthetique`.
 
 Limites : des commentaires écrits par Claude sont probablement plus faciles pour Claude que de vrais commentaires ; pas de projection de coût de campagne (coût exprimé pour 1 million de commentaires). Le test sur la semaine 1 reste la référence.
+
+## Arbitrage à l'aveugle (données synthétiques)
+
+Quand Tristan, Jev et Claude ne sont pas d'accord, qui a raison ? La commande `synthetique` produit en plus, dans l'artefact « arbitrage » du workflow :
+- `arbitrage_<fichier>.csv` : une ligne par désaccord (commentaire et dimension : thèmes, position ou émotion), les réponses en lice mélangées sous A, B, C, sans dire qui a répondu quoi ;
+- `cle_<fichier>.json` : la clé. **Ne pas l'ouvrir avant d'avoir arbitré.**
+
+Remplir la colonne `choix` : la lettre de la meilleure réponse, plusieurs lettres (`A+B`) si elles se valent, `aucune` si aucune ne convient. Puis `python scripts/evaluation.py arbitrage --fichier arbitrage_<fichier>.csv --cle cle_<fichier>.json` (aucun appel aux modèles) : part des désaccords gagnés par Tristan (premier jet), Jev et Claude, par dimension.
+

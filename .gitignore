@@ -12,3 +12,5 @@ node_modules/
 # Sorties locales d'audit et de dry-run (peuvent contenir des données brutes)
 audit*.md
 sortie_*.txt
+# Fichiers d'arbitrage produits localement par scripts/evaluation.py synthetique
+arbitrage/

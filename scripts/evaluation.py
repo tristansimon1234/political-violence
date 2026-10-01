@@ -3,7 +3,8 @@
     python scripts/evaluation.py sonde      # 1 appel Jev + 1 appel Claude sur un texte fictif
     python scripts/evaluation.py preparer   # échantillon + fichier d'étiquetage dans le bucket
     python scripts/evaluation.py evaluer    # classement Jev et Claude, rapport en agrégats
-    python scripts/evaluation.py synthetique  # 100 commentaires fictifs étiquetés (versionnés)
+    python scripts/evaluation.py synthetique  # commentaires fictifs étiquetés (versionnés)
+    python scripts/evaluation.py arbitrage --fichier arbitrage_x.csv --cle cle_x.json
 
 Variables : SUPABASE_URL, SUPABASE_SECRET_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY.
 Fichiers dans le bucket privé `radar-brut`, dossier `evaluation/` (purgés à 30 jours avec le brut) :
@@ -15,6 +16,7 @@ Rien n'est affiché ni écrit hors du bucket, sauf des agrégats.
 """
 
 import argparse
+import json
 import logging
 import os
 import random
@@ -46,12 +48,14 @@ from radar.evaluation import (
     ecrire_echantillon,
     ecrire_json,
     ecrire_resultats,
+    fichier_arbitrage,
     fichier_etiquetage,
     lire_echantillon,
     lire_etiquettes,
     lire_json,
     lire_resultats,
     rapport,
+    rapport_arbitrage,
 )
 from radar.llm import (
     ClientClaude,
@@ -238,12 +242,36 @@ def synthetique(args: argparse.Namespace) -> int:
     print(rapport(lignes, jev, claude, etiquettes, couts, Volume(0, 0), aujourdhui))
     print()
     print(desaccords(lignes, jev, claude, etiquettes))
+    # Arbitrage à l'aveugle : fichier à remplir et clé séparée (ne pas ouvrir avant d'arbitrer).
+    a_remplir, cle = fichier_arbitrage(lignes, jev, claude, etiquettes, random.Random(args.graine))
+    args.sortie.mkdir(parents=True, exist_ok=True)
+    base = args.fichier.stem
+    (args.sortie / f"arbitrage_{base}.csv").write_bytes(a_remplir)
+    (args.sortie / f"cle_{base}.json").write_text(json.dumps(cle, indent=1))
+    print(
+        f"\nArbitrage : {len(cle)} désaccords dans {args.sortie}/arbitrage_{base}.csv "
+        f"(clé : cle_{base}.json, à ne pas ouvrir avant d'avoir arbitré)."
+    )
+    return 0
+
+
+def arbitrage(args: argparse.Namespace) -> int:
+    """Taux de victoires après arbitrage à l'aveugle (aucun appel aux modèles)."""
+    if args.cle is None:
+        print("--cle obligatoire (fichier cle_*.json produit par synthetique).")
+        return 1
+    cle: dict[str, dict[str, list[str]]] = json.loads(args.cle.read_text())
+    print(rapport_arbitrage(args.fichier.read_bytes(), cle))
     return 0
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    p.add_argument("commande", choices=["sonde", "preparer", "evaluer", "synthetique"])
+    p.add_argument("commande", choices=["sonde", "preparer", "evaluer", "synthetique", "arbitrage"])
+    p.add_argument("--cle", type=Path, help="arbitrage : clé produite par synthetique")
+    p.add_argument(
+        "--sortie", type=Path, default=Path("arbitrage"), help="synthetique : dossier d'arbitrage"
+    )
     p.add_argument(
         "--fichier",
         type=Path,
@@ -264,6 +292,7 @@ def main() -> int:
         "preparer": preparer,
         "evaluer": evaluer,
         "synthetique": synthetique,
+        "arbitrage": arbitrage,
     }
     return commandes[args.commande](args)
 

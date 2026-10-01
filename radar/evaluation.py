@@ -809,3 +809,144 @@ def desaccords(
             f"| {li.ref} | {texte} | {_etiquette(e)} | {_etiquette(j)}{conf} | {_etiquette(c)} |"
         )
     return "\n".join(out)
+
+
+# --- Arbitrage à l'aveugle (données synthétiques) ---
+
+Source = Literal["tristan", "jev", "claude"]
+DIMENSIONS_ARBITRAGE = ("themes", "position", "emotion")
+LETTRES = "ABC"
+AUCUNE = "aucune"
+COLONNES_ARBITRAGE = (
+    "id",
+    "ref",
+    "dimension",
+    "chaine",
+    "titre_video",
+    "nature_video",
+    "commentaire",
+    "A",
+    "B",
+    "C",
+    "choix",
+    "note",
+)
+
+
+def _valeur(c: Reference, dimension: str) -> str:
+    if dimension == "themes":
+        return "+".join(c.themes) or AUCUN_THEME
+    if dimension == "position":
+        return c.position or SANS_POSITION
+    return c.emotion
+
+
+def fichier_arbitrage(
+    lignes: list[Ligne],
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+    rng: random.Random,
+) -> tuple[bytes, dict[str, dict[str, list[str]]]]:
+    """Une ligne par désaccord (commentaire et dimension), options anonymes A/B/C mélangées.
+
+    Renvoie le CSV à remplir et la clé {id: {lettre: [sources]}}, à garder à part.
+    """
+    tampon = io.StringIO()
+    w = csv.writer(tampon, delimiter=";")
+    w.writerow(COLONNES_ARBITRAGE)
+    cle: dict[str, dict[str, list[str]]] = {}
+    n = 0
+    for li in sorted(lignes, key=lambda li: li.ref):
+        sources: dict[Source, Reference | None] = {
+            "tristan": etiquettes.get(li.ref),
+            "jev": jev.get(li.ref),
+            "claude": claude.get(li.ref),
+        }
+        if any(v is None for v in sources.values()):
+            continue
+        for dim in DIMENSIONS_ARBITRAGE:
+            if dim == "position" and li.nature != "opinion_debat":
+                continue
+            options: dict[str, list[str]] = {}
+            for nom, c in sources.items():
+                assert c is not None
+                options.setdefault(_valeur(c, dim), []).append(nom)
+            if len(options) < 2:
+                continue
+            valeurs = sorted(options)
+            rng.shuffle(valeurs)
+            n += 1
+            ident = f"R{n:03d}"
+            cle[ident] = {LETTRES[i]: options[v] for i, v in enumerate(valeurs)}
+            cellules = [*valeurs, *[""] * (len(LETTRES) - len(valeurs))]
+            w.writerow(
+                [ident, li.ref, dim, li.chaine, li.titre, li.nature, li.texte, *cellules, "", ""]
+            )
+    return ("﻿" + tampon.getvalue()).encode("utf-8"), cle
+
+
+def rapport_arbitrage(donnees: bytes, cle: Mapping[str, Mapping[str, list[str]]]) -> str:
+    """Taux de victoires de chaque source sur les désaccords arbitrés à l'aveugle."""
+    texte = donnees.decode("utf-8-sig")
+    separateur = ";" if texte.split("\n", 1)[0].count(";") else ","
+    en_lice: Counter[tuple[str, str]] = Counter()
+    gagne: Counter[tuple[str, str]] = Counter()
+    arbitres: Counter[str] = Counter()
+    plusieurs: Counter[str] = Counter()
+    aucune: Counter[str] = Counter()
+    erreurs: list[str] = []
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        ident = (r.get("id") or "").strip()
+        choix = (r.get("choix") or "").strip().upper().replace(" ", "")
+        dim = (r.get("dimension") or "").strip()
+        if ident not in cle:
+            erreurs.append(f"{ident or '?'} : identifiant inconnu")
+            continue
+        if not choix:
+            continue
+        options = cle[ident]
+        if choix == AUCUNE.upper():
+            lettres: set[str] = set()
+            aucune[dim] += 1
+        else:
+            lettres = set(choix.split("+"))
+            if not lettres <= set(options):
+                erreurs.append(f"{ident} : choix « {choix} » hors des options {sorted(options)}")
+                continue
+            if len(lettres) > 1:
+                plusieurs[dim] += 1
+        arbitres[dim] += 1
+        for lettre, sources in options.items():
+            for s in sources:
+                en_lice[(s, dim)] += 1
+                gagne[(s, dim)] += int(lettre in lettres)
+    if erreurs:
+        raise ValueError("Arbitrage invalide :\n" + "\n".join(erreurs))
+    total = sum(arbitres.values())
+    out = [
+        "# Arbitrage à l'aveugle",
+        "",
+        f"{total} désaccords arbitrés sur {len(cle)} : plusieurs réponses acceptables pour "
+        f"{sum(plusieurs.values())}, aucune pour {sum(aucune.values())}.",
+        "",
+        "Part des désaccords où la réponse de chaque source a été retenue :",
+        "",
+        "| Dimension | Arbitrés | Tristan (1er jet) | Jev | Claude |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    sources_: tuple[Source, ...] = ("tristan", "jev", "claude")
+    for dim in (*DIMENSIONS_ARBITRAGE, "total"):
+        dims = DIMENSIONS_ARBITRAGE if dim == "total" else (dim,)
+        cellules = [
+            _pct(sum(gagne[(s, d)] for d in dims), sum(en_lice[(s, d)] for d in dims))
+            for s in sources_
+        ]
+        n = sum(arbitres[d] for d in dims)
+        out.append(f"| {dim} | {n} | " + " | ".join(cellules) + " |")
+    out += [
+        "",
+        "Lecture : seuls les désaccords comptent ; quand les trois sources sont d'accord, la "
+        "ligne n'est pas proposée. Plusieurs lettres = réponses également acceptables.",
+    ]
+    return "\n".join(out)

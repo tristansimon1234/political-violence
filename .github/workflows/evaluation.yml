@@ -64,3 +64,12 @@ jobs:
       - name: Résumé
         if: always()
         run: cat rapport.md >> "$GITHUB_STEP_SUMMARY" || true
+      # Données synthétiques uniquement (jamais de commentaire réel) : fichier d'arbitrage et clé.
+      - name: Arbitrage
+        if: inputs.commande == 'synthetique'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbitrage
+          path: arbitrage/
+          retention-days: 7
+          if-no-files-found: ignore
