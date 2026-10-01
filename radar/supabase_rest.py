@@ -17,16 +17,41 @@ class Supabase:
         if not cle_secrete.startswith("sb_"):
             self._headers["Authorization"] = f"Bearer {cle_secrete}"
 
+    def select(self, table: str, filtres: dict[str, str]) -> list[dict[str, Any]]:
+        """Lecture PostgREST (ex. {"active": "eq.true"}), paginée par 1 000 lignes."""
+        lignes: list[dict[str, Any]] = []
+        while True:
+            r = requests.get(
+                f"{self._base}/{table}",
+                params={"select": "*", **filtres},
+                headers={**self._headers, "Range": f"{len(lignes)}-{len(lignes) + 999}"},
+                timeout=60,
+            )
+            r.raise_for_status()
+            page: list[dict[str, Any]] = r.json()
+            lignes.extend(page)
+            if len(page) < 1000:
+                return lignes
+
     def upsert(self, table: str, lignes: list[dict[str, Any]], conflit: str) -> None:
         """Insère ou met à jour sur la clé `conflit`. Les colonnes absentes restent inchangées."""
-        if not lignes:
-            return
+        for i in range(0, len(lignes), 500):
+            r = requests.post(
+                f"{self._base}/{table}",
+                params={"on_conflict": conflit},
+                headers={**self._headers, "Prefer": "resolution=merge-duplicates,return=minimal"},
+                json=lignes[i : i + 500],
+                timeout=60,
+            )
+            r.raise_for_status()
+        if lignes:
+            log.info("supabase upsert %s lignes=%d", table, len(lignes))
+
+    def inserer(self, table: str, ligne: dict[str, Any]) -> None:
         r = requests.post(
             f"{self._base}/{table}",
-            params={"on_conflict": conflit},
-            headers={**self._headers, "Prefer": "resolution=merge-duplicates,return=minimal"},
-            json=lignes,
+            headers={**self._headers, "Prefer": "return=minimal"},
+            json=ligne,
             timeout=30,
         )
         r.raise_for_status()
-        log.info("supabase upsert %s lignes=%d", table, len(lignes))

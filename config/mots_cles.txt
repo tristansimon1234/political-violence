@@ -1,0 +1,258 @@
+# Pré-filtre politique (première marche de l'entonnoir, sans LLM).
+# Une expression par ligne. Insensible à la casse et aux accents, mots entiers.
+# Recherche dans le titre, la description et les tags des vidéos.
+# Orienté rappel : une vidéo qui passe sera ensuite triée par le filtre Jev / Claude.
+# Les chaînes politiques ne passent pas par ce filtre : toutes leurs vidéos sont gardées.
+# Toute modification change l'empreinte enregistrée avec chaque vidéo (prefiltre_version).
+
+# --- Élections et vie démocratique
+election
+elections
+presidentielle
+presidentielles
+legislatives
+municipales
+europeennes
+senatoriales
+regionales
+primaire
+premier tour
+second tour
+candidat
+candidate
+candidats
+candidature
+campagne electorale
+parrainages
+sondage
+sondages
+scrutin
+vote
+voter
+referendum
+abstention
+programme politique
+
+# --- Institutions
+president de la republique
+elysee
+matignon
+premier ministre
+gouvernement
+ministre
+ministres
+ministere
+assemblee nationale
+assemblee
+senat
+senateur
+senateurs
+depute
+deputes
+deputee
+hemicycle
+conseil constitutionnel
+conseil d etat
+cour des comptes
+dissolution
+remaniement
+motion de censure
+censure
+49 3
+projet de loi
+proposition de loi
+loi
+lois
+amendement
+amendements
+decret
+ordonnance
+constitution
+republique
+maire
+mairie
+prefet
+conseil municipal
+union europeenne
+commission europeenne
+parlement europeen
+bruxelles
+
+# --- Vie politique (termes descriptifs)
+politique
+politiques
+parti
+partis
+gauche
+droite
+centre
+extreme gauche
+extreme droite
+majorite
+opposition
+coalition
+alliance
+union de la gauche
+macronie
+macroniste
+macronistes
+insoumis
+insoumise
+souverainiste
+souverainistes
+ecologiste
+ecologistes
+communiste
+communistes
+socialiste
+socialistes
+republicains
+patriotes
+militants
+meeting
+
+# --- Partis et mouvements (sigles et noms)
+lfi
+france insoumise
+nupes
+nouveau front populaire
+nfp
+ps
+parti socialiste
+pcf
+eelv
+les ecologistes
+renaissance
+modem
+horizons
+lr
+les republicains
+rn
+rassemblement national
+reconquete
+udr
+debout la france
+upr
+lutte ouvriere
+generation ecologie
+place publique
+solution democratique
+equinoxe
+nouvelle energie
+
+# --- Personnalités (candidats déclarés, exécutif, chefs de parti)
+macron
+lecornu
+melenchon
+roussel
+tondelier
+attal
+philippe
+retailleau
+le pen
+bardella
+zemmour
+philippot
+dupont aignan
+asselineau
+arthaud
+batho
+bouamrane
+lisnard
+becht
+egger
+mikolajczak
+lalanne
+glucksmann
+faure
+royal
+guedj
+maurel
+ruffin
+bertrand
+villepin
+ciotti
+darmanin
+wauquiez
+bayrou
+hollande
+knafo
+marechal
+
+# --- Politiques publiques et enjeux
+budget
+dette
+deficit
+impots
+impot
+taxe
+taxes
+fiscalite
+pouvoir d achat
+inflation
+smic
+salaires
+chomage
+emploi
+retraite
+retraites
+reforme
+reformes
+securite sociale
+assurance chomage
+immigration
+migrants
+asile
+expulsion
+oqtf
+frontieres
+securite
+insecurite
+police
+gendarmerie
+justice
+laicite
+voile
+ecole
+education nationale
+enseignants
+universite
+hopital
+sante publique
+logement
+loyers
+apl
+agriculteurs
+agriculture
+ecologie
+climat
+transition energetique
+nucleaire
+energie
+carburant
+carburants
+essence
+greve
+greves
+manifestation
+manifestations
+manifestants
+mobilisation
+syndicat
+syndicats
+intersyndicale
+blocage
+blocages
+blocus
+gilets jaunes
+fin de vie
+outre mer
+nouvelle caledonie
+defense
+armee
+guerre
+ukraine
+russie
+gaza
+israel
+otan

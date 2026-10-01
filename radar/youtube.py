@@ -87,6 +87,8 @@ class _VideoItem(BaseModel):
 class _VideoSnippet(BaseModel):
     title: str
     publishedAt: datetime
+    description: str = ""
+    tags: list[str] = []
 
 
 class _VideoContent(BaseModel):
@@ -112,6 +114,38 @@ class _VideoDetailsResponse(BaseModel):
 
 class _VideosResponse(BaseModel):
     items: list[_VideoItem] = []
+
+
+class _AuteurId(BaseModel):
+    value: str
+
+
+class _CommentaireSnippet(BaseModel):
+    # authorDisplayName n'est volontairement pas lu : aucun pseudo n'entre dans le pipeline.
+    textDisplay: str
+    authorChannelId: _AuteurId | None = None
+    likeCount: int = 0
+    publishedAt: datetime
+    updatedAt: datetime | None = None
+
+
+class _CommentaireTop(BaseModel):
+    id: str
+    snippet: _CommentaireSnippet
+
+
+class _FilSnippet(BaseModel):
+    topLevelComment: _CommentaireTop
+    totalReplyCount: int = 0
+
+
+class _Fil(BaseModel):
+    snippet: _FilSnippet
+
+
+class _FilsResponse(BaseModel):
+    items: list[_Fil] = []
+    nextPageToken: str | None = None
 
 
 # --- Résultats exposés ---
@@ -141,6 +175,37 @@ class VideoDetail(BaseModel):
     vues: int
     commentaires_ouverts: bool
     ratio: float | None  # largeur / hauteur du lecteur ; < 1 = vertical ; None si inconnu
+    description: str = ""  # donnée brute
+    tags: list[str] = []  # donnée brute
+    nb_commentaires: int | None = None
+
+
+class CommentaireAPI(BaseModel):
+    """Commentaire de premier niveau. L'identifiant d'auteur doit être haché avant stockage."""
+
+    comment_id: str
+    video_id: str
+    texte: str
+    auteur_channel_id: str | None
+    likes: int
+    publie_at: datetime
+    modifie_at: datetime | None
+    nb_reponses: int
+
+
+DUREE_MAX_SHORT_S = 180  # Shorts jusqu'à 3 min depuis octobre 2024
+
+
+def format_video(v: "VideoDetail") -> Literal["short", "long", "ambigu"]:
+    """Short = durée ≤ 180 s ET lecteur vertical ou carré (docs/decisions.md, 01/10/2026).
+
+    'ambigu' : ≤ 3 min et format du lecteur inconnu.
+    """
+    if v.duree_s == 0 or v.duree_s > DUREE_MAX_SHORT_S:
+        return "long"
+    if v.ratio is None:
+        return "ambigu"
+    return "short" if v.ratio <= 1 else "long"
 
 
 def duree_iso8601(duree: str) -> int:
@@ -176,6 +241,15 @@ def cle_api() -> str:
     if not cle:
         raise SystemExit("YOUTUBE_API_KEY absente. Lance d'abord : export YOUTUBE_API_KEY=ta_cle")
     return cle
+
+
+def _raison_erreur(e: requests.HTTPError) -> str | None:
+    """Raison YouTube d'une erreur HTTP (ex. 'commentsDisabled', 'quotaExceeded')."""
+    try:
+        corps: Any = e.response.json() if e.response is not None else None
+        return str(corps["error"]["errors"][0]["reason"])
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None
 
 
 def _transport_http(url: str, params: dict[str, str]) -> Any:
@@ -219,11 +293,24 @@ class YouTube:
     def ids_recents(
         self, uploads_playlist_id: str, maintenant: datetime, jours: int, max_pages: int
     ) -> tuple[list[tuple[str, datetime]], bool]:
-        """(id, date) des uploads des `jours` derniers jours, plus un indicateur de troncature.
+        """(id, date) des uploads des `jours` derniers jours, plus un indicateur de troncature."""
+        return self.ids_periode(
+            uploads_playlist_id, maintenant - timedelta(days=jours), None, max_pages
+        )
 
+    def ids_periode(
+        self,
+        uploads_playlist_id: str,
+        depuis: datetime,
+        jusqua: datetime | None,
+        max_pages: int,
+    ) -> tuple[list[tuple[str, datetime]], bool]:
+        """(id, date) des uploads publiés dans [depuis, jusqua[, plus un indicateur de troncature.
+
+        La playlist est parcourue du plus récent au plus ancien, jusqu'à dépasser `depuis`.
         Coût : 1 unité par page de 50 uploads.
         """
-        limite = maintenant - timedelta(days=jours)
+        limite = depuis
         videos: list[tuple[str, datetime]] = []
         page: str | None = None
         tronque = False
@@ -239,7 +326,7 @@ class YouTube:
             dates = [i.contentDetails.videoPublishedAt for i in rep.items]
             for item in rep.items:
                 pub = item.contentDetails.videoPublishedAt
-                if pub is None or pub < limite:
+                if pub is None or pub < limite or (jusqua is not None and pub >= jusqua):
                     continue
                 videos.append((item.contentDetails.videoId, pub))
             page = rep.nextPageToken
@@ -270,9 +357,57 @@ class YouTube:
                         vues=v.statistics.viewCount,
                         commentaires_ouverts=v.statistics.commentCount is not None,
                         ratio=w / h if w and h else None,
+                        description=v.snippet.description,
+                        tags=v.snippet.tags,
+                        nb_commentaires=v.statistics.commentCount,
                     )
                 )
         return details
+
+    def commentaires(self, video_id: str, max_pages: int) -> list[CommentaireAPI]:
+        """Commentaires de premier niveau, ordre de pertinence, pages de 100.
+
+        Coût : 1 unité par page. Commentaires fermés : liste vide (l'appel est quand même compté).
+        """
+        resultat: list[CommentaireAPI] = []
+        page: str | None = None
+        for _ in range(max_pages):
+            params = {
+                "part": "snippet",
+                "videoId": video_id,
+                "maxResults": "100",
+                "order": "relevance",
+                "textFormat": "plainText",
+            }
+            if page:
+                params["pageToken"] = page
+            try:
+                brut = self._appel("commentThreads", params)
+            except requests.HTTPError as e:
+                if _raison_erreur(e) == "commentsDisabled":
+                    return []
+                raise
+            rep = _FilsResponse.model_validate(brut)
+            for fil in rep.items:
+                c = fil.snippet.topLevelComment
+                resultat.append(
+                    CommentaireAPI(
+                        comment_id=c.id,
+                        video_id=video_id,
+                        texte=c.snippet.textDisplay,
+                        auteur_channel_id=(
+                            c.snippet.authorChannelId.value if c.snippet.authorChannelId else None
+                        ),
+                        likes=c.snippet.likeCount,
+                        publie_at=c.snippet.publishedAt,
+                        modifie_at=c.snippet.updatedAt,
+                        nb_reponses=fil.snippet.totalReplyCount,
+                    )
+                )
+            page = rep.nextPageToken
+            if page is None:
+                break
+        return resultat
 
     def stats_recentes(
         self, uploads_playlist_id: str, maintenant: datetime, jours: int, max_pages: int

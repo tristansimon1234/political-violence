@@ -20,24 +20,19 @@ import requests
 from import_sources import LignePanel, lire_csv
 
 from radar.schemas import FENETRE_ACTIVITE_JOURS, LIBELLES_TYPE, SEUIL_ACTIVITE_VIDEOS
-from radar.youtube import Chaine, QuotaDepasse, ResolutionImpossible, VideoDetail, YouTube, cle_api
+from radar.youtube import (
+    Chaine,
+    QuotaDepasse,
+    ResolutionImpossible,
+    VideoDetail,
+    YouTube,
+    cle_api,
+    format_video,
+)
 
 log = logging.getLogger("audit_panel")
 
-DUREE_MAX_SHORT_S = 180  # Shorts jusqu'à 3 min depuis octobre 2024
 NB_TITRES = 20
-
-
-def format_video(v: VideoDetail) -> str:
-    """'short', 'long' ou 'ambigu' (≤ 3 min, format du lecteur inconnu).
-
-    Règle : Short = durée ≤ 180 s ET lecteur vertical ou carré (largeur ≤ hauteur).
-    """
-    if v.duree_s == 0 or v.duree_s > DUREE_MAX_SHORT_S:
-        return "long"
-    if v.ratio is None:
-        return "ambigu"
-    return "short" if v.ratio <= 1 else "long"
 
 
 @dataclass
