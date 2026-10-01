@@ -18,22 +18,22 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 ## Périmètre
 
 - Plateforme : YouTube uniquement (API Data v3). X / TikTok éventuels plus tard, en source de contrôle.
-- Panel : référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives. Règles fixes appliquées mécaniquement (`docs/methodologie.md`, `docs/decisions.md` du 01/10/2026). **Pas de cible de nombre** : tout ce qui passe entre, le reste va en réserve.
-  - `media_traditionnel` (« Médias traditionnels ») : chaîne rattachée à une télévision, une radio ou un titre de presse. Base : les 36 médias nationaux de l'étude de Lausanne (arXiv 2512.17768).
-  - `media_natif` (« Médias natifs du web ») : nés sur Internet, sans télévision, radio ou titre de presse derrière, incarnés par une personne ou non (pure players et créateurs). Filtre : ≥ 50 % de titres sur la politique française (20 dernières vidéos).
+- Panel : référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives. **Liste fermée v1** (`panel/sources/panel_v1_liste_fermee.csv`, `docs/decisions.md` du 01/10/2026) : aucune autre chaîne n'est recherchée ; filtres appliqués mécaniquement ; revue mensuelle. **Pas de cible de nombre** : tout ce qui passe entre, le reste va en réserve.
+  - `media_traditionnel` (« Médias traditionnels ») : chaîne rattachée à une télévision, une radio ou un titre de presse. Source : les médias nationaux de l'étude de Lausanne (arXiv 2512.17768, table 14).
+  - `media_natif` (« Médias natifs du web ») : nés sur Internet, sans télévision, radio ou titre de presse derrière, incarnés par une personne ou non (pure players et créateurs). Source : pure players de Lausanne et choix éditorial publié dans la méthodologie. Filtre : ≥ 50 % de titres sur la politique française (20 dernières vidéos).
   - `politique` (« Politiques ») : **lues à part** (chambres d'écho militantes), jamais agrégées aux réactions du public.
     - `parti` : chaînes officielles des partis représentés à l'Assemblée, quelle que soit leur activité. Pas de chaîne de dirigeant en substitut ; un parti sans chaîne est noté « sans chaîne active ».
-    - `personnalite` : tous les candidats déclarés à la présidentielle qui passent le critère d'activité, sans plafond.
+    - `personnalite` : candidats déclarés selon la liste LCP qui passent le critère d'activité, sans plafond. Candidats à une primaire : seul le vainqueur peut entrer.
 - Critère commun d'activité : **≥ 10 vidéos sur 90 jours, Shorts compris** (partis exemptés).
 - Chaque source porte `type`, `sous_type`, et le critère (et les sources du vivier) qui justifient sa présence.
-- Réserve : chaînes qui échouent, retestées chaque mois avec les mêmes règles ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
+- Réserve : chaînes de la liste qui échouent aux filtres, retestées à chaque revue mensuelle ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
 - Shorts inclus partout, avec un champ `format` (`short` / `long`). Une seule page de commentaires par Short. Vues séparées par format dans les métriques d'attention et d'intensité.
 - Pas de champ "orientation politique" sur les médias. L'équilibre du panel se vérifie à la main et se documente.
 
 ## Règles non négociables
 
 **YouTube API**
-- Jamais `search.list` (100 unités). Passer par la playlist des uploads (1 unité). Seule exception : la recherche standardisée du vivier des médias natifs (`docs/decisions.md`, 01/10/2026).
+- Jamais `search.list` (100 unités). Passer par la playlist des uploads (1 unité).
 - Quota : 10 000 unités/jour, remise à zéro à 9 h (Paris). Cible : 1 500 à 3 000/jour. Logger la consommation à chaque run.
 - Un seul projet Google Cloud. Multiplier les projets pour cumuler du quota est interdit.
 - Données brutes de l'API (texte des commentaires, titres, descriptions) : 30 jours maximum, puis suppression ou rafraîchissement. Les commentaires supprimés sur YouTube disparaissent chez nous.
