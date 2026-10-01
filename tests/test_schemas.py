@@ -1,13 +1,13 @@
 from radar.schemas import (
-    QUOTAS_PANEL,
+    LIBELLES_TYPE,
     SOUS_TYPES_PAR_TYPE,
     TYPES_SOURCE,
     sous_type_valide,
 )
 
 
-def test_chaque_type_a_des_sous_types() -> None:
-    assert set(SOUS_TYPES_PAR_TYPE) == set(TYPES_SOURCE)
+def test_chaque_type_a_des_sous_types_et_un_libelle() -> None:
+    assert set(SOUS_TYPES_PAR_TYPE) == set(TYPES_SOURCE) == set(LIBELLES_TYPE)
     assert all(SOUS_TYPES_PAR_TYPE[t] for t in TYPES_SOURCE)
 
 
@@ -17,11 +17,11 @@ def test_sous_types_non_partages_entre_types() -> None:
 
 
 def test_sous_type_valide() -> None:
-    assert sous_type_valide("media", "info_continu")
-    assert not sous_type_valide("media", "parti")
+    assert sous_type_valide("media_traditionnel", "info_continu")
+    assert sous_type_valide("media_natif", "createur")
+    assert not sous_type_valide("media_traditionnel", "pure_player")
     assert not sous_type_valide("politique", "inconnu")
 
 
-def test_quotas_panel() -> None:
-    assert set(QUOTAS_PANEL) == set(TYPES_SOURCE)
-    assert sum(QUOTAS_PANEL.values()) == 50
+def test_categorie_influenceur_supprimee() -> None:
+    assert "influenceur" not in TYPES_SOURCE

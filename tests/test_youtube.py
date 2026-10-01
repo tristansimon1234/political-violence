@@ -121,3 +121,27 @@ def test_resoudre_chaine_introuvable() -> None:
     yt = YouTube("cle", budget=1, transport=lambda url, params: {"items": []})
     with pytest.raises(ResolutionImpossible):
         yt.resoudre_chaine("@inexistante")
+
+
+def test_recherche_interviews_coute_100_et_respecte_le_budget() -> None:
+    appels: list[dict[str, str]] = []
+
+    def transport(url: str, params: dict[str, str]) -> Any:
+        appels.append(params)
+        return {"items": [{"snippet": {"channelId": "UCx", "channelTitle": "X"}}]}
+
+    yt = YouTube("cle", budget=150, transport=transport)
+    assert yt.recherche_interviews("Jean Dupont", MAINTENANT) == [("UCx", "X")]
+    assert yt.consomme == 100
+    p = appels[0]
+    assert p["q"] == "Jean Dupont interview"
+    assert (p["type"], p["relevanceLanguage"], p["regionCode"], p["maxResults"]) == (
+        "video",
+        "fr",
+        "FR",
+        "25",
+    )
+    assert p["publishedAfter"] == "2025-09-30T00:00:00Z"
+    with pytest.raises(QuotaDepasse):
+        yt.recherche_interviews("Autre", MAINTENANT)
+    assert yt.consomme == 100

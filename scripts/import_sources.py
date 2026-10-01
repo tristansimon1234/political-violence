@@ -43,6 +43,7 @@ class LignePanel(BaseModel):
     sous_type: SousType
     critere: str
     nom: str | None = None  # nom attendu, pour vérifier la résolution à l'œil
+    sources: str | None = None  # provenance dans le vivier (docs/decisions.md, 01/10/2026)
 
     @field_validator("url")
     @classmethod

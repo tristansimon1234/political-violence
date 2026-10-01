@@ -24,7 +24,7 @@ def _derniere(motif: str) -> list[tuple[str, ...]] | list[str]:
 
 
 def test_types_source_identiques() -> None:
-    (liste,) = _derniere(r"type text not null check \(type in \(([^)]*)\)\)")
+    (liste,) = _derniere(r"check \(type in \(([^)]*)\)\)")
     assert isinstance(liste, str)
     assert _liste(liste) == set(TYPES_SOURCE)
 

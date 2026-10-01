@@ -114,6 +114,19 @@ class _VideosResponse(BaseModel):
     items: list[_VideoItem] = []
 
 
+class _SearchSnippet(BaseModel):
+    channelId: str
+    channelTitle: str
+
+
+class _SearchItem(BaseModel):
+    snippet: _SearchSnippet
+
+
+class _SearchResponse(BaseModel):
+    items: list[_SearchItem] = []
+
+
 # --- Résultats exposés ---
 
 
@@ -215,6 +228,25 @@ class YouTube:
             abonnes=c.statistics.subscriberCount,
             uploads_playlist_id=c.contentDetails.relatedPlaylists.uploads,
         )
+
+    def recherche_interviews(self, nom: str, maintenant: datetime) -> list[tuple[str, str]]:
+        """(channel_id, nom de chaîne) des 25 premières vidéos pour « <nom> interview ».
+
+        EXCEPTION UNIQUE au bannissement de search.list (docs/decisions.md, 01/10/2026) :
+        constitution du vivier des médias natifs, une requête par candidat déclaré.
+        Coût : 100 unités par appel. Ne pas réutiliser ailleurs.
+        """
+        params = {
+            "part": "snippet",
+            "q": f"{nom} interview",
+            "type": "video",
+            "relevanceLanguage": "fr",
+            "regionCode": "FR",
+            "publishedAfter": (maintenant - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "maxResults": "25",
+        }
+        rep = _SearchResponse.model_validate(self._appel("search", params, cout=100))
+        return [(i.snippet.channelId, i.snippet.channelTitle) for i in rep.items]
 
     def ids_recents(
         self, uploads_playlist_id: str, maintenant: datetime, jours: int, max_pages: int

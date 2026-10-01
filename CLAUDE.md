@@ -18,22 +18,22 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 ## Périmètre
 
 - Plateforme : YouTube uniquement (API Data v3). X / TikTok éventuels plus tard, en source de contrôle.
-- Panel : ~50 chaînes, référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives. Cibles **indicatives** : s'il manque des chaînes qui passent les critères, on reste en dessous.
-  - `media` (~25) : marque éditoriale non incarnée par une seule personne (rédaction, plusieurs intervenants). Info en continu, télé/radio, talk-shows, presse nationale, pure players.
-  - `influenceur` (~12) : chaîne incarnée par une personne identifiée (nom ou visage), indépendante d'un groupe de presse. Vulgarisation, commentateurs, débat, interview longue.
-  - `politique` (~13) : **analysées à part** (chambres d'écho militantes), jamais agrégées avec le reste.
+- Panel : référentiel dans la table Supabase `sources`, gérée depuis l'espace admin (voir `docs/interface.md`). Le batch quotidien lit les sources actives. Règles fixes appliquées mécaniquement (`docs/methodologie.md`, `docs/decisions.md` du 01/10/2026). **Pas de cible de nombre** : tout ce qui passe entre, le reste va en réserve.
+  - `media_traditionnel` (« Médias traditionnels ») : chaîne rattachée à une télévision, une radio ou un titre de presse. Base : les 36 médias nationaux de l'étude de Lausanne (arXiv 2512.17768).
+  - `media_natif` (« Médias natifs du web ») : nés sur Internet, sans télévision, radio ou titre de presse derrière, incarnés par une personne ou non (pure players et créateurs). Filtre : ≥ 50 % de titres sur la politique française (20 dernières vidéos).
+  - `politique` (« Politiques ») : **lues à part** (chambres d'écho militantes), jamais agrégées aux réactions du public.
     - `parti` : chaînes officielles des partis représentés à l'Assemblée, quelle que soit leur activité. Pas de chaîne de dirigeant en substitut ; un parti sans chaîne est noté « sans chaîne active ».
-    - `personnalite` : toutes les personnalités candidates déclarées qui passent le seuil d'activité, sans plafond.
-- Chaque source porte `type`, `sous_type`, et le critère qui justifie sa présence.
-- Critère de sélection : quotas par sous-type, puis classement par **vues sur les 90 derniers jours** (pas par abonnés), sous condition d'activité (**≥ 10 vidéos sur 90 jours, Shorts compris**, politique française, commentaires ouverts). Diversité éditoriale vérifiée ensuite (public/privé, lignes éditoriales). Vues et activité calculées automatiquement à l'import dans l'admin.
-- Réserve : chaînes écartées, retestées chaque mois avec les mêmes critères ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
-- Shorts inclus, avec un champ `format` (`short` / `long`). Vues séparées par format dans les métriques.
-- Pas de champ "orientation politique" sur les médias et influenceurs. L'équilibre du panel se vérifie à la main et se documente.
+    - `personnalite` : tous les candidats déclarés à la présidentielle qui passent le critère d'activité, sans plafond.
+- Critère commun d'activité : **≥ 10 vidéos sur 90 jours, Shorts compris** (partis exemptés).
+- Chaque source porte `type`, `sous_type`, et le critère (et les sources du vivier) qui justifient sa présence.
+- Réserve : chaînes qui échouent, retestées chaque mois avec les mêmes règles ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
+- Shorts inclus partout, avec un champ `format` (`short` / `long`). Une seule page de commentaires par Short. Vues séparées par format dans les métriques d'attention et d'intensité.
+- Pas de champ "orientation politique" sur les médias. L'équilibre du panel se vérifie à la main et se documente.
 
 ## Règles non négociables
 
 **YouTube API**
-- Jamais `search.list` (100 unités). Passer par la playlist des uploads (1 unité).
+- Jamais `search.list` (100 unités). Passer par la playlist des uploads (1 unité). Seule exception : la recherche standardisée du vivier des médias natifs (`docs/decisions.md`, 01/10/2026).
 - Quota : 10 000 unités/jour, remise à zéro à 9 h (Paris). Cible : 1 500 à 3 000/jour. Logger la consommation à chaque run.
 - Un seul projet Google Cloud. Multiplier les projets pour cumuler du quota est interdit.
 - Données brutes de l'API (texte des commentaires, titres, descriptions) : 30 jours maximum, puis suppression ou rafraîchissement. Les commentaires supprimés sur YouTube disparaissent chez nous.

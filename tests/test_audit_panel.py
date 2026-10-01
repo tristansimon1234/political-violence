@@ -55,6 +55,8 @@ def test_main_audit(
     def transport(url: str, params: dict[str, str]) -> Any:
         ressource = url.rsplit("/", 1)[1]
         if ressource == "channels":
+            if params.get("forHandle") == "@vide":
+                return {"items": []}
             return {
                 "items": [
                     {
@@ -96,30 +98,32 @@ def test_main_audit(
     def fabrique(cle: str, budget: int) -> YouTube:
         return YouTube(cle, budget, transport=transport)
 
-    csv = tmp_path / "c.csv"
-    csv.write_text("url,type,sous_type,critere\n@a,influenceur,debat,x\n", encoding="utf-8")
+    csv = tmp_path / "vivier.csv"
+    csv.write_text(
+        "url,type,sous_type,critere,nom,sources\n"
+        "@a,media_natif,createur,x,A,(b) panel actuel\n"
+        "@a,media_traditionnel,tv_radio,x,A,(Lausanne)\n"
+        "@vide,politique,parti,x,Parti X,Assemblée\n"
+        "@vide,media_natif,pure_player,x,Natif X,(c)\n",
+        encoding="utf-8",
+    )
     titres = tmp_path / "titres.txt"
     monkeypatch.setattr(audit_panel, "YouTube", fabrique)
     monkeypatch.setenv("YOUTUBE_API_KEY", "x")
     monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "audit",
-            "--panel",
-            str(csv),
-            "--personnalites",
-            str(csv),
-            "--candidats",
-            str(csv),
-            "--titres",
-            str(titres),
-        ],
+        sys, "argv", ["audit", str(csv), "--budget", "100", "--titres", str(titres)]
     )
     assert audit_panel.main() == 0
     sortie = capsys.readouterr().out
-    assert "| 12 (8 / 4 / 0) |" in sortie
-    assert "passe grâce aux Shorts seulement (8 longues)" in sortie
-    assert "| 12 | 8 | 4 | 0 | 33% |" in sortie
-    assert "[short] titre v0" in titres.read_text(encoding="utf-8")
-    assert "Quota YouTube consommé : **9 / 3000**" in sortie
+    assert "| media_natif / createur | (b) panel actuel | 8 / 4 | 120 | 33% | à évaluer |" in sortie
+    assert "activité OK, politique française à évaluer" in sortie
+    assert "| media_traditionnel / tv_radio | (Lausanne) | 8 / 4 |" in sortie
+    assert "entre : sans chaîne active" in sortie
+    assert "réserve : chaîne introuvable" in sortie
+    assert "| Médias traditionnels | 1 | 0 | 0 |" in sortie
+    assert "| Médias natifs du web | 0 | 1 | 1 |" in sortie
+    assert "| Politiques | 1 | 0 | 0 |" in sortie
+    titres_txt = titres.read_text(encoding="utf-8")
+    assert titres_txt.count("## Chaîne A") == 1  # titres des médias natifs seulement
+    assert "[short] titre v0" in titres_txt
+    assert "Quota YouTube consommé : **8 / 100**" in sortie

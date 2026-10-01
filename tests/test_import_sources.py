@@ -15,15 +15,17 @@ def _csv(tmp_path: Path, contenu: str) -> Path:
 
 
 def test_csv_valide(tmp_path: Path) -> None:
-    lignes = lire_csv(_csv(tmp_path, "@a,media,info_continu,top vues 30j info continu\n"))
+    lignes = lire_csv(
+        _csv(tmp_path, "@a,media_traditionnel,info_continu,top vues 30j info continu\n")
+    )
     assert lignes[0].sous_type == "info_continu"
 
 
 @pytest.mark.parametrize(
     "ligne",
     [
-        "@a,media,parti,x\n",  # sous_type incompatible
-        "@a,media,info_continu,  \n",  # critère vide
+        "@a,media_traditionnel,parti,x\n",  # sous_type incompatible
+        "@a,media_traditionnel,info_continu,  \n",  # critère vide
         "@a,orientation,debat,x\n",  # type inconnu
         "Reconquête,politique,parti,x\n",  # pas une URL ni un handle
     ],
@@ -60,7 +62,7 @@ def test_main_dry_run(
 
     monkeypatch.setattr(import_sources, "YouTube", fabrique)
     monkeypatch.setenv("YOUTUBE_API_KEY", "x")
-    csv = _csv(tmp_path, "@a,media,info_continu,critère,Chaîne B\n")
+    csv = _csv(tmp_path, "@a,media_traditionnel,info_continu,critère,Chaîne B\n")
     monkeypatch.setattr(sys, "argv", ["import_sources", str(csv), "--dry-run"])
     assert import_sources.main() == 0
     sortie = capsys.readouterr().out

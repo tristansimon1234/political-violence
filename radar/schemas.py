@@ -5,27 +5,40 @@ Toute modification d'une liste fermée incrémente VERSION_TAXONOMIE.
 
 from typing import Final, Literal, get_args
 
-VERSION_TAXONOMIE: Final = 2
+VERSION_TAXONOMIE: Final = 3
 
-# --- Sources du panel ---
+# --- Sources du panel (docs/decisions.md, 01/10/2026) ---
 
-TypeSource = Literal["media", "influenceur", "politique"]
+TypeSource = Literal["media_traditionnel", "media_natif", "politique"]
 
-SousTypeMedia = Literal["info_continu", "tv_radio", "talk_show", "presse_nationale", "pure_player"]
-SousTypeInfluenceur = Literal["vulgarisation", "commentateur", "debat", "interview_longue"]
+SousTypeMediaTraditionnel = Literal["info_continu", "tv_radio", "talk_show", "presse_nationale"]
+SousTypeMediaNatif = Literal["pure_player", "createur"]
 SousTypePolitique = Literal["parti", "personnalite"]
-SousType = SousTypeMedia | SousTypeInfluenceur | SousTypePolitique
+SousType = SousTypeMediaTraditionnel | SousTypeMediaNatif | SousTypePolitique
 
 TYPES_SOURCE: Final[tuple[TypeSource, ...]] = get_args(TypeSource)
 
 SOUS_TYPES_PAR_TYPE: Final[dict[TypeSource, tuple[SousType, ...]]] = {
-    "media": get_args(SousTypeMedia),
-    "influenceur": get_args(SousTypeInfluenceur),
+    "media_traditionnel": get_args(SousTypeMediaTraditionnel),
+    "media_natif": get_args(SousTypeMediaNatif),
     "politique": get_args(SousTypePolitique),
 }
 
-# Quotas cibles du panel (docs/decisions.md, 30/09/2026).
-QUOTAS_PANEL: Final[dict[TypeSource, int]] = {"media": 25, "influenceur": 12, "politique": 13}
+# Libellés d'interface.
+LIBELLES_TYPE: Final[dict[TypeSource, str]] = {
+    "media_traditionnel": "Médias traditionnels",
+    "media_natif": "Médias natifs du web",
+    "politique": "Politiques",
+}
+
+# Critère commun d'activité : au moins 10 vidéos sur 90 jours, Shorts compris.
+SEUIL_ACTIVITE_VIDEOS: Final = 10
+FENETRE_ACTIVITE_JOURS: Final = 90
+
+# --- Vidéos ---
+
+FormatVideo = Literal["short", "long"]
+FORMATS_VIDEO: Final[tuple[FormatVideo, ...]] = get_args(FormatVideo)
 
 
 def sous_type_valide(type_source: TypeSource, sous_type: str) -> bool:
