@@ -403,10 +403,11 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
             if not themes:
                 erreurs.append(f"{ref} : thèmes vides (écrire « {AUCUN_THEME} » si non politique)")
         position: Position | None = None
-        if nature == "opinion_debat":
+        # « - » sous une vidéo d'opinion : position volontairement non étiquetée (ignorée).
+        if nature == "opinion_debat" and brut_position != SANS_POSITION:
             position = next((p for p in POSITIONS if p == brut_position), None)
             if position is None:
-                erreurs.append(f"{ref} : position attendue ({', '.join(POSITIONS)})")
+                erreurs.append(f"{ref} : position attendue ({', '.join(POSITIONS)} ou -)")
         tonalite: Tonalite | None = next((t for t in TONALITES if t == brut_tonalite), None)
         if tonalite is None:
             erreurs.append(f"{ref} : tonalité attendue ({', '.join(TONALITES)})")
