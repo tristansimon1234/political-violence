@@ -662,3 +662,93 @@ select {
   color: var(--r-bleu);
 }
 
+.radar-semaines {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 20px;
+  padding: 0 24px 48px;
+}
+
+@media (max-width: 1000px) {
+  .radar-semaines {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.radar-changements {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.radar-changements li {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--r-piste);
+  font-size: 13px;
+}
+
+.radar-changements li > :last-child {
+  grid-column: 2;
+}
+
+.radar-etiquette {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.radar-etiquette.hausse {
+  background: #f6e3d5;
+  color: var(--r-orange-texte);
+}
+
+.radar-etiquette.baisse {
+  background: #e6edf8;
+  color: #1e3f78;
+}
+
+.radar-etiquette.nouveau {
+  background: #eef6ef;
+  color: #2c5e36;
+}
+
+.radar-lien {
+  font: inherit;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--r-bleu);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.radar-chaleur {
+  font-size: 12px;
+}
+
+.radar-chaleur th,
+.radar-chaleur td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--r-surface);
+  text-align: right;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.radar-chaleur th[scope="row"],
+.radar-chaleur thead th:first-child {
+  text-align: left;
+  font-family: inherit;
+}
+
+.radar-chaleur .peu-fiable {
+  opacity: 0.45;
+}
+

@@ -12,8 +12,21 @@ import {
   sujetsFiltres,
   videosQuiReagissent,
 } from "@/lib/agenda";
+import {
+  MIN_COMMENTAIRES_SEMAINE,
+  type Semaine,
+  changements,
+  nouveauxSousSujets,
+  semaines,
+} from "@/lib/semaines";
 import { supabase } from "@/lib/supabase";
-import { LIBELLES_THEMES, LIBELLES_TYPE, type Theme, type TypeSource } from "@/lib/taxonomie";
+import {
+  LIBELLES_THEMES,
+  LIBELLES_TYPE,
+  THEMES,
+  type Theme,
+  type TypeSource,
+} from "@/lib/taxonomie";
 import {
   type Agregat,
   type Filtres,
@@ -173,6 +186,7 @@ function VueEnsemble() {
               )}
             </div>
             <ThemeSelectionne
+              key={actif.theme}
               ligne={actif}
               lignes={lignes}
               filtres={filtres}
@@ -180,6 +194,12 @@ function VueEnsemble() {
               sujets={sujetsPeriode}
             />
           </div>
+          <ComparaisonSemaines
+            lignes={lignes}
+            filtres={filtres}
+            sujets={sujets}
+            choisir={setChoisi}
+          />
         </>
       )}
     </div>
@@ -585,7 +605,9 @@ function ThemeSelectionne({
 }) {
   const [courante] = fenetres(lignes, filtres.periode);
   const ss = sousSujets(sujets, ligne.theme);
-  const videos = videosQuiReagissent(sujets, ligne.theme);
+  const [toutes, setToutes] = useState(false);
+  const toutesVideos = videosQuiReagissent(sujets, ligne.theme, Number.POSITIVE_INFINITY);
+  const videos = toutes ? toutesVideos : toutesVideos.slice(0, 5);
   const du = (types: TypeSource[]) =>
     additionner(
       filtrer(lignes, filtres, types).filter((l) => l.theme === ligne.theme && dans(l, courante)),
@@ -646,6 +668,13 @@ function ThemeSelectionne({
               </li>
             ))}
           </ol>
+          {toutesVideos.length > 5 && (
+            <button className="segment" onClick={() => setToutes(!toutes)} aria-expanded={toutes}>
+              {toutes
+                ? "Ne garder que les 5 premières"
+                : `Voir toutes les vidéos du thème (${toutesVideos.length})`}
+            </button>
+          )}
           <p className="discret petit-texte">
             Libellé neutre du sujet (pas le titre de la vidéo) ; commentaires annoncés par YouTube,
             réponses comprises.
@@ -740,5 +769,139 @@ function Courbe({ serie }: { serie: number[] }) {
     <svg className="radar-courbe" width={l} height={h} viewBox={`0 0 ${l} ${h}`} aria-hidden="true">
       <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
+  );
+}
+
+const semaineCourte = (lundi: string) => `sem. du ${dateCourte(lundi)}`;
+
+function ComparaisonSemaines({
+  lignes,
+  filtres,
+  sujets,
+  choisir,
+}: {
+  lignes: Agregat[];
+  filtres: Filtres;
+  sujets: SujetVideo[];
+  choisir: (t: Theme) => void;
+}) {
+  const liste = semaines(lignes, filtres);
+  const c = changements(liste);
+  const nouveaux = c ? nouveauxSousSujets(sujets, c.avant.debut, c.apres.debut) : [];
+  const themesTries = [...THEMES].sort(
+    (a, b) =>
+      liste.reduce((s2, w) => s2 + (w.parts.get(b) ?? 0) * w.total, 0) -
+      liste.reduce((s2, w) => s2 + (w.parts.get(a) ?? 0) * w.total, 0),
+  );
+  const maxPart = Math.max(0.01, ...liste.flatMap((w) => [...w.parts.values()]));
+  return (
+    <div className="radar-semaines">
+      <section className="radar-carte" aria-labelledby="titre-change">
+        <h2 id="titre-change">Ce qui a changé</h2>
+        {!c ? (
+          <EnPreparation
+            titre="Comparaison avec la semaine précédente"
+            attend={`deux semaines complètes d'au moins ${entier(MIN_COMMENTAIRES_SEMAINE)} commentaires politiques (backfill de septembre, puis collecte quotidienne).`}
+          />
+        ) : (
+          <>
+            <p className="discret petit-texte">
+              {semaineCourte(c.apres.debut)} face à la {semaineCourte(c.avant.debut)}, en points de
+              part des commentaires politiques.
+            </p>
+            <ul className="radar-changements">
+              {c.hausses.map((x) => (
+                <li key={x.theme}>
+                  <span className="radar-etiquette hausse">En hausse</span>
+                  <button className="radar-lien" onClick={() => choisir(x.theme)}>
+                    {LIBELLES_THEMES[x.theme]}
+                  </button>
+                  <span className="radar-mono">
+                    {pc(x.avant * 100)} → {pc(x.apres * 100)} (+{Math.round(x.ecart)} pts)
+                  </span>
+                </li>
+              ))}
+              {c.baisses.map((x) => (
+                <li key={x.theme}>
+                  <span className="radar-etiquette baisse">En baisse</span>
+                  <button className="radar-lien" onClick={() => choisir(x.theme)}>
+                    {LIBELLES_THEMES[x.theme]}
+                  </button>
+                  <span className="radar-mono">
+                    {pc(x.avant * 100)} → {pc(x.apres * 100)} (−{Math.abs(Math.round(x.ecart))} pts)
+                  </span>
+                </li>
+              ))}
+              {nouveaux.map((libelle) => (
+                <li key={libelle}>
+                  <span className="radar-etiquette nouveau">Nouveau</span>
+                  <span>{libelle}</span>
+                  <span className="discret petit-texte">sous-sujet entré dans le top 10</span>
+                </li>
+              ))}
+            </ul>
+            {c.hausses.length + c.baisses.length + nouveaux.length === 0 && (
+              <p className="discret petit-texte">Aucun mouvement d'au moins 1 point.</p>
+            )}
+          </>
+        )}
+      </section>
+      <section className="radar-carte" aria-labelledby="titre-semaines">
+        <h2 id="titre-semaines">Semaine par semaine</h2>
+        <p className="discret petit-texte">
+          Part de chaque thème parmi les commentaires politiques, par semaine de publication des
+          commentaires. Semaines grisées : moins de {entier(MIN_COMMENTAIRES_SEMAINE)} commentaires
+          ou semaine en cours.
+        </p>
+        <div className="defile">
+          <table className="radar-chaleur">
+            <thead>
+              <tr>
+                <th scope="col">Thème</th>
+                {liste.map((w) => (
+                  <th
+                    key={w.debut}
+                    scope="col"
+                    className={w.fiable && w.complete ? "" : "peu-fiable"}
+                    title={`${entier(w.total)} commentaires politiques`}
+                  >
+                    {dateCourte(w.debut)}
+                    {!w.complete && " *"}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {themesTries.map((t) => (
+                <tr key={t}>
+                  <th scope="row">
+                    <button className="radar-lien" onClick={() => choisir(t)}>
+                      {LIBELLES_THEMES[t]}
+                    </button>
+                  </th>
+                  {liste.map((w: Semaine) => {
+                    const part = w.parts.get(t) ?? 0;
+                    return (
+                      <td
+                        key={w.debut}
+                        className={w.fiable && w.complete ? "" : "peu-fiable"}
+                        style={{
+                          background: `color-mix(in srgb, var(--r-orange) ${Math.round((70 * part) / maxPart)}%, var(--r-surface))`,
+                        }}
+                      >
+                        {part > 0 ? pc(part * 100) : "–"}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="discret petit-texte">
+          * semaine incomplète (début de la collecte ou semaine en cours).
+        </p>
+      </section>
+    </div>
   );
 }
