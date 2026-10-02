@@ -175,3 +175,36 @@ Incident : le run se termine par « terminate called without an active exception
 
 **Hostilité non valable dans ces deux tests** (signalé par Tristan) : l'étiquetage de l'hostilité a subi un bug ; 10 cas évidents corrigés, 8 cas limites laissés à « non » sans être tranchés. La référence (13 %) est probablement trop basse ; l'écart avec Jev (43 %) et Claude (28 %) n'est pas interprétable. À refaire après l'arbitrage à l'aveugle des désaccords (thèmes, position, hostilité) sur ces vrais commentaires.
 
+## 02/10/2026 — Arbitrage à l'aveugle des désaccords réels
+
+125 désaccords (69 thèmes, 34 hostilité, 22 position) arbitrés par Tristan sans savoir qui avait répondu quoi. Aucun cas « plusieurs réponses » ni « aucune ».
+
+| Désaccords gagnés | Arbitrés | Tristan (1er jet) | Jev | Claude |
+|---|---:|---:|---:|---:|
+| Thèmes | 69 | 49 % | 46 % | 37 % |
+| Position | 22 | 45 % | 55 % | 32 % |
+| Hostilité | 34 | 29 % | 68 % | 53 % |
+| Total | 125 | 43 % | 54 % | 40 % |
+
+Justesse face à la **référence arbitrée** (étiquettes de Tristan corrigées par l'arbitrage ; modèles sans résumé de la vidéo) :
+
+| Dimension | Jev | Claude |
+|---|---:|---:|
+| Politique / non politique | 97 % | 81 % |
+| Thème principal | 77 % | 59 % |
+| Au moins un thème commun | 85 % | 70 % |
+| Position (36) | 72 % | 58 % |
+| Tonalité | 75 % | 71 % |
+| Hostilité | 89 % | 84 % |
+| Tout juste | 47 % | 31 % |
+
+Parts agrégées (référence / Jev / Claude) : hostiles 35 % / 44 % / 29 % ; `institutions` 35 / 40 / 30 ; `societe` 14 / 9 / 10 ; non politique 14 / 11 / 33 ; position `desaccord_video` 36 / 17 / 28, `hors_sujet` 33 / 50 / 33. Écarts (points) : thèmes 13 (Jev) / 22 (Claude) ; tonalité 13 / 7 ; position 19 / 8.
+
+Constats :
+
+- Le premier étiquetage de l'hostilité était bien trop strict (Tristan perd 71 % des désaccords) : la part d'hostiles passe de 13 % à 35 %. Les modèles n'exagéraient pas autant que le premier test le laissait croire.
+- **Jev est meilleur que Claude sur presque tout**, pour ~15 fois moins cher : politique 97 %, thème 77 / 85 %, hostilité 89 %. Claude reste plus juste sur les parts de position (8 points d'écart contre 19) et de tonalité (7 contre 13).
+- Biais restants : Jev met trop de `hors_sujet` et pas assez de `desaccord_video` ; Claude classe un commentaire sur trois non politique ; Jev surestime un peu l'hostilité (44 % contre 35 %).
+
+Limites : l'arbitrage ne peut retenir qu'une réponse proposée par l'un des trois, ce qui rapproche mécaniquement la référence des modèles et gonfle un peu leurs scores ; un seul annotateur, 100 étiquettes (marge ~±9 points ; ~±16 points sur la position).
+
