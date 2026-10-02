@@ -752,3 +752,32 @@ select {
   opacity: 0.45;
 }
 
+.radar-sous-titre-bloc {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--r-discret);
+}
+
+.radar-theses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.radar-these {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--r-piste);
+}
+
+.radar-these-texte {
+  margin: 0 0 6px;
+  font: 500 14px/1.4 "Newsreader", Georgia, serif;
+}
+
+.radar-these a {
+  color: var(--r-bleu);
+}
+

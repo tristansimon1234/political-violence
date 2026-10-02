@@ -6,10 +6,15 @@ import { AccesAdmin } from "@/lib/AccesAdmin";
 import {
   type Agenda,
   type SujetVideo,
+  MIN_PRONONCES,
+  type ReactionVideo,
+  type These,
+  type VideoDebattue,
   agendaParTheme,
   jourParis,
   sousSujets,
   sujetsFiltres,
+  videosDebattues,
   videosQuiReagissent,
 } from "@/lib/agenda";
 import {
@@ -72,6 +77,19 @@ async function chargerAgregats(): Promise<Agregat[]> {
   }
 }
 
+async function chargerTout<T>(table: string, colonnes: string): Promise<T[]> {
+  const lignes: T[] = [];
+  for (let i = 0; ; i += 1000) {
+    const { data, error } = await supabase()
+      .from(table)
+      .select(colonnes)
+      .range(i, i + 999);
+    if (error) throw new Error(error.message);
+    lignes.push(...(data as unknown as T[]));
+    if (!data || data.length < 1000) return lignes;
+  }
+}
+
 async function chargerSujets(): Promise<SujetVideo[]> {
   const lignes: SujetVideo[] = [];
   for (let i = 0; ; i += 1000) {
@@ -99,6 +117,8 @@ function VueEnsemble() {
   const [choisi, setChoisi] = useState<Theme | null>(null);
   const [sujets, setSujets] = useState<SujetVideo[]>([]);
   const [sansSujets, setSansSujets] = useState("");
+  const [reactions, setReactions] = useState<Map<string, ReactionVideo>>(new Map());
+  const [theses, setTheses] = useState<Map<string, These>>(new Map());
 
   useEffect(() => {
     chargerAgregats()
@@ -109,6 +129,13 @@ function VueEnsemble() {
     chargerSujets()
       .then(setSujets)
       .catch((e: unknown) => setSansSujets(e instanceof Error ? e.message : String(e)));
+    // Accord par vidéo et thèses (migration 11) : facultatifs également.
+    chargerTout<ReactionVideo>("agregats_videos", "*")
+      .then((l) => setReactions(new Map(l.map((r) => [r.video_id, r]))))
+      .catch(() => setReactions(new Map()));
+    chargerTout<These>("videos_theses", "video_id,these,explicite")
+      .then((l) => setTheses(new Map(l.map((t) => [t.video_id, t]))))
+      .catch(() => setTheses(new Map()));
   }, []);
 
   // Table vide : aucun calcul (pas de dernier jour, donc pas de fenêtre).
@@ -192,6 +219,8 @@ function VueEnsemble() {
               filtres={filtres}
               politiques={politiques}
               sujets={sujetsPeriode}
+              reactions={reactions}
+              theses={theses}
             />
           </div>
           <ComparaisonSemaines
@@ -596,14 +625,19 @@ function ThemeSelectionne({
   filtres,
   politiques,
   sujets,
+  reactions,
+  theses,
 }: {
   ligne: LigneTheme;
   lignes: Agregat[];
   filtres: Filtres;
   politiques: boolean;
   sujets: SujetVideo[];
+  reactions: Map<string, ReactionVideo>;
+  theses: Map<string, These>;
 }) {
   const [courante] = fenetres(lignes, filtres.periode);
+  const debattues = videosDebattues(sujets, ligne.theme, reactions, theses);
   const ss = sousSujets(sujets, ligne.theme);
   const [toutes, setToutes] = useState(false);
   const toutesVideos = videosQuiReagissent(sujets, ligne.theme, Number.POSITIVE_INFINITY);
@@ -681,6 +715,8 @@ function ThemeSelectionne({
           </p>
         </>
       )}
+
+      <SurQuoiDaccord debattues={debattues} />
 
       <h3>Accord avec les vidéos commentées</h3>
       <p className="discret petit-texte">
@@ -903,5 +939,103 @@ function ComparaisonSemaines({
         </p>
       </section>
     </div>
+  );
+}
+
+function LigneThese({ v }: { v: VideoDebattue }) {
+  const r = v.reaction;
+  const lien = `https://www.youtube.com/watch?v=${v.sujet.video_id}`;
+  return (
+    <li className="radar-these">
+      <p className="radar-these-texte">
+        {v.these ? `« ${v.these.these} »` : v.sujet.sous_sujet}
+        {!v.these && <span className="discret"> (thèse effacée après 30 jours)</span>}
+      </p>
+      <Barre
+        titre="Accord avec la vidéo"
+        total={v.prononces}
+        segments={[
+          { libelle: "Accord", valeur: r.accord, couleur: "var(--r-bleu)" },
+          { libelle: "Nuance", valeur: r.nuance, couleur: "var(--r-nuance)" },
+          { libelle: "Désaccord", valeur: r.desaccord, couleur: "var(--r-orange)" },
+        ]}
+      />
+      <p className="discret petit-texte">
+        {pc(v.partAccord * 100)} d'accord · {pc(v.partDesaccord * 100)} en désaccord ·{" "}
+        {entier(v.prononces)} commentaires se prononcent · {v.sujet.videos?.sources?.nom} ·{" "}
+        {v.sujet.videos ? dateCourte(jourParis(v.sujet.videos.publiee_at)) : ""} ·{" "}
+        <a href={lien} target="_blank" rel="noreferrer">
+          Voir la vidéo ↗
+        </a>
+      </p>
+    </li>
+  );
+}
+
+function SurQuoiDaccord({ debattues }: { debattues: VideoDebattue[] }) {
+  const [incertaines, setIncertaines] = useState(false);
+  const explicites = debattues.filter((v) => v.these?.explicite);
+  const autres = debattues.filter((v) => !v.these?.explicite);
+  const approuvees = [...explicites].sort((a, b) => b.partAccord - a.partAccord).slice(0, 3);
+  const contestees = [...explicites]
+    .sort((a, b) => b.partDesaccord - a.partDesaccord)
+    .filter((v) => !approuvees.includes(v) || explicites.length > 3)
+    .slice(0, 3);
+  return (
+    <>
+      <h3>Sur quoi les commentaires sont d'accord ou pas</h3>
+      {debattues.length === 0 ? (
+        <EnPreparation
+          titre="Thèses des vidéos d'opinion"
+          attend={`les thèses et l'accord vidéo par vidéo (migration 11, relance de la classification puis des agrégats), et au moins ${MIN_PRONONCES} commentaires qui se prononcent par vidéo.`}
+        />
+      ) : (
+        <>
+          {approuvees.length > 0 && (
+            <>
+              <p className="radar-sous-titre-bloc">Thèses les plus approuvées</p>
+              <ul className="radar-theses">
+                {approuvees.map((v) => (
+                  <LigneThese key={v.sujet.video_id} v={v} />
+                ))}
+              </ul>
+            </>
+          )}
+          {contestees.length > 0 && (
+            <>
+              <p className="radar-sous-titre-bloc">Thèses les plus contestées</p>
+              <ul className="radar-theses">
+                {contestees.map((v) => (
+                  <LigneThese key={v.sujet.video_id} v={v} />
+                ))}
+              </ul>
+            </>
+          )}
+          {autres.length > 0 && (
+            <button
+              className="segment"
+              onClick={() => setIncertaines(!incertaines)}
+              aria-expanded={incertaines}
+            >
+              {incertaines
+                ? "Masquer les thèses incertaines"
+                : `Thèses incertaines ou effacées (${autres.length})`}
+            </button>
+          )}
+          {incertaines && (
+            <ul className="radar-theses">
+              {autres.map((v) => (
+                <LigneThese key={v.sujet.video_id} v={v} />
+              ))}
+            </ul>
+          )}
+          <p className="discret petit-texte">
+            Thèse résumée par une IA à partir du titre et de la description, pas du contenu de la
+            vidéo : vérifier avec le lien. Seules les thèses explicites sont classées ; vidéos d'au
+            moins {MIN_PRONONCES} commentaires qui se prononcent.
+          </p>
+        </>
+      )}
+    </>
   );
 }
