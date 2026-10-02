@@ -208,3 +208,25 @@ Constats :
 
 Limites : l'arbitrage ne peut retenir qu'une réponse proposée par l'un des trois, ce qui rapproche mécaniquement la référence des modèles et gonfle un peu leurs scores ; un seul annotateur, 100 étiquettes (marge ~±9 points ; ~±16 points sur la position).
 
+## 02/10/2026 — Consigne du désaccord implicite (référence arbitrée)
+
+Même échantillon, Jev et Claude reclassés avec la nouvelle consigne de position ; comparaison à la référence arbitrée.
+
+| Dimension | Jev | Claude |
+|---|---:|---:|
+| Politique / non politique | 95 % | 79 % |
+| Thème principal | 77 % | 53 % |
+| Au moins un thème commun | 83 % | 65 % |
+| Position (36) | 69 % | 56 % |
+| Tonalité | 77 % | 68 % |
+| Hostilité | 89 % | 85 % |
+| Tout juste | 48 % | 29 % |
+
+Parts de position (référence / Jev / Claude) : accord 28 / 28 / 25 ; nuance 3 / 3 / 6 ; désaccord 36 / 47 / 39 ; hors sujet 33 / 22 / 31. **Écart : Jev 19 → 11 points ; Claude 6 points.** Parmi les commentaires qui se prononcent : référence 42 % d'accord / 54 % de désaccord, Jev 36 / 61 : le sens majoritaire est désormais le bon, mais Jev dépasse maintenant sur le désaccord (+11 points).
+
+Seuil de confiance sur la position : **rejeté**. Plus le seuil monte, plus le désaccord est surreprésenté parmi les cas retenus (61 % à 0,0, 80 % à 0,7 contre 64 % en référence) : filtrer par la confiance déforme le rapport accord / désaccord.
+
+Recommandation automatique : Jev seul (48 %, ~380 $ sur la campagne) ; la cascade fait moins bien à tous les seuils.
+
+Limite : consigne ajustée en regardant ce type d'erreur sur ces 36 commentaires ; à confirmer sur un second échantillon étiqueté à froid.
+
