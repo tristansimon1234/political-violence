@@ -3,6 +3,15 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { AccesAdmin } from "@/lib/AccesAdmin";
+import {
+  type Agenda,
+  type SujetVideo,
+  agendaParTheme,
+  jourParis,
+  sousSujets,
+  sujetsFiltres,
+  videosQuiReagissent,
+} from "@/lib/agenda";
 import { supabase } from "@/lib/supabase";
 import { LIBELLES_THEMES, LIBELLES_TYPE, type Theme, type TypeSource } from "@/lib/taxonomie";
 import {
@@ -50,6 +59,21 @@ async function chargerAgregats(): Promise<Agregat[]> {
   }
 }
 
+async function chargerSujets(): Promise<SujetVideo[]> {
+  const lignes: SujetVideo[] = [];
+  for (let i = 0; ; i += 1000) {
+    const { data, error } = await supabase()
+      .from("videos_sujets")
+      .select(
+        "video_id,theme,sous_sujet,poids,videos(publiee_at,format,vues,nb_commentaires,sources(type,nom))",
+      )
+      .range(i, i + 999);
+    if (error) throw new Error(error.message);
+    lignes.push(...(data as unknown as SujetVideo[]));
+    if (!data || data.length < 1000) return lignes;
+  }
+}
+
 function VueEnsemble() {
   const [lignes, setLignes] = useState<Agregat[] | null>(null);
   const [erreur, setErreur] = useState("");
@@ -60,11 +84,18 @@ function VueEnsemble() {
   });
   const [politiques, setPolitiques] = useState(false);
   const [choisi, setChoisi] = useState<Theme | null>(null);
+  const [sujets, setSujets] = useState<SujetVideo[]>([]);
+  const [sansSujets, setSansSujets] = useState("");
 
   useEffect(() => {
     chargerAgregats()
       .then((l) => setLignes(depuisCollecte(l)))
       .catch((e: unknown) => setErreur(e instanceof Error ? e.message : String(e)));
+    // Thèmes des vidéos : facultatifs (migration 10, remplis par la classification) ; sans
+    // eux, les blocs d'agenda restent « en préparation ».
+    chargerSujets()
+      .then(setSujets)
+      .catch((e: unknown) => setSansSujets(e instanceof Error ? e.message : String(e)));
   }, []);
 
   // Table vide : aucun calcul (pas de dernier jour, donc pas de fenêtre).
@@ -73,6 +104,11 @@ function VueEnsemble() {
     [lignes, filtres],
   );
   const actif = vue?.lignes.find((l) => l.theme === choisi) ?? vue?.lignes[0] ?? null;
+  const sujetsPeriode = useMemo(
+    () => (vue ? sujetsFiltres(sujets, filtres, vue.courante) : []),
+    [sujets, filtres, vue],
+  );
+  const agenda = useMemo(() => agendaParTheme(sujetsPeriode), [sujetsPeriode]);
 
   return (
     <div className="radar">
@@ -122,14 +158,26 @@ function VueEnsemble() {
           <div className="radar-trois">
             <ThemesEnMouvement lignes={vue.lignes} actif={actif.theme} choisir={setChoisi} />
             <div className="radar-colonne">
-              <CarteSujets />
+              <AgendaOuReactions lignes={vue.lignes} agenda={agenda} choisir={setChoisi} />
+              <CarteSujets
+                lignes={vue.lignes}
+                agenda={agenda}
+                actif={actif.theme}
+                choisir={setChoisi}
+              />
               <SignalEmergent lignes={lignes} filtres={filtres} />
+              {sansSujets && (
+                <p className="discret petit-texte">
+                  Thèmes des vidéos indisponibles : {sansSujets}
+                </p>
+              )}
             </div>
             <ThemeSelectionne
               ligne={actif}
               lignes={lignes}
               filtres={filtres}
               politiques={politiques}
+              sujets={sujetsPeriode}
             />
           </div>
         </>
@@ -286,33 +334,169 @@ function EnPreparation({
   );
 }
 
-function CarteSujets() {
+function AgendaOuReactions({
+  lignes,
+  agenda,
+  choisir,
+}: {
+  lignes: LigneTheme[];
+  agenda: Map<Theme, Agenda>;
+  choisir: (t: Theme) => void;
+}) {
+  const totalVideos = [...agenda.values()].reduce((a, x) => a + x.videos, 0);
+  if (totalVideos === 0)
+    return (
+      <section className="radar-carte" aria-labelledby="titre-agenda">
+        <h2 id="titre-agenda">Agenda des médias ou réactions ?</h2>
+        <EnPreparation
+          titre="Part de chaque thème dans les vidéos publiées et dans les commentaires"
+          attend="le thème des vidéos (relancer la classification après la migration 10)."
+        />
+      </section>
+    );
+  const ecarts = lignes
+    .filter((l) => l.theme !== "autre")
+    .map((l) => {
+      const couverture = (agenda.get(l.theme)?.videos ?? 0) / totalVideos;
+      return { l, couverture, reactions: l.part, ecart: (l.part - couverture) * 100 };
+    })
+    .filter((x) => x.couverture > 0 || x.reactions > 0)
+    .sort((a, b) => Math.abs(b.ecart) - Math.abs(a.ecart))
+    .slice(0, 8);
+  const max = Math.max(0.01, ...ecarts.flatMap((x) => [x.couverture, x.reactions]));
+  return (
+    <section className="radar-carte" aria-labelledby="titre-agenda">
+      <h2 id="titre-agenda">Agenda des médias ou réactions ?</h2>
+      <p className="discret petit-texte">
+        Pour chaque thème : sa part dans les vidéos publiées par les médias du panel (couverture) et
+        sa part dans les commentaires politiques (réactions). Les plus grands écarts d'abord.
+      </p>
+      <ul className="radar-agenda">
+        {ecarts.map(({ l, couverture, reactions, ecart }) => (
+          <li key={l.theme}>
+            <button className="radar-agenda-ligne" onClick={() => choisir(l.theme)}>
+              <span className="radar-agenda-nom">
+                {LIBELLES_THEMES[l.theme]}
+                <span className={ecart > 0 ? "radar-ecart plus" : "radar-ecart moins"}>
+                  {ecart > 0 ? "plus commenté que couvert" : "plus couvert que commenté"} ·{" "}
+                  {ecart > 0 ? "+" : "−"}
+                  {Math.abs(Math.round(ecart))} pts
+                </span>
+              </span>
+              <span className="radar-agenda-barres" aria-hidden="true">
+                <span className="couverture" style={{ width: `${(100 * couverture) / max}%` }} />
+                <span className="reactions" style={{ width: `${(100 * reactions) / max}%` }} />
+              </span>
+              <span className="radar-agenda-chiffres radar-mono">
+                {pc(couverture * 100)} / {pc(reactions * 100)}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Legende
+        items={[
+          ["Couverture (vidéos)", "var(--r-couverture)"],
+          ["Réactions (commentaires)", "var(--r-orange)"],
+        ]}
+      />
+    </section>
+  );
+}
+
+function CarteSujets({
+  lignes,
+  agenda,
+  actif,
+  choisir,
+}: {
+  lignes: LigneTheme[];
+  agenda: Map<Theme, Agenda>;
+  actif: Theme;
+  choisir: (t: Theme) => void;
+}) {
+  const points = lignes
+    .map((l) => {
+      const vues = agenda.get(l.theme)?.vues ?? 0;
+      return { l, vues, intensite: vues > 0 ? (1000 * l.courant.commentaires) / vues : 0 };
+    })
+    .filter((p) => p.vues > 0 && p.l.courant.commentaires > 0 && p.l.theme !== "autre");
+  const mediane = (xs: number[]) => {
+    const t = [...xs].sort((a, b) => a - b);
+    return t[Math.floor((t.length - 1) / 2)] ?? 1;
+  };
+  const L = 560;
+  const H = 340;
+  const m = 48; // marge : les étiquettes des points restent dans le cadre
+  const lx = points.map((p) => Math.log10(p.vues));
+  const ly = points.map((p) => Math.log10(p.intensite));
+  const x0 = Math.min(...lx);
+  const x1 = Math.max(...lx);
+  const y0 = Math.min(...ly);
+  const y1 = Math.max(...ly);
+  const px = (v: number) => m + ((Math.log10(v) - x0) / Math.max(0.01, x1 - x0)) * (L - 2 * m);
+  const py = (v: number) =>
+    H - m - ((Math.log10(v) - y0) / Math.max(0.01, y1 - y0)) * (H - 2 * m - 16);
+  const ancre = (x: number) => (x < L * 0.2 ? "start" : x > L * 0.8 ? "end" : "middle");
+  const mx = px(mediane(points.map((p) => p.vues)));
+  const my = py(mediane(points.map((p) => p.intensite)));
+  const maxC = Math.max(1, ...points.map((p) => p.l.courant.commentaires));
+  const rayon = (c: number) => 5 + 14 * Math.sqrt(c / maxC);
   return (
     <section className="radar-carte" aria-labelledby="titre-carte">
-      <h2 id="titre-carte">Carte des sujets</h2>
-      <p className="discret petit-texte">Attention (vues) × intensité (commentaires par vue)</p>
-      <div className="radar-quadrants" aria-hidden="true">
-        <div>
-          <strong>Minorité mobilisée</strong>
-          <span>peu vu, très discuté</span>
-        </div>
-        <div>
-          <strong>Débat de fond</strong>
-          <span>très vu, très discuté</span>
-        </div>
-        <div>
-          <strong>Bruit de fond</strong>
-          <span>peu vu, peu discuté</span>
-        </div>
-        <div>
-          <strong>Regardé en silence</strong>
-          <span>très vu, peu discuté</span>
-        </div>
-      </div>
-      <EnPreparation
-        titre="Positions des thèmes sur la carte"
-        attend="le thème des vidéos, pour répartir les vues entre thèmes (prochain chantier)."
-      />
+      <h2 id="titre-carte">Carte des thèmes</h2>
+      <p className="discret petit-texte">
+        Attention (vues des vidéos, réparties selon leurs thèmes) × intensité (commentaires classés
+        pour 1 000 vues). Échelles logarithmiques, séparations à la médiane, taille = commentaires.
+      </p>
+      {points.length < 3 ? (
+        <EnPreparation
+          titre="Positions des thèmes sur la carte"
+          attend="le thème des vidéos et leurs vues (relancer la classification après la migration 10)."
+        />
+      ) : (
+        <svg
+          viewBox={`0 0 ${L} ${H}`}
+          className="radar-nuage"
+          role="img"
+          aria-label="Carte des thèmes : attention en abscisse, intensité en ordonnée"
+        >
+          <line x1={mx} x2={mx} y1={8} y2={H - 8} className="axe" />
+          <line x1={8} x2={L - 8} y1={my} y2={my} className="axe" />
+          <text x={12} y={18} className="quadrant">
+            Minorité mobilisée
+          </text>
+          <text x={L - 12} y={18} className="quadrant" textAnchor="end">
+            Débat de fond
+          </text>
+          <text x={12} y={H - 10} className="quadrant">
+            Bruit de fond
+          </text>
+          <text x={L - 12} y={H - 10} className="quadrant" textAnchor="end">
+            Regardé en silence
+          </text>
+          {points.map((p) => {
+            const r = rayon(p.l.courant.commentaires);
+            return (
+              <g
+                key={p.l.theme}
+                className={p.l.theme === actif ? "point actif" : "point"}
+                onClick={() => choisir(p.l.theme)}
+              >
+                <title>
+                  {`${LIBELLES_THEMES[p.l.theme]} : ${entier(p.vues)} vues, ${p.intensite
+                    .toFixed(1)
+                    .replace(".", ",")} commentaires pour 1 000 vues`}
+                </title>
+                <circle cx={px(p.vues)} cy={py(p.intensite)} r={r} />
+                <text x={px(p.vues)} y={py(p.intensite) - r - 4} textAnchor={ancre(px(p.vues))}>
+                  {LIBELLES_THEMES[p.l.theme]}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      )}
     </section>
   );
 }
@@ -391,13 +575,17 @@ function ThemeSelectionne({
   lignes,
   filtres,
   politiques,
+  sujets,
 }: {
   ligne: LigneTheme;
   lignes: Agregat[];
   filtres: Filtres;
   politiques: boolean;
+  sujets: SujetVideo[];
 }) {
   const [courante] = fenetres(lignes, filtres.periode);
+  const ss = sousSujets(sujets, ligne.theme);
+  const videos = videosQuiReagissent(sujets, ligne.theme);
   const du = (types: TypeSource[]) =>
     additionner(
       filtrer(lignes, filtres, types).filter((l) => l.theme === ligne.theme && dans(l, courante)),
@@ -422,12 +610,54 @@ function ThemeSelectionne({
         titre="Pourquoi ça bouge · Généré par IA"
         attend="le résumé par Claude à partir des agrégats et des vidéos de la période (sources numérotées, aucune citation, relu avant publication)."
       />
-      <EnPreparation
-        titre="Sous-sujets qui portent la hausse"
-        attend="le thème et le sous-sujet des vidéos."
-      />
+      <h3>De quoi parlent les vidéos</h3>
+      {ss.length === 0 ? (
+        <EnPreparation titre="Sous-sujets" attend="le thème et le sous-sujet des vidéos." />
+      ) : (
+        <ul className="radar-sous-sujets">
+          {ss.map((x) => (
+            <li key={x.libelle}>
+              <span>{x.libelle}</span>
+              <span className="radar-mono discret">
+                {x.videos} vidéo{x.videos > 1 ? "s" : ""} · {entier(x.commentaires)} comm.
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {videos.length > 0 && (
+        <>
+          <h3>Vidéos qui font réagir</h3>
+          <ol className="radar-videos">
+            {videos.map((v) => (
+              <li key={v.video_id}>
+                <a
+                  href={`https://www.youtube.com/watch?v=${v.video_id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {v.sous_sujet}
+                </a>
+                <span className="discret petit-texte">
+                  {v.videos?.sources?.nom} ·{" "}
+                  {v.videos ? dateCourte(jourParis(v.videos.publiee_at)) : ""} ·{" "}
+                  {entier(v.videos?.nb_commentaires ?? 0)} commentaires annoncés
+                </span>
+              </li>
+            ))}
+          </ol>
+          <p className="discret petit-texte">
+            Libellé neutre du sujet (pas le titre de la vidéo) ; commentaires annoncés par YouTube,
+            réponses comprises.
+          </p>
+        </>
+      )}
 
-      <h3>Accord avec la vidéo, par type de source</h3>
+      <h3>Accord avec les vidéos commentées</h3>
+      <p className="discret petit-texte">
+        Chaque commentaire est comparé à la vidéo sous laquelle il est écrit, puis on additionne sur
+        toutes les vidéos d'opinion du thème.
+      </p>
       {rangees.map((r) => {
         const prononces = r.m.accord + r.m.nuance + r.m.desaccord;
         return (
@@ -441,7 +671,7 @@ function ThemeSelectionne({
               </span>
             </p>
             <Barre
-              titre={`Accord avec la vidéo, ${r.nom}`}
+              titre={`Accord avec les vidéos commentées, ${r.nom}`}
               total={prononces}
               segments={[
                 { libelle: "Accord", valeur: r.m.accord, couleur: "var(--r-bleu)" },
@@ -460,9 +690,8 @@ function ThemeSelectionne({
         ]}
       />
       <p className="discret petit-texte">
-        Accord avec le propos de la vidéo commentée, sur les vidéos d'opinion uniquement (les
-        commentaires qui ne se prononcent pas sont exclus). Ne dit pas si les gens sont pour ou
-        contre un sujet.
+        Vidéos d'opinion uniquement (une seule thèse à approuver ou contester) ; les commentaires
+        qui ne se prononcent pas sont exclus. Ne dit pas si les gens sont pour ou contre un sujet.
       </p>
 
       <h3>Tonalité et hostilité</h3>

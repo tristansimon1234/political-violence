@@ -140,6 +140,7 @@ select {
   --r-orange: #c8621e;
   --r-orange-texte: #8a3c0f;
   --r-nuance: #c9c4b7;
+  --r-couverture: #9c978b;
   min-height: 100vh;
   background: var(--r-fond);
   color: var(--r-texte);
@@ -528,3 +529,136 @@ select {
     display: none;
   }
 }
+
+.radar-agenda,
+.radar-sous-sujets,
+.radar-videos {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.radar-agenda-ligne {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 84px;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 4px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--r-piste);
+  background: none;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.radar-agenda-ligne:hover {
+  background: var(--r-piste);
+}
+
+.radar-agenda-nom {
+  display: flex;
+  flex-direction: column;
+}
+
+.radar-ecart {
+  font-size: 12px;
+}
+
+.radar-ecart.plus {
+  color: var(--r-orange-texte);
+}
+
+.radar-ecart.moins {
+  color: var(--r-discret);
+}
+
+.radar-agenda-barres {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.radar-agenda-barres span {
+  display: block;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.radar-agenda-barres .couverture {
+  background: var(--r-couverture);
+}
+
+.radar-agenda-barres .reactions {
+  background: var(--r-orange);
+}
+
+.radar-agenda-chiffres {
+  font-size: 12px;
+  text-align: right;
+}
+
+.radar-nuage {
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  background: var(--r-fond);
+  border-radius: 10px;
+}
+
+.radar-nuage .axe {
+  stroke: var(--r-bord);
+  stroke-dasharray: 4 4;
+}
+
+.radar-nuage .quadrant {
+  fill: var(--r-discret);
+  font-size: 11px;
+}
+
+.radar-nuage .point {
+  cursor: pointer;
+}
+
+.radar-nuage .point circle {
+  fill: var(--r-bleu);
+  fill-opacity: 0.25;
+  stroke: var(--r-bleu);
+}
+
+.radar-nuage .point.actif circle {
+  fill: var(--r-orange);
+  fill-opacity: 0.45;
+  stroke: var(--r-orange-texte);
+}
+
+.radar-nuage .point text {
+  fill: var(--r-texte);
+  font-size: 11px;
+}
+
+.radar-sous-sujets li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--r-piste);
+  font-size: 13px;
+}
+
+.radar-videos li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--r-piste);
+  font-size: 13px;
+}
+
+.radar-videos a {
+  color: var(--r-bleu);
+}
+
