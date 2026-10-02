@@ -28,3 +28,9 @@ export type Position = (typeof POSITIONS)[number];
 
 export const TONALITES = ["positive", "neutre", "negative"] as const;
 export type Tonalite = (typeof TONALITES)[number];
+
+export const LIBELLES_THEMES: Record<Theme, string> = {"pouvoir_achat": "Pouvoir d'achat", "securite": "Sécurité", "immigration": "Immigration", "retraites": "Retraites", "sante": "Santé", "education": "Éducation", "ecologie_energie": "Écologie et énergie", "economie_emploi": "Économie et emploi", "logement": "Logement", "institutions": "Vie politique et institutions", "international_defense": "International et défense", "agriculture": "Agriculture", "societe": "Société", "autre": "Autre"};
+export const LIBELLES_POSITIONS: Record<Position, string> = {"accord_video": "Accord avec la vidéo", "nuance": "Nuance", "desaccord_video": "Désaccord avec la vidéo", "hors_sujet": "Ne se prononce pas"};
+export const LIBELLES_TONALITES: Record<Tonalite, string> = {"positive": "Positive", "neutre": "Neutre", "negative": "Négative"};
+
+export const NON_POLITIQUE = "non_politique";

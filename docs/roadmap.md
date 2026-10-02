@@ -9,7 +9,7 @@
 4 bis. Classification en masse par Jev (`classification.yml`, bucket `radar-classe`) : en place le 02/10/2026, à lancer sur le brut avant sa purge à 30 jours.
 5. Calibration du filtre politique sur 200 vidéos étiquetées à la main.
 6. Détection des sujets d'actu, vérifiée sur les événements datés de septembre (vérité terrain).
-7. Agrégats + interface Next.js (Cette semaine d'abord, puis Vue d'ensemble), à partir de la maquette "Radar 2027". Dans l'admin : comparatif permanent de 100 commentaires par semaine classés par Jev, Claude Haiku et Claude Sonnet (`docs/interface.md`).
+7. Agrégats + interface Next.js, à partir de la maquette "Radar 2027" : **Vue d'ensemble v1 faite le 02/10/2026** (`/radar`, admin seulement) ; Cette semaine après l'étape 6. Dans l'admin : comparatif permanent de 100 commentaires par semaine classés par Jev, Claude Haiku et Claude Sonnet (`docs/interface.md`).
 8. Politique de confidentialité et CGU, puis dépôt de la demande d'audit YouTube.
 
 **Préalables hors code (avant tout lancement public)** : projet développé sur machine et comptes personnels, situation clarifiée avec l'employeur, AIPD rédigée, acceptation YouTube "métriques dérivées" obtenue.

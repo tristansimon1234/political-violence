@@ -127,3 +127,271 @@ select {
 .erreur {
   color: #c0392b;
 }
+
+/* Radar : identité de la maquette « Radar 2027 » (Claude Design). */
+.radar {
+  --r-fond: #f6f4ef;
+  --r-surface: #fbfaf6;
+  --r-texte: #16181d;
+  --r-discret: #4a4d55;
+  --r-bord: #ddd8cc;
+  --r-piste: #ece9e1;
+  --r-bleu: #2f5da8;
+  --r-orange: #c8621e;
+  --r-orange-texte: #8a3c0f;
+  --r-nuance: #c9c4b7;
+  min-height: 100vh;
+  background: var(--r-fond);
+  color: var(--r-texte);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.radar .discret {
+  color: var(--r-discret);
+}
+
+.radar-entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--r-bord);
+}
+
+.radar-logo {
+  margin: 0;
+  font: 600 22px/1.2 "Newsreader", Georgia, serif;
+}
+
+.radar-sous-titre {
+  margin: 0;
+  color: var(--r-discret);
+  font-size: 13px;
+}
+
+.radar-entete nav {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.radar-entete a {
+  color: var(--r-bleu);
+}
+
+.radar-nav-actif {
+  font-weight: 600;
+  border-bottom: 2px solid var(--r-texte);
+}
+
+.radar-nav-inactif {
+  color: var(--r-discret);
+  opacity: 0.7;
+}
+
+.radar-bandeau {
+  margin: 0;
+  padding: 8px 24px;
+  background: var(--r-piste);
+  font-size: 13px;
+}
+
+.radar-marge {
+  padding: 0 24px;
+}
+
+.radar-filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  padding: 16px 24px 8px;
+}
+
+.radar-filtres fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.radar-filtres legend {
+  font-size: 12px;
+  color: var(--r-discret);
+  margin-bottom: 4px;
+}
+
+.radar .segment {
+  font: inherit;
+  font-size: 13px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--r-bord);
+  border-radius: 999px;
+  background: var(--r-surface);
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.radar .segment.actif {
+  background: var(--r-texte);
+  border-color: var(--r-texte);
+  color: #fff;
+}
+
+.radar-interrupteur {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  min-height: 36px;
+}
+
+.radar-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 16px 24px 48px;
+}
+
+@media (max-width: 900px) {
+  .radar-grille {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.radar-carte {
+  background: var(--r-surface);
+  border: 1px solid var(--r-bord);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.radar-carte h2 {
+  margin: 0 0 4px;
+  font: 600 22px/1.25 "Newsreader", Georgia, serif;
+}
+
+.petit-texte {
+  font-size: 13px;
+  margin: 8px 0 4px;
+}
+
+.radar-themes {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.radar-theme {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 84px 48px 56px 48px;
+  gap: 8px;
+  align-items: center;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.radar-theme:hover {
+  background: var(--r-piste);
+}
+
+.radar-theme.actif {
+  background: #e6edf8;
+}
+
+.radar-rang,
+.radar-chiffre,
+.radar-velocite {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px;
+  text-align: right;
+}
+
+.radar-rang {
+  color: var(--r-discret);
+  text-align: left;
+}
+
+.radar-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.radar-courbe {
+  color: var(--r-bleu);
+}
+
+.radar-chiffre.hausse {
+  color: var(--r-orange-texte);
+}
+
+.radar-velocite.forte {
+  color: var(--r-orange-texte);
+  font-weight: 600;
+}
+
+.radar-ligne {
+  border-top: 1px solid var(--r-bord);
+  margin-top: 16px;
+  padding-top: 12px;
+}
+
+.radar-ligne.a-part {
+  border-top: 2px dashed var(--r-bord);
+}
+
+.radar-ligne h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.radar-barre {
+  display: flex;
+  height: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--r-piste);
+}
+
+.radar-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--r-discret);
+}
+
+.radar-legende i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+
+@media (max-width: 600px) {
+  .radar-theme {
+    grid-template-columns: 20px minmax(0, 1fr) 48px 56px;
+  }
+
+  .radar-courbe,
+  .radar-velocite {
+    display: none;
+  }
+}

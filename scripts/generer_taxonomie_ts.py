@@ -11,8 +11,12 @@ from pathlib import Path
 from radar.schemas import (
     FENETRE_ACTIVITE_JOURS,
     FORMATS_VIDEO,
+    LIBELLES_POSITIONS,
+    LIBELLES_THEMES,
+    LIBELLES_TONALITES,
     LIBELLES_TYPE,
     NATURES_VIDEO,
+    NON_POLITIQUE,
     POSITIONS,
     SEUIL_ACTIVITE_VIDEOS,
     SOUS_TYPES_PAR_TYPE,
@@ -64,6 +68,14 @@ def contenu() -> str:
             *_liste("NATURES_VIDEO", "NatureVideo", NATURES_VIDEO),
             *_liste("POSITIONS", "Position", POSITIONS),
             *_liste("TONALITES", "Tonalite", TONALITES),
+            f"export const LIBELLES_THEMES: Record<Theme, string> = {_j(LIBELLES_THEMES)};",
+            "export const LIBELLES_POSITIONS: Record<Position, string> = "
+            f"{_j(LIBELLES_POSITIONS)};",
+            "export const LIBELLES_TONALITES: Record<Tonalite, string> = "
+            f"{_j(LIBELLES_TONALITES)};",
+            "",
+            f"export const NON_POLITIQUE = {_j(NON_POLITIQUE)};",
+            "",
         ]
     )
 
