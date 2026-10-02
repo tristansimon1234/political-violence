@@ -6,7 +6,7 @@ On lit la dernière migration qui (re)définit chaque contrainte.
 import re
 from pathlib import Path
 
-from radar.schemas import NATURES_VIDEO, SOUS_TYPES_PAR_TYPE, TYPES_SOURCE
+from radar.schemas import NATURES_VIDEO, NON_POLITIQUE, SOUS_TYPES_PAR_TYPE, THEMES, TYPES_SOURCE
 
 MIGRATIONS = sorted((Path(__file__).parents[1] / "supabase/migrations").glob("*.sql"))
 
@@ -40,3 +40,16 @@ def test_natures_video_identiques() -> None:
     (liste,) = _derniere(r"check \(nature in \(([^)]*)\)\)")
     assert isinstance(liste, str)
     assert _liste(liste) == set(NATURES_VIDEO)
+
+
+def test_themes_identiques() -> None:
+    """Thèmes des vidéos (sans non_politique) et des agrégats (avec) : miroir de schemas.py."""
+    textes = {f.name: f.read_text() for f in MIGRATIONS}
+    (videos,) = re.findall(
+        r"check \(theme in \(([^)]*)\)\)", textes["20261002000010_videos_sujets.sql"]
+    )
+    (agregats,) = re.findall(
+        r"check \(theme in \(([^)]*)\)\)", textes["20261002000009_agregats_themes.sql"]
+    )
+    assert _liste(videos) == set(THEMES)
+    assert _liste(agregats) == {*THEMES, NON_POLITIQUE}
