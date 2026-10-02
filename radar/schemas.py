@@ -82,6 +82,38 @@ TONALITES: Final[tuple[Tonalite, ...]] = get_args(Tonalite)
 
 MAX_THEMES_COMMENTAIRE: Final = 3
 
+# Libellés d'interface (les définitions complètes sont dans radar/classification.py).
+LIBELLES_THEMES: Final[dict[Theme, str]] = {
+    "pouvoir_achat": "Pouvoir d'achat",
+    "securite": "Sécurité",
+    "immigration": "Immigration",
+    "retraites": "Retraites",
+    "sante": "Santé",
+    "education": "Éducation",
+    "ecologie_energie": "Écologie et énergie",
+    "economie_emploi": "Économie et emploi",
+    "logement": "Logement",
+    "institutions": "Vie politique et institutions",
+    "international_defense": "International et défense",
+    "agriculture": "Agriculture",
+    "societe": "Société",
+    "autre": "Autre",
+}
+LIBELLES_POSITIONS: Final[dict[Position, str]] = {
+    "accord_video": "Accord avec la vidéo",
+    "nuance": "Nuance",
+    "desaccord_video": "Désaccord avec la vidéo",
+    "hors_sujet": "Ne se prononce pas",
+}
+LIBELLES_TONALITES: Final[dict[Tonalite, str]] = {
+    "positive": "Positive",
+    "neutre": "Neutre",
+    "negative": "Négative",
+}
+
+# Agrégats : les commentaires non politiques forment une ligne à part.
+NON_POLITIQUE: Final = "non_politique"
+
 
 def sous_type_valide(type_source: TypeSource, sous_type: str) -> bool:
     return sous_type in SOUS_TYPES_PAR_TYPE[type_source]

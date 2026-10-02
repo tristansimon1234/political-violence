@@ -25,3 +25,18 @@ def test_sous_type_valide() -> None:
 
 def test_categorie_influenceur_supprimee() -> None:
     assert "influenceur" not in TYPES_SOURCE
+
+
+def test_libelles_complets() -> None:
+    from radar.schemas import (
+        LIBELLES_POSITIONS,
+        LIBELLES_THEMES,
+        LIBELLES_TONALITES,
+        POSITIONS,
+        THEMES,
+        TONALITES,
+    )
+
+    assert set(LIBELLES_THEMES) == set(THEMES)
+    assert set(LIBELLES_POSITIONS) == set(POSITIONS)
+    assert set(LIBELLES_TONALITES) == set(TONALITES)

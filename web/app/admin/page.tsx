@@ -1,8 +1,8 @@
 "use client";
 
-import type { Session } from "@supabase/supabase-js";
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { AccesAdmin } from "@/lib/AccesAdmin";
 import { type EntreeJournal, type Source, supabase } from "@/lib/supabase";
 import {
   LIBELLES_TYPE,
@@ -18,82 +18,10 @@ const nombre = (n: number | null) => (n === null ? "–" : n.toLocaleString("fr-
 const date = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "–");
 
 export default function Admin() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [chargee, setChargee] = useState(false);
-  const [configuration, setConfiguration] = useState("");
-
-  useEffect(() => {
-    let client;
-    try {
-      client = supabase();
-    } catch (e) {
-      setConfiguration(e instanceof Error ? e.message : String(e));
-      return;
-    }
-    client.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setChargee(true);
-    });
-    const { data } = client.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => data.subscription.unsubscribe();
-  }, []);
-
-  if (configuration)
-    return (
-      <main>
-        <h1>Radar 2027 · Admin</h1>
-        <p className="erreur">Configuration manquante : {configuration}</p>
-        <p className="discret">
-          Ajouter les variables dans Vercel (Settings → Environment Variables), puis redéployer.
-        </p>
-      </main>
-    );
-  if (!chargee) return <main className="discret">Chargement…</main>;
-  if (!session) return <Connexion />;
-  return <Espace email={session.user.email ?? ""} />;
-}
-
-function Connexion() {
-  const [email, setEmail] = useState("");
-  const [etat, setEtat] = useState<"saisie" | "envoye" | "erreur">("saisie");
-  const [message, setMessage] = useState("");
-
-  async function envoyer(e: FormEvent) {
-    e.preventDefault();
-    const { error } = await supabase().auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/admin`, shouldCreateUser: false },
-    });
-    if (error) {
-      setEtat("erreur");
-      setMessage(error.message);
-    } else {
-      setEtat("envoye");
-    }
-  }
-
   return (
-    <main>
-      <h1>Radar 2027 · Admin</h1>
-      <p className="discret">Accès réservé. Connexion par lien envoyé par e-mail.</p>
-      {etat === "envoye" ? (
-        <p>Lien envoyé à {email}. Ouvre-le sur cet appareil.</p>
-      ) : (
-        <form className="connexion" onSubmit={envoyer}>
-          <input
-            type="email"
-            required
-            placeholder="e-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <button className="petit" type="submit">
-            Recevoir le lien
-          </button>
-        </form>
-      )}
-      {etat === "erreur" && <p className="erreur">{message}</p>}
-    </main>
+    <AccesAdmin titre="Radar 2027 · Admin" retour="/admin">
+      {(email) => <Espace email={email} />}
+    </AccesAdmin>
   );
 }
 
@@ -112,7 +40,11 @@ function Espace({ email }: { email: string }) {
     if (!estAdmin) return;
     const [s, j] = await Promise.all([
       client.from("sources").select("*").order("type").order("sous_type").order("nom"),
-      client.from("sources_journal").select("*").order("created_at", { ascending: false }).limit(200),
+      client
+        .from("sources_journal")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200),
     ]);
     if (s.error) return setErreur(s.error.message);
     if (j.error) return setErreur(j.error.message);
@@ -267,7 +199,9 @@ function Equilibre({ sources }: { sources: Source[] }) {
   );
   return (
     <div className="defile">
-      <p className="discret">Sources actives uniquement. Aucune orientation politique n'est stockée.</p>
+      <p className="discret">
+        Sources actives uniquement. Aucune orientation politique n'est stockée.
+      </p>
       <table>
         <thead>
           <tr>

@@ -1,0 +1,40 @@
+name: Agrégats
+
+# Recalcule les agrégats par thème (table Supabase `agregats_themes`) depuis les commentaires
+# classés du bucket `radar-classe`. Lancement manuel, après une classification. Idempotent.
+# Secrets : SUPABASE_SECRET_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run : totaux seulement, rien n'est écrit"
+        type: boolean
+        default: false
+
+concurrency:
+  group: agregats
+  cancel-in-progress: false
+
+jobs:
+  agregats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Agrégats
+        run: |
+          set -o pipefail
+          ARGS=()
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          python scripts/agregats.py "${ARGS[@]}" | tee rapport.md
+      - name: Résumé
+        if: always()
+        run: cat rapport.md >> "$GITHUB_STEP_SUMMARY" || true
