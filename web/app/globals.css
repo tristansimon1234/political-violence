@@ -26,7 +26,11 @@ body {
   margin: 0;
   background: var(--fond);
   color: var(--texte);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font:
+    14px/1.5 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
 }
 
 main {
@@ -144,7 +148,12 @@ select {
   min-height: 100vh;
   background: var(--r-fond);
   color: var(--r-texte);
-  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    "IBM Plex Sans",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
 }
 
 .radar .discret {
@@ -163,7 +172,10 @@ select {
 
 .radar-logo {
   margin: 0;
-  font: 600 22px/1.2 "Newsreader", Georgia, serif;
+  font:
+    600 22px/1.2 "Newsreader",
+    Georgia,
+    serif;
 }
 
 .radar-sous-titre {
@@ -410,7 +422,10 @@ select {
 
 .radar-carte h2 {
   margin: 0 0 4px;
-  font: 600 22px/1.25 "Newsreader", Georgia, serif;
+  font:
+    600 22px/1.25 "Newsreader",
+    Georgia,
+    serif;
 }
 
 .petit-texte {
@@ -774,10 +789,19 @@ select {
 
 .radar-these-texte {
   margin: 0 0 6px;
-  font: 500 14px/1.4 "Newsreader", Georgia, serif;
+  font:
+    500 14px/1.4 "Newsreader",
+    Georgia,
+    serif;
 }
 
 .radar-these a {
   color: var(--r-bleu);
 }
 
+.radar-def-theme {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--r-discret);
+}

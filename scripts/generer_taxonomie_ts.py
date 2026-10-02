@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 from radar.schemas import (
+    DEFINITIONS_THEMES_FR,
     FENETRE_ACTIVITE_JOURS,
     FORMATS_VIDEO,
     LIBELLES_POSITIONS,
@@ -69,6 +70,8 @@ def contenu() -> str:
             *_liste("POSITIONS", "Position", POSITIONS),
             *_liste("TONALITES", "Tonalite", TONALITES),
             f"export const LIBELLES_THEMES: Record<Theme, string> = {_j(LIBELLES_THEMES)};",
+            "export const DEFINITIONS_THEMES: Record<Theme, string> = "
+            f"{_j(DEFINITIONS_THEMES_FR)};",
             "export const LIBELLES_POSITIONS: Record<Position, string> = "
             f"{_j(LIBELLES_POSITIONS)};",
             "export const LIBELLES_TONALITES: Record<Tonalite, string> = "

@@ -38,5 +38,9 @@ def test_libelles_complets() -> None:
     )
 
     assert set(LIBELLES_THEMES) == set(THEMES)
+    from radar.classification import DEFINITIONS_THEMES
+    from radar.schemas import DEFINITIONS_THEMES_FR
+
+    assert set(DEFINITIONS_THEMES_FR) == set(DEFINITIONS_THEMES) == set(THEMES)
     assert set(LIBELLES_POSITIONS) == set(POSITIONS)
     assert set(LIBELLES_TONALITES) == set(TONALITES)
