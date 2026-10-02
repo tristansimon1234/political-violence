@@ -17,7 +17,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 
 from radar.anonymisation import sel
-from radar.collecte import FENETRE_REVISITE_JOURS, PAGES_COMMENTAIRES, Bilan, Parametres, collecter
+from radar.collecte import FENETRE_REVISITE_JOURS, MODE_COMMENTAIRES, Bilan, Parametres, collecter
 from radar.prefiltre import charger
 from radar.storage import Stockage, StockageLocal, StockageSupabase
 from radar.supabase_rest import Supabase
@@ -37,7 +37,7 @@ def rapport(p: Parametres, b: Bilan, yt: YouTube, debut: datetime) -> str:
         f"- Vidéos examinées : {b.videos_vues} (nouvelles : {b.videos_nouvelles})",
         f"- Passent le pré-filtre ou chaîne politique : {b.videos_prefiltre}",
         f"- Éligibles aux commentaires : {b.videos_eligibles} "
-        f"({b.pages_estimees} pages ≈ {b.pages_estimees} unités)",
+        f"(≤ {b.pages_estimees} pages ≈ {b.pages_estimees} unités au plus)",
         f"- Commentaires annoncés par YouTube sur ces vidéos (réponses comprises) : "
         f"{b.commentaires_annonces} ; tout prendre coûterait au plus "
         f"~{b.commentaires_annonces // 100 + b.videos_eligibles} unités",
@@ -128,7 +128,7 @@ def main() -> int:
                     "depuis": params.depuis.isoformat(),
                     "jusqua": params.jusqua.isoformat() if params.jusqua else None,
                     "prefiltre_version": mots_cles.version,
-                    "pages_par_format": PAGES_COMMENTAIRES,
+                    "mode_commentaires": MODE_COMMENTAIRES,
                     "videos_indisponibles": bilan.videos_indisponibles,
                     "commentaires_annonces": bilan.commentaires_annonces,
                 },

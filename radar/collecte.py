@@ -3,8 +3,8 @@
 1. Parcours des uploads des sources actives (1 unité / 50 vidéos).
 2. Métadonnées de toutes les nouvelles vidéos (1 unité / 50), format short / long, pré-filtre.
 3. Commentaires uniquement pour les vidéos qui passent le pré-filtre, et pour toutes celles des
-   chaînes politiques (minimisation RGPD, économie de quota) : 2 pages par vidéo longue,
-   1 page par Short (1 unité / page).
+   chaînes politiques (minimisation RGPD, économie de quota) : tous les commentaires de premier
+   niveau, en ordre chronologique (1 unité / page de 100) ; revisite incrémentale.
 4. Stockage brut (Parquet, 30 jours) puis état dans Supabase. Arrêt propre avant le budget.
 
 Quotidien : vidéos publiées dans les 3 derniers jours, commentaires re-récupérés chaque jour.
@@ -26,7 +26,10 @@ from radar.youtube import QuotaDepasse, VideoDetail, VideoIndisponible, YouTube,
 log = logging.getLogger(__name__)
 
 FENETRE_REVISITE_JOURS = 3
-PAGES_COMMENTAIRES = {"long": 2, "short": 1}
+# Tous les commentaires de premier niveau (décision du 02/10/2026), en ordre chronologique.
+MODE_COMMENTAIRES = "tout"
+MAX_PAGES_COMMENTAIRES = 300  # garde-fou : 30 000 commentaires par vidéo et par lecture
+MARGE_INCREMENTALE = timedelta(hours=1)  # recouvrement entre deux lectures (doublons dédoublonnés)
 MAX_PAGES_UPLOADS = 100
 LOT_ECRITURE = 250  # vidéos commentées entre deux écritures (un plantage perd au plus un lot)
 
@@ -69,6 +72,20 @@ class Bilan:
 def _format(v: VideoDetail) -> Literal["short", "long"]:
     f = format_video(v)
     return "short" if f == "short" else "long"  # « ambigu » (format inconnu) compté long
+
+
+def _lecture_depuis(v: dict[str, Any]) -> datetime | None:
+    """Lecture incrémentale si la vidéo a déjà été lue en entier ; sinon lecture complète."""
+    if v.get("mode_commentaires") != MODE_COMMENTAIRES or not v.get("commentaires_lus_jusqua"):
+        return None
+    return datetime.fromisoformat(str(v["commentaires_lus_jusqua"])) - MARGE_INCREMENTALE
+
+
+def _pages_estimees(v: dict[str, Any]) -> int:
+    """Estimation (majorant) du nombre de pages : total annoncé / 100, au moins 1 page."""
+    if _lecture_depuis(v) is not None:
+        return 1
+    return min(MAX_PAGES_COMMENTAIRES, max(1, -(-int(v["nb_commentaires"] or 0) // 100)))
 
 
 def _par_lots(ids: list[str], taille: int = 100) -> list[list[str]]:
@@ -189,6 +206,8 @@ def collecter(
                     "premiere_collecte": None,
                     "derniere_collecte": None,
                     "nb_collectes": 0,
+                    "mode_commentaires": None,
+                    "commentaires_lus_jusqua": None,
                     "maj_at": maintenant.isoformat(),
                 }
                 touchees.add(d.id)
@@ -225,12 +244,16 @@ def collecter(
                     and v["derniere_collecte"] != aujourdhui.isoformat()
                 )
             else:
-                ok = v["derniere_collecte"] is None
+                # Jamais collectée, ou collectée dans l'ancien mode (200 par pertinence).
+                ok = (
+                    v.get("mode_commentaires") != MODE_COMMENTAIRES
+                    or v["derniere_collecte"] is None
+                )
             if ok:
                 eligibles.append(v)
         eligibles.sort(key=lambda v: v["publiee_at"])
         bilan.videos_eligibles = len(eligibles)
-        bilan.pages_estimees = sum(PAGES_COMMENTAIRES[v["format"]] for v in eligibles)
+        bilan.pages_estimees = sum(_pages_estimees(v) for v in eligibles)
         bilan.commentaires_annonces = sum(int(v["nb_commentaires"] or 0) for v in eligibles)
 
         if p.dry_run:
@@ -240,7 +263,9 @@ def collecter(
         assert sel is not None
         for v in eligibles:
             try:
-                recus = yt.commentaires(v["video_id"], PAGES_COMMENTAIRES[v["format"]])
+                recus = yt.commentaires(
+                    v["video_id"], MAX_PAGES_COMMENTAIRES, depuis=_lecture_depuis(v)
+                )
             except VideoIndisponible as e:
                 # Supprimée ou devenue privée depuis la lecture des métadonnées : on ne la
                 # redemande plus (traitée comme commentaires fermés).
@@ -269,6 +294,8 @@ def collecter(
             v["premiere_collecte"] = v["premiere_collecte"] or aujourdhui.isoformat()
             v["derniere_collecte"] = aujourdhui.isoformat()
             v["nb_collectes"] = int(v["nb_collectes"]) + 1
+            v["mode_commentaires"] = MODE_COMMENTAIRES
+            v["commentaires_lus_jusqua"] = maintenant.isoformat()
             v["maj_at"] = maintenant.isoformat()
             touchees.add(v["video_id"])
             bilan.videos_commentees += 1
