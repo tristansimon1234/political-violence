@@ -11,6 +11,7 @@ import {
   type Mesures,
   additionner,
   dans,
+  depuisCollecte,
   fenetres,
   filtrer,
   pct,
@@ -56,7 +57,7 @@ function VueEnsemble() {
 
   useEffect(() => {
     chargerAgregats()
-      .then(setLignes)
+      .then((l) => setLignes(depuisCollecte(l)))
       .catch((e: unknown) => setErreur(e instanceof Error ? e.message : String(e)));
   }, []);
 
