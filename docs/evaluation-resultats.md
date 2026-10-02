@@ -230,3 +230,21 @@ Recommandation automatique : Jev seul (48 %, ~380 $ sur la campagne) ; la cascad
 
 Limite : consigne ajustée en regardant ce type d'erreur sur ces 36 commentaires ; à confirmer sur un second échantillon étiqueté à froid.
 
+## 02/10/2026 — Sans la règle « en cas de doute, désaccord » (échantillon restauré)
+
+Échantillon restauré (100 lignes étiquetées d'origine + 400 non étiquetées d'un autre tirage de la semaine 1), référence arbitrée.
+
+| Dimension | Jev | Claude |
+|---|---:|---:|
+| Politique / non politique | 96 % | 79 % |
+| Thème principal | 77 % | 58 % |
+| Au moins un thème commun | 85 % | 66 % |
+| Position (36) | 67 % | 58 % |
+| Tonalité | 77 % | 72 % |
+| Hostilité | 89 % | 90 % |
+| Tout juste | 46 % | 32 % |
+
+Parts de position (référence / Jev / Claude) : accord 28 / 28 / 22 ; nuance 3 / 6 / 8 ; désaccord 36 / 42 / 36 ; hors sujet 33 / 25 / 33. **Écart Jev : 19 → 11 → 8 points** au fil des deux corrections ; Claude 6. Parmi ceux qui se prononcent : référence 42 % d'accord / 54 % de désaccord, Jev 37 / 56. Hostilité agrégée : 35 % / 44 % / 33 %.
+
+**Conclusion provisoire : Jev seul** pour toutes les dimensions (~380 $ sur la campagne), position comprise ; la cascade fait moins bien à tous les seuils. À confirmer sur le second échantillon étiqueté à froid (série 2), position et hostilité seulement.
+
