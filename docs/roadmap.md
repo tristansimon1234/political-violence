@@ -8,7 +8,7 @@
 4. Intégration Jev + test de qualité : 500 commentaires (échantillon stratifié) classés par Jev et par Claude, comparés à 100 étiquettes de Tristan (`docs/etiquetage.md`) ; seuil de reprise par Claude et coût projeté. Puis test ponctuel du rattrapage du filtre politique par les commentaires (`docs/backfill-septembre.md`).
 5. Calibration du filtre politique sur 200 vidéos étiquetées à la main.
 6. Détection des sujets d'actu, vérifiée sur les événements datés de septembre (vérité terrain).
-7. Agrégats + interface Next.js (Cette semaine d'abord, puis Vue d'ensemble), à partir de la maquette "Radar 2027".
+7. Agrégats + interface Next.js (Cette semaine d'abord, puis Vue d'ensemble), à partir de la maquette "Radar 2027". Dans l'admin : comparatif permanent de 100 commentaires par semaine classés par Jev, Claude Haiku et Claude Sonnet (`docs/interface.md`).
 8. Politique de confidentialité et CGU, puis dépôt de la demande d'audit YouTube.
 
 **Préalables hors code (avant tout lancement public)** : projet développé sur machine et comptes personnels, situation clarifiée avec l'employeur, AIPD rédigée, acceptation YouTube "métriques dérivées" obtenue.
