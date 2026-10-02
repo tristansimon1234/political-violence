@@ -120,8 +120,8 @@ def main() -> int:
     )
     if args.dry_run:
         print(
-            f"\nCoût estimé : Jev ~{len(a_classer) * JEV_USD_PAR_1000 / 1000:.2f} $, "
-            f"Claude (nature) ~{len(sans_nature) * CLAUDE_USD_PAR_VIDEO:.2f} $. "
+            f"\nCoût estimé : Jev ~{len(a_classer) * JEV_USD_PAR_1000 / 1000:.2f} USD, "
+            f"Claude (nature) ~{len(sans_nature) * CLAUDE_USD_PAR_VIDEO:.2f} USD. "
             "Rien n'a été envoyé."
         )
         return 0
@@ -192,9 +192,10 @@ def main() -> int:
     duree = (datetime.now(UTC) - debut).total_seconds() / 60
     print(
         f"\n## Bilan\n\n- Natures classées : {len(natures)} vidéos, coût Claude "
-        f"{claude.compteur.cout_usd:.2f} $\n- Commentaires classés : {bilan.classes} / "
+        f"{claude.compteur.cout_usd:.2f} USD\n- Commentaires classés : {bilan.classes} / "
         f"{bilan.a_classer} (vidéos de nature connue), erreurs {bilan.erreurs}\n- Coût Jev : "
-        f"{bilan.cout_usd:.2f} $ ({1000 * bilan.cout_usd / max(1, bilan.classes):.3f} $ / 1 000)\n"
+        f"{bilan.cout_usd:.2f} USD "
+        f"({1000 * bilan.cout_usd / max(1, bilan.classes):.3f} USD / 1 000)\n"
         f"- Durée : {duree:.0f} min"
         + (
             "\n- **Arrêt au budget Jev** : relancer pour continuer (rien n'est reclassé)."
