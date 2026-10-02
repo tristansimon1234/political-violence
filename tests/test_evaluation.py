@@ -501,6 +501,7 @@ class FauxAnthropicNature(FauxAnthropic):
                     nature_video="opinion",
                     resume=RESUME,
                     sujets=[{"theme": "retraites", "sous_sujet": "réforme", "poids": 1.0}],
+                    these_explicite=True,
                 )
             )
         return super().parse(**kwargs)

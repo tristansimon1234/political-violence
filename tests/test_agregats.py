@@ -77,3 +77,26 @@ def test_politiques_a_part_et_jour_paris() -> None:
 def test_aucun_identifiant_ni_texte() -> None:
     (li,) = agreger([_c(id="abc", auteur_hash="h" * 32, video_id="v1")])
     assert not {"id", "auteur_hash", "video_id", "texte", "titre"} & set(li)
+
+
+def test_agregats_par_video() -> None:
+    from radar.agregats import agreger_videos
+
+    lignes = agreger_videos(
+        [
+            {**_c(position="accord_video"), "video_id": "v1"},
+            {**_c(position="desaccord_video", hostilite=True), "video_id": "v1"},
+            {**_c(nature="info_factuelle", position=None), "video_id": "v2"},
+        ]
+    )
+    par = {x["video_id"]: x for x in lignes}
+    assert par["v1"] == {
+        "video_id": "v1",
+        "commentaires": 2,
+        "hostiles": 1,
+        "accord": 1,
+        "nuance": 0,
+        "desaccord": 1,
+        "hors_sujet": 0,
+    }
+    assert par["v2"]["commentaires"] == 1 and par["v2"]["accord"] == 0  # pas de position

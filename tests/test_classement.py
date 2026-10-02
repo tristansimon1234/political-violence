@@ -170,7 +170,8 @@ class FauxAnthropic:
         return _Reponse(
             kwargs["output_format"](
                 nature_video="opinion",
-                resume="r",
+                resume="La vidéo soutient que X.",
+                these_explicite=True,
                 sujets=[
                     {"theme": "retraites", "sous_sujet": "réforme des retraites", "poids": 0.7},
                     {"theme": "economie_emploi", "sous_sujet": "budget", "poids": 0.3},
@@ -199,12 +200,18 @@ class FausseBase:
         ]
         self.modifs: list[tuple[dict[str, str], dict[str, Any]]] = []
         self.sujets: list[dict[str, Any]] = []
+        self.theses: dict[str, dict[str, Any]] = {
+            # Thèse ancienne (plus de 30 jours) : doit être effacée au prochain run.
+            "v0": {"video_id": "v0", "these": "ancienne", "recupere_le": "2026-08-01"}
+        }
 
     def select(self, table: str, filtres: dict[str, str]) -> list[dict[str, Any]]:
         if table == "sources":
             return [{"id": "s1", "type": "media_natif", "nom": CHAINE}]
         if table == "videos_sujets":
             return [x for x in self.sujets if x["principal"]]
+        if table == "videos_theses":
+            return list(self.theses.values())
         return self.videos
 
     def modifier(self, table: str, filtres: dict[str, str], valeurs: dict[str, Any]) -> None:
@@ -215,11 +222,18 @@ class FausseBase:
                 v.update(valeurs)
 
     def supprimer(self, table: str, filtres: dict[str, str]) -> None:
+        if table == "videos_theses":
+            limite = filtres["recupere_le"].removeprefix("lt.")
+            self.theses = {k: v for k, v in self.theses.items() if v["recupere_le"] >= limite}
+            return
         ids = filtres["video_id"].removeprefix("in.(").removesuffix(")").split(",")
         self.sujets = [x for x in self.sujets if x["video_id"] not in ids]
 
     def upsert(self, table: str, lignes: list[dict[str, Any]], conflit: str) -> None:
-        self.sujets.extend(lignes)
+        if table == "videos_theses":
+            self.theses.update({x["video_id"]: x for x in lignes})
+        else:
+            self.sujets.extend(lignes)
 
 
 def test_script_dry_run_puis_classement(
@@ -277,6 +291,9 @@ def test_script_dry_run_puis_classement(
     }
     assert sum(x["poids"] for x in base.sujets if x["video_id"] == "v1") == pytest.approx(1)
     assert all(TITRE not in x["sous_sujet"] for x in base.sujets)
+    # Thèse : seulement pour la vidéo d'opinion (v1) ; v2 reste factuelle ; v0 (ancienne) effacée.
+    assert set(base.theses) == {"v1"} and base.theses["v1"]["explicite"] is True
+    assert base.theses["v1"]["recupere_le"] == JOUR.isoformat()
     assert base.modifs == [
         (
             {"video_id": "in.(v1)"},
