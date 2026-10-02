@@ -7,6 +7,7 @@ d'identifiant de commentaire) ; ce module ne fait que transporter et compter.
 
 import logging
 import os
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -38,25 +39,35 @@ class Compteur:
     cout_usd: float = 0.0
     erreurs: int = 0
     _nom: str = field(default="", repr=False)
+    # Appels en parallèle (classification en masse) : compteurs protégés par un verrou.
+    _verrou: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def verifier(self) -> None:
         if self.cout_usd >= self.budget_usd:
             raise BudgetDepasse(f"{self._nom} : {self.cout_usd:.4f} $ / budget {self.budget_usd} $")
 
     def ajouter(self, entree: int, sortie: int, cout: float) -> None:
-        self.appels += 1
-        self.tokens_entree += entree
-        self.tokens_sortie += sortie
-        self.cout_usd += cout
-        log.info(
+        with self._verrou:
+            self.appels += 1
+            self.tokens_entree += entree
+            self.tokens_sortie += sortie
+            self.cout_usd += cout
+            appels, total = self.appels, self.cout_usd
+        # Une ligne par appel en debug ; un point d'étape toutes les 500 requêtes.
+        log.log(
+            logging.INFO if appels <= 3 or appels % 500 == 0 else logging.DEBUG,
             "%s appel=%d tokens=%d/%d cout=%.6f $ total=%.4f $",
             self._nom,
-            self.appels,
+            appels,
             entree,
             sortie,
             cout,
-            self.cout_usd,
+            total,
         )
+
+    def erreur(self) -> None:
+        with self._verrou:
+            self.erreurs += 1
 
 
 # --- Claude ---
@@ -88,7 +99,7 @@ class ClientClaude:
             (u.input_tokens * PRIX_CLAUDE_ENTREE + u.output_tokens * PRIX_CLAUDE_SORTIE) / 1e6,
         )
         if r.stop_reason != "end_turn" or r.parsed_output is None:
-            self.compteur.erreurs += 1
+            self.compteur.erreur()
             raise ReponseInvalide(f"claude stop_reason={r.stop_reason}")
         return r.parsed_output
 
@@ -296,7 +307,7 @@ class ClientJev:
         try:
             return lire_reponse_jev(questions, self.brut(etat, questions))
         except ReponseInvalide:
-            self.compteur.erreurs += 1
+            self.compteur.erreur()
             raise
 
 

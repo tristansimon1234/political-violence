@@ -47,6 +47,17 @@ class Supabase:
         if lignes:
             log.info("supabase upsert %s lignes=%d", table, len(lignes))
 
+    def modifier(self, table: str, filtres: dict[str, str], valeurs: dict[str, Any]) -> None:
+        """Met à jour les lignes qui passent les filtres (ex. {"video_id": "in.(a,b)"})."""
+        r = requests.patch(
+            f"{self._base}/{table}",
+            params=filtres,
+            headers={**self._headers, "Prefer": "return=minimal"},
+            json=valeurs,
+            timeout=60,
+        )
+        r.raise_for_status()
+
     def inserer(self, table: str, ligne: dict[str, Any]) -> None:
         r = requests.post(
             f"{self._base}/{table}",
