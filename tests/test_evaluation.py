@@ -12,8 +12,11 @@ import pytest
 from radar.classification import (
     Classement,
     ClassementCommentaire,
+    ContexteVideo,
     classement_jev,
+    etat_jev,
     masquer,
+    message_commentaires,
     normaliser,
     questions_jev,
 )
@@ -23,12 +26,15 @@ from radar.evaluation import (
     Couts,
     Etiquette,
     Ligne,
+    Modele,
     Volume,
     candidates,
     cascade,
     classer_claude,
     classer_jev,
     comparer,
+    distributions,
+    ecart,
     echantillonner,
     ecrire_echantillon,
     ecrire_resultats,
@@ -56,6 +62,7 @@ TITRE = "TitreVideoTresReconnaissable"
 CHAINE = "ChaineTresReconnaissable"
 TEXTE = "TexteCommentaireTresReconnaissable"
 AUTEUR_HASH = "a" * 32
+RESUME = "ResumeVideoTresReconnaissable"
 
 
 def test_masquer_mentions_et_url() -> None:
@@ -362,12 +369,12 @@ def test_etiquetage_aller_retour() -> None:
         champs = ligne.split(";")
         ref = champs[0]
         nature = next(li.nature for li in lignes if li.ref == ref)
-        champs[7] = "retraites+sante" if ref != "C002" else "aucun"
-        champs[8] = "desaccord_video" if nature == "opinion" else "-"
-        champs[9] = "negative"
-        champs[10] = "oui" if ref == "C001" else ("" if ref == "C003" else "non")
+        champs[8] = "retraites+sante" if ref != "C002" else "aucun"
+        champs[9] = "desaccord_video" if nature == "opinion" else "-"
+        champs[10] = "negative"
+        champs[11] = "oui" if ref == "C001" else ("" if ref == "C003" else "non")
         remplies.append(";".join(champs))
-    remplies[-1] = ";".join([*remplies[-1].split(";")[:7], "", "", "", ""])  # non remplie
+    remplies[-1] = ";".join([*remplies[-1].split(";")[:8], "", "", "", ""])  # non remplie
     etiquettes = lire_etiquettes(("\n".join(remplies) + "\n").encode(), lignes)
     assert len(etiquettes) == sum(li.verite for li in lignes) - 1
     assert etiquettes["C002"].est_politique is False and etiquettes["C002"].themes == ()
@@ -461,7 +468,10 @@ def test_fichiers_evaluation_et_purge(tmp_path: Path) -> None:
     jour = date(2026, 10, 2)
     ecrire_echantillon(st, jour, lignes)
     assert lire_echantillon(st, jour) == lignes
-    res = {"jev": {"C001": _cl(0.8)}, "claude": {"C001": _cl(None)}}
+    res: dict[Modele, dict[str, Classement]] = {
+        "jev": {"C001": _cl(0.8)},
+        "claude": {"C001": _cl(None)},
+    }
     ecrire_resultats(st, jour, res)
     assert lire_resultats(st, jour) == res
     st.ecrire("evaluation/2026-10-02-etiquetage-rempli.csv", b"x")
@@ -486,7 +496,7 @@ class FauxAnthropicNature(FauxAnthropic):
     def parse(self, **kwargs: Any) -> _Reponse:
         if kwargs["output_format"].__name__ == "ReponseNatureVideo":
             self.envois.append(kwargs["messages"][0]["content"])
-            return _Reponse(kwargs["output_format"](nature_video="opinion"))
+            return _Reponse(kwargs["output_format"](nature_video="opinion", resume=RESUME))
         return super().parse(**kwargs)
 
 
@@ -568,7 +578,7 @@ def test_script_preparer_evaluer(
     appels = len(faux_jev.envois)
     brut = st.lire(f"evaluation/{jour}-etiquetage.csv").decode("utf-8-sig").splitlines()
     rempli = [brut[0]] + [
-        ";".join([*x.split(";")[:7], "retraites", "accord_video", "negative", "non"])
+        ";".join([*x.split(";")[:8], "retraites", "accord_video", "negative", "non"])
         for x in brut[1:]
     ]
     st.ecrire(f"evaluation/{jour}-etiquetage-rempli.csv", "\n".join(rempli).encode())
@@ -579,6 +589,86 @@ def test_script_preparer_evaluer(
     )
     assert len(faux_jev.envois) == appels
     assert "Recommandation" in rapport_ and TEXTE not in rapport_
+    assert "Parts agrégées" in rapport_
+    # Résumé de la vidéo : dans le fichier d'étiquetage (bucket), jamais dans le rapport.
+    assert RESUME in "\n".join(brut)
+    # --contexte : résumés recalculés, envoyés aux modèles, résultats gardés à part.
+    faux_jev.envois.clear()
+    rapport_ = lancer("evaluer", "--contexte")
+    assert faux_jev.envois and all(RESUME in e for e in faux_jev.envois)
+    assert "Effet du résumé de la vidéo" in rapport_
+    assert "Résumés : 4 non vides sur 4 vidéos" in rapport_
+    for interdit in (TEXTE, TITRE, CHAINE, AUTEUR_HASH, RESUME):
+        assert interdit not in rapport_
+    assert {
+        f"evaluation/{jour}-resultats.parquet",
+        f"evaluation/{jour}-resultats-contexte.parquet",
+        f"evaluation/{jour}-resumes.json",
+    } <= set(st.lister("evaluation"))
+    # Relance : ni nouveau résumé ni nouveau classement.
+    n_jev, n_claude = len(faux_jev.envois), len(faux_claude.envois)
+    lancer("evaluer", "--contexte")
+    assert (len(faux_jev.envois), len(faux_claude.envois)) == (n_jev, n_claude)
+    # Sans --contexte, le résumé n'est jamais envoyé (aucun gain mesuré le 02/10).
+    faux_jev.envois.clear()
+    lancer("evaluer", "--reclasser")
+    assert faux_jev.envois and all(RESUME not in e for e in faux_jev.envois)
+    # Arbitrage des vrais désaccords : fichiers dans le bucket, rapport sans texte.
+    n_jev, n_claude = len(faux_jev.envois), len(faux_claude.envois)
+    sortie = lancer("arbitrer")
+    assert "désaccords" in sortie and TEXTE not in sortie
+    noms = set(st.lister("evaluation"))
+    assert {
+        f"evaluation/{jour}-arbitrage.csv",
+        f"evaluation/{jour}-arbitrage-cle.json",
+        f"evaluation/{jour}-definitions.md",
+    } <= noms
+    a_remplir = st.lire(f"evaluation/{jour}-arbitrage.csv").decode("utf-8-sig").splitlines()
+    assert len(a_remplir) > 1
+    rempli_arb = [a_remplir[0]] + [";".join([*x.split(";")[:-2], "A", ""]) for x in a_remplir[1:]]
+    st.ecrire(f"evaluation/{jour}-arbitrage-rempli.csv", "\n".join(rempli_arb).encode())
+    rapport_ = lancer("arbitrage")
+    assert "Justesse face à la référence arbitrée" in rapport_ and "Parts agrégées" in rapport_
+    for interdit in (TEXTE, TITRE, CHAINE, AUTEUR_HASH, RESUME):
+        assert interdit not in rapport_
+    assert (len(faux_jev.envois), len(faux_claude.envois)) == (n_jev, n_claude)  # aucun appel
+    # Échantillon disparu (incident du 02/10) : preparer refuse, restaurer le reconstruit.
+    avant = {li.ref: (li.titre, li.texte) for li in lire_echantillon(st, jour) if li.verite}
+    st.supprimer([f"evaluation/{jour}-echantillon.parquet"])
+    monkeypatch.setattr(sys, "argv", ["evaluation", "preparer", "--stockage-local", str(tmp_path)])
+    assert script.main() == 1 and "verrouillé" in capsys.readouterr().out
+    sortie = lancer("restaurer")
+    assert "introuvables : 0" in sortie and TEXTE not in sortie
+    apres = {li.ref: (li.titre, li.texte) for li in lire_echantillon(st, jour) if li.verite}
+    assert apres == avant  # mêmes références, mêmes textes (donc mêmes étiquettes)
+
+
+def test_resume_video_transmis_seulement_s_il_existe() -> None:
+    sans = ContexteVideo("Titre", "Chaîne", "opinion")
+    avec = ContexteVideo("Titre", "Chaîne", "opinion", "La vidéo soutient que X.")
+    assert "summary" not in etat_jev(sans, "c")["video"]
+    assert etat_jev(avec, "c")["video"]["summary"] == "La vidéo soutient que X."
+    assert "Video summary" not in message_commentaires(sans, ["c"])
+    assert "Video summary: La vidéo soutient que X." in message_commentaires(avec, ["c"])
+
+
+def test_parts_agregees_multi_themes_et_ecart() -> None:
+    tristan = {
+        "C1": Etiquette(True, ("retraites", "sante"), None, "negative", True),
+        "C2": Etiquette(False, (), None, "neutre", None),
+    }
+    jev = {
+        "C1": Classement(True, ("retraites",), None, "negative", False),
+        "C2": Classement(True, ("sante",), None, "negative", True),
+    }
+    d = distributions({"tristan": tristan, "jev": jev}, ["C1", "C2"])
+    # 1/n : C1 compte pour moitié dans chaque thème ; les parts somment à 100 %.
+    assert d["themes"]["tristan"] == {"retraites": 25, "sante": 25, "non politique": 50}
+    assert sum(d["themes"]["tristan"].values()) == pytest.approx(100)
+    assert sum(d["themes"]["jev"].values()) == pytest.approx(100)
+    # Hostilité : seulement là où Tristan a tranché (C1).
+    assert d["hostilite"]["tristan"] == {"hostile": 100} and d["hostilite"]["jev"] == {"hostile": 0}
+    assert ecart({"a": 60, "b": 40}, {"a": 40, "b": 60}) == pytest.approx(20)
 
 
 def test_corps_jev_protocole_typesafe() -> None:
@@ -723,3 +813,175 @@ def test_recommandation_cascade_meilleure_que_chaque_modele() -> None:
     ]
     r = recommandation(lignes, 0.00006, 0.00069, 1_000_000)
     assert r.startswith("**0,7**") and "0,7, 75 %" in r
+
+
+def test_jev_reprise_sur_coupure_reseau(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Coupure réseau : nouvel essai ; après 4 coupures, commentaire ignoré (pas de plantage)."""
+    import requests
+
+    from radar import llm
+
+    class _Ok:
+        status_code = 200
+        ok = True
+
+        def json(self) -> dict[str, Any]:
+            return {"ok": True}
+
+    essais: list[int] = []
+
+    def post_coupe_une_fois(*args: Any, **kwargs: Any) -> _Ok:
+        essais.append(1)
+        if len(essais) == 1:
+            raise requests.ConnectionError("Connection reset by peer")
+        return _Ok()
+
+    def sans_attente(secondes: float) -> None:
+        return None
+
+    monkeypatch.setattr(llm.time, "sleep", sans_attente)
+    monkeypatch.setattr(llm.requests, "post", post_coupe_une_fois)
+    assert llm._post("u", {}, {}) == {"ok": True} and len(essais) == 2  # pyright: ignore[reportPrivateUsage]
+
+    def post_toujours_coupe(*args: Any, **kwargs: Any) -> _Ok:
+        raise requests.ConnectionError("Connection reset by peer")
+
+    monkeypatch.setattr(llm.requests, "post", post_toujours_coupe)
+    with pytest.raises(ReponseInvalide, match="réseau"):
+        llm._post("u", {}, {})  # pyright: ignore[reportPrivateUsage]
+
+
+def test_resume_obligatoire_dans_la_reponse_de_claude() -> None:
+    """Un champ facultatif peut être omis par le modèle : le résumé doit être exigé."""
+    from radar.classification import ReponseNatureVideo
+    from radar.evaluation import controle_resumes
+
+    assert "resume" in ReponseNatureVideo.model_json_schema()["required"]
+    texte = controle_resumes(
+        {"v1": "La vidéo soutient que X.", "v2": "", "v3": "Sujet peu précis : Y"}
+    )
+    assert (
+        texte.startswith("Résumés : 2 non vides sur 3 vidéos") and "1 « Sujet peu précis »" in texte
+    )
+    assert "X" not in texte and "Y" not in texte
+
+
+def test_reference_arbitree_applique_les_choix() -> None:
+    from radar.evaluation import reference_arbitree
+
+    etiquettes = {
+        "C001": Etiquette(True, ("societe",), "accord_video", "negative", False),
+        "C002": Etiquette(True, ("retraites",), "nuance", "neutre", True),
+    }
+    fichier = "\n".join(
+        [
+            "id;ref;dimension;chaine;titre_video;nature_video;commentaire;A;B;C;choix;note",
+            "R001;C001;hostilite;c;t;opinion;x;non hostile;hostile;;B;",
+            "R002;C001;themes;c;t;opinion;x;institutions;societe;;A+B;",  # origine gardée
+            "R003;C002;position;c;t;opinion;x;desaccord_video;nuance;;aucune;",
+            "R004;C002;themes;c;t;opinion;x;aucun;retraites;;A;",
+            "R005;C002;hostilite;c;t;opinion;x;hostile;non hostile;;;",  # non arbitrée
+        ]
+    ).encode()
+    ref, n = reference_arbitree(etiquettes, fichier)
+    assert n == 4
+    assert ref["C001"].hostilite is True and ref["C001"].themes == ("societe",)
+    assert ref["C002"].position is None  # aucune réponse acceptable : dimension ignorée
+    assert ref["C002"].themes == () and ref["C002"].est_politique is False
+    assert ref["C002"].hostilite is True  # ligne non arbitrée : inchangée
+
+
+def test_fiche_definitions_reprend_les_consignes() -> None:
+    from radar.classification import DEFINITIONS_THEMES, HOSTILITE_OUI
+    from radar.evaluation import fiche_definitions
+
+    fiche = fiche_definitions()
+    assert HOSTILITE_OUI in fiche and all(d in fiche for d in DEFINITIONS_THEMES.values())
+
+
+def test_arbitrage_ignore_l_ordre_des_themes() -> None:
+    from radar.evaluation import fichier_arbitrage
+
+    li = _lignes()[0]
+    tristan = {li.ref: Etiquette(True, ("institutions", "sante"), None, "neutre", False)}
+    jev = {li.ref: Classement(True, ("sante", "institutions"), None, "neutre", False)}
+    claude = {li.ref: Classement(True, ("institutions", "sante"), None, "neutre", False)}
+    a_remplir, cle = fichier_arbitrage([li], jev, claude, tristan, random.Random(1), ("themes",))
+    assert cle == {} and a_remplir.decode("utf-8-sig").count("\n") == 1
+
+
+def test_cle_retrouvee_depuis_les_valeurs() -> None:
+    from radar.evaluation import cle_depuis_valeurs, fichier_arbitrage
+
+    lignes = _lignes()[:4]
+    tristan = {li.ref: Etiquette(True, ("institutions",), None, "neutre", False) for li in lignes}
+    jev = {li.ref: Classement(True, ("societe",), None, "neutre", True) for li in lignes}
+    claude = {li.ref: Classement(True, ("institutions",), None, "neutre", False) for li in lignes}
+    a_remplir, cle = fichier_arbitrage(
+        lignes, jev, claude, tristan, random.Random(3), ("themes", "hostilite")
+    )
+
+    def trie(c: dict[str, dict[str, list[str]]]) -> dict[str, dict[str, list[str]]]:
+        return {k: {lettre: sorted(v) for lettre, v in o.items()} for k, o in c.items()}
+
+    assert cle and trie(cle_depuis_valeurs(a_remplir, jev, claude, tristan)) == trie(cle)
+
+
+def test_position_par_seuil_de_confiance() -> None:
+    from radar.evaluation import position_par_seuil
+
+    ref = {
+        "C1": Etiquette(True, ("institutions",), "desaccord_video", "negative", False),
+        "C2": Etiquette(True, ("institutions",), "accord_video", "positive", False),
+        "C3": Etiquette(True, ("institutions",), "hors_sujet", "neutre", False),
+    }
+    jev = {
+        "C1": Classement(True, ("institutions",), "hors_sujet", "negative", False, 0.4, 0.4),
+        "C2": Classement(True, ("institutions",), "accord_video", "positive", False, 0.9, 0.95),
+        "C3": Classement(True, ("institutions",), "hors_sujet", "neutre", False, 0.8, 0.8),
+    }
+    table = "\n".join(position_par_seuil(jev, ref))
+    assert "| 0,0 | 100 % (3/3) |" in table  # tout retenu
+    assert "| 0,9 | 33 % (1/3) | 100 % (100 %) |" in table  # seul l'accord sûr reste
+    assert (
+        position_par_seuil({k: Classement(True, (), None, "neutre", False) for k in ref}, ref) == []
+    )
+
+
+def test_confiance_position_conservee() -> None:
+    reps = lire_reponse_jev(
+        questions_jev("opinion"),
+        {
+            "answers": {
+                "politique": {"probability": 0.9},
+                "theme": {"choice": "retraites", "confidence": 0.8},
+                "tonalite": {"choice": "neutre", "confidence": 0.7},
+                "hostilite": {"noul": 0.1},
+                "position": {"choice": "desaccord_video", "confidence": 0.65},
+            }
+        },
+    )
+    c = classement_jev(reps, "opinion")
+    assert c.position == "desaccord_video" and c.confiance_position == pytest.approx(0.65)
+    assert classement_jev(reps, "info_factuelle").confiance_position is None
+
+
+def test_series_d_echantillons_separees(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from radar.evaluation import base_serie, chemin, commentaires_deja_tires, dernier_echantillon
+
+    st = StockageLocal(tmp_path)
+    jour = date(2026, 10, 2)
+    lignes = _lignes()
+    ecrire_echantillon(st, base_serie(jour, 1), lignes)
+    assert dernier_echantillon(st) == "2026-10-02" and dernier_echantillon(st, 2) is None
+    autres = [replace(li, comment_id=li.comment_id + "-b") for li in lignes]
+    ecrire_echantillon(st, base_serie(jour, 2), autres)
+    assert dernier_echantillon(st, 2) == "2026-10-02-s2"
+    assert chemin("2026-10-02-s2", "etiquetage.csv") == "evaluation/2026-10-02-s2-etiquetage.csv"
+    # La série 1 n'est pas écrasée, et les deux séries sont connues pour l'exclusion.
+    assert lire_echantillon(st, "2026-10-02") == lignes
+    assert commentaires_deja_tires(st) == {li.comment_id for li in lignes + autres}
+    # Purge à 30 jours : toutes les séries partent avec la date.
+    assert len(purger(st, date(2026, 11, 2))) >= 2 and dernier_echantillon(st, 2) is None

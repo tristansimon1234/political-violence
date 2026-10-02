@@ -1,7 +1,8 @@
 """Test de qualité Jev / Claude / vérité terrain (étape 4, docs/roadmap.md).
 
 1. `preparer` : échantillon stratifié de commentaires collectés (catégorie de source, format,
-   nature de vidéo), dont un sous-ensemble à étiqueter à la main. Nature des vidéos par Claude.
+   nature de vidéo), dont un sous-ensemble à étiqueter à la main. Nature et résumé des vidéos
+   par Claude.
 2. Étiquetage par Tristan d'un fichier CSV déposé dans le bucket brut.
 3. `evaluer` : classement par Jev et par Claude, comparaison aux étiquettes, justesse de Jev
    par tranche de confiance, seuil de reprise recommandé et coût projeté sur la campagne.
@@ -17,9 +18,10 @@ import io
 import json
 import logging
 import random
+import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Literal, TypeVar
 
@@ -27,6 +29,14 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from radar.classification import (
+    DEFINITIONS_POSITIONS,
+    DEFINITIONS_THEMES,
+    DEFINITIONS_TONALITES,
+    HOSTILITE_NON,
+    HOSTILITE_OUI,
+    REGLE_POLITIQUE,
+    REGLE_POSITION,
+    REGLE_THEMES,
     SYSTEME_COMMENTAIRES,
     SYSTEME_NATURE_VIDEO,
     Classement,
@@ -107,6 +117,7 @@ class Ligne:
     texte: str  # déjà masqué
     verite: bool
     recupere_le: date
+    resume: str = ""  # sujet et thèse de la vidéo (Claude), dérivé du brut
 
     @property
     def strate(self) -> Strate:
@@ -114,7 +125,7 @@ class Ligne:
 
     @property
     def contexte(self) -> ContexteVideo:
-        return ContexteVideo(self.titre, self.chaine, self.nature)
+        return ContexteVideo(self.titre, self.chaine, self.nature, self.resume)
 
 
 SCHEMA_ECHANTILLON = pa.schema(
@@ -130,6 +141,7 @@ SCHEMA_ECHANTILLON = pa.schema(
         ("texte", pa.string()),
         ("verite", pa.bool_()),
         ("recupere_le", pa.date32()),
+        ("resume", pa.string()),
     ]
 )
 
@@ -144,6 +156,7 @@ SCHEMA_RESULTATS = pa.schema(
         ("tonalite", pa.string()),
         ("hostilite", pa.bool_()),
         ("confiance", pa.float64()),
+        ("confiance_position", pa.float64()),
     ]
 )
 
@@ -208,6 +221,7 @@ def echantillonner(
     rng: random.Random,
     n: int = N_ECHANTILLON,
     n_verite: int = N_VERITE,
+    resumes: Mapping[str, str] | None = None,
 ) -> list[Ligne]:
     """Échantillon stratifié (égal entre strates, plafonné par vidéo) ; `n_verite` à étiqueter."""
     par_strate: dict[Strate, list[tuple[Candidate, list[Mapping[str, Any]]]]] = defaultdict(list)
@@ -251,9 +265,33 @@ def echantillonner(
             texte=masquer(str(x["texte"])),
             verite=verite,
             recupere_le=_date(x["recupere_le"]),
+            resume=(resumes or {}).get(c.video_id, ""),
         )
         for i, (c, x, verite, s) in enumerate(tout, start=1)
     ]
+
+
+PEU_PRECIS = "Sujet peu précis"
+
+
+def controle_resumes(resumes: Mapping[str, str]) -> str:
+    """Contrôle des résumés en agrégats : jamais de texte."""
+    pleins = [r for r in resumes.values() if r.strip()]
+    mots = sum(len(r.split()) for r in pleins) / len(pleins) if pleins else 0.0
+    vagues = sum(1 for r in pleins if r.strip().startswith(PEU_PRECIS))
+    return (
+        f"Résumés : {len(pleins)} non vides sur {len(resumes)} vidéos, {mots:.0f} mots en "
+        f"moyenne, {vagues} « {PEU_PRECIS} »."
+    )
+
+
+def sans_resumes(lignes: Iterable[Ligne]) -> list[Ligne]:
+    """Résumé retiré du contexte envoyé aux modèles (aucun gain mesuré le 02/10/2026)."""
+    return [replace(li, resume="") for li in lignes]
+
+
+def avec_resumes(lignes: Iterable[Ligne], resumes: Mapping[str, str]) -> list[Ligne]:
+    return [replace(li, resume=resumes.get(li.video_id, li.resume)) for li in lignes]
 
 
 def _date(v: Any) -> date:
@@ -263,21 +301,22 @@ def _date(v: Any) -> date:
 # --- Classement ---
 
 
-def classer_natures(claude: ClientClaude, cands: Iterable[Candidate]) -> dict[str, NatureVideo]:
-    natures: dict[str, NatureVideo] = {}
+def classer_videos(
+    claude: ClientClaude, cands: Iterable[Candidate]
+) -> dict[str, ReponseNatureVideo]:
+    """Nature et résumé de chaque vidéo, un appel Claude par vidéo."""
+    videos: dict[str, ReponseNatureVideo] = {}
     for c in cands:
         try:
-            r = claude.classer(
+            videos[c.video_id] = claude.classer(
                 SYSTEME_NATURE_VIDEO,
                 message_nature_video(c.titre, c.description, c.chaine),
                 ReponseNatureVideo,
-                max_tokens=100,
+                max_tokens=200,
             )
         except ReponseInvalide as e:
-            log.warning("nature vidéo ignorée : %s", e)
-            continue
-        natures[c.video_id] = r.nature_video
-    return natures
+            log.warning("vidéo ignorée : %s", e)
+    return videos
 
 
 def classer_claude(claude: ClientClaude, lignes: Iterable[Ligne]) -> dict[str, Classement]:
@@ -327,6 +366,7 @@ COLONNES_ETIQUETAGE = (
     "nature_video",
     "chaine",
     "titre_video",
+    "resume_video",
     "commentaire",
     "themes",
     "position",
@@ -362,6 +402,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
                 li.nature,
                 li.chaine,
                 li.titre,
+                li.resume,
                 li.texte,
                 "",
                 position,
@@ -574,24 +615,7 @@ def rapport(
 
     if etiquettes:
         out += ["## Justesse face aux étiquettes de Tristan", ""]
-        out += [
-            f"| Dimension | Jev | Claude | Accord Jev / Claude ({len(lignes)}) |",
-            "|---|---:|---:|---:|",
-        ]
-        for d in DIMENSIONS:
-            out.append(
-                f"| {LIBELLES_DIMENSIONS[d]} | {_pct(*taux(jev, etiquettes, d))} | "
-                f"{_pct(*taux(claude, etiquettes, d))} | {_pct(*taux(jev, claude, d))} |"
-            )
-        out += ["", "Par catégorie de source (« tout juste ») :", ""]
-        out += ["| Catégorie | Jev | Claude |", "|---|---:|---:|"]
-        for t in TYPES_SOURCE:
-            refs = {r: e for r, e in etiquettes.items() if _type(lignes, r) == t}
-            out.append(
-                f"| {t} | {_pct(*taux(jev, refs, 'complet'))} | "
-                f"{_pct(*taux(claude, refs, 'complet'))} |"
-            )
-        out.append("")
+        out += table_justesse(lignes, jev, claude, etiquettes)
     else:
         out += [
             "## Justesse face aux étiquettes de Tristan",
@@ -619,6 +643,10 @@ def rapport(
             f"{_pct(*taux(dans, etiquettes, 'complet'))} |"
         )
     out.append("")
+
+    if etiquettes:
+        out += parts_agregees(jev, claude, etiquettes)
+        out += position_par_seuil(jev, etiquettes)
 
     jours, projetes = volume.campagne(aujourdhui)
     if volume.commentaires:
@@ -671,6 +699,191 @@ def rapport(
     return "\n".join(out)
 
 
+def table_justesse(
+    lignes: list[Ligne],
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> list[str]:
+    out = [
+        f"| Dimension | Jev | Claude | Accord Jev / Claude ({len(lignes)}) |",
+        "|---|---:|---:|---:|",
+    ]
+    for d in DIMENSIONS:
+        out.append(
+            f"| {LIBELLES_DIMENSIONS[d]} | {_pct(*taux(jev, etiquettes, d))} | "
+            f"{_pct(*taux(claude, etiquettes, d))} | {_pct(*taux(jev, claude, d))} |"
+        )
+    out += ["", "Par catégorie de source (« tout juste ») :", ""]
+    out += ["| Catégorie | Jev | Claude |", "|---|---:|---:|"]
+    for t in TYPES_SOURCE:
+        refs = {r: e for r, e in etiquettes.items() if _type(lignes, r) == t}
+        out.append(
+            f"| {t} | {_pct(*taux(jev, refs, 'complet'))} | "
+            f"{_pct(*taux(claude, refs, 'complet'))} |"
+        )
+    out.append("")
+    return out
+
+
+Distribution = dict[str, float]
+NON_POLITIQUE = "non politique"
+
+
+def distributions(
+    sources: Mapping[str, Mapping[str, Reference]], refs: Iterable[str]
+) -> dict[str, dict[str, Distribution]]:
+    """Parts par dimension et par source, sur les mêmes commentaires ; en % des commentaires.
+
+    Thèmes : un commentaire multi-thèmes compte 1/n dans chacun (comme dans le Radar).
+    Position et hostilité : seulement là où la référence (première source) est renseignée.
+    """
+    refs = list(refs)
+    reference = next(iter(sources.values()))
+    res: dict[str, dict[str, Distribution]] = {}
+    for dim in ("themes", "tonalite", "hostilite", "position"):
+        utiles = [
+            r
+            for r in refs
+            if not (dim == "position" and reference[r].position is None)
+            and not (dim == "hostilite" and reference[r].hostilite is None)
+        ]
+        res[dim] = {}
+        for nom, classements in sources.items():
+            compte: defaultdict[str, float] = defaultdict(float)
+            for r in utiles:
+                c = classements[r]
+                if dim == "themes":
+                    for t in c.themes or (NON_POLITIQUE,):
+                        compte[t] += 1 / max(1, len(c.themes))
+                elif dim == "tonalite":
+                    compte[c.tonalite] += 1
+                elif dim == "hostilite":
+                    compte["hostile"] += int(bool(c.hostilite))
+                else:
+                    compte[c.position or SANS_POSITION] += 1
+            res[dim][nom] = {k: 100 * v / len(utiles) for k, v in compte.items()} if utiles else {}
+    return res
+
+
+def ecart(a: Distribution, b: Distribution) -> float:
+    """Part de la masse mal placée (en points) : demi-somme des écarts absolus."""
+    cles = set(a) | set(b)
+    return sum(abs(a.get(k, 0.0) - b.get(k, 0.0)) for k in cles) / 2
+
+
+def parts_agregees(
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> list[str]:
+    refs = sorted(r for r in etiquettes if r in jev and r in claude)
+    if not refs:
+        return []
+    d = distributions({"tristan": etiquettes, "jev": jev, "claude": claude}, refs)
+    ordres: dict[str, tuple[str, ...]] = {
+        "themes": (*THEMES, NON_POLITIQUE),
+        "tonalite": TONALITES,
+        "hostilite": ("hostile",),
+        "position": POSITIONS,
+    }
+    titres = {
+        "themes": "Thème (1/n par commentaire multi-thèmes)",
+        "tonalite": "Tonalité",
+        "hostilite": "Hostilité",
+        "position": "Position (vidéos d'opinion)",
+    }
+    out = [
+        f"## Parts agrégées ({len(refs)} commentaires étiquetés)",
+        "",
+        "Ce que le Radar affichera : des parts, pas des commentaires un par un. Les erreurs "
+        "individuelles peuvent se compenser ; l'écart mesure ce qui reste.",
+        "",
+    ]
+    for dim, ordre in ordres.items():
+        dist = d[dim]
+        out += [f"| {titres[dim]} | Tristan | Jev | Claude |", "|---|---:|---:|---:|"]
+        for k in ordre:
+            vals = [dist[s].get(k, 0.0) for s in ("tristan", "jev", "claude")]
+            if any(vals):
+                out.append(f"| {k} | " + " | ".join(f"{v:.0f} %" for v in vals) + " |")
+        if dim != "hostilite":
+            e_jev, e_claude = (
+                ecart(dist["tristan"], dist["jev"]),
+                ecart(dist["tristan"], dist["claude"]),
+            )
+            out.append(f"| *Écart avec Tristan (points)* | — | {e_jev:.0f} | {e_claude:.0f} |")
+        out.append("")
+    return out
+
+
+SEUILS_POSITION = (0.0, 0.5, 0.6, 0.7, 0.8, 0.9)
+
+
+def position_par_seuil(
+    jev: Mapping[str, Classement], etiquettes: Mapping[str, Etiquette]
+) -> list[str]:
+    """Position de Jev retenue seulement au-dessus d'un seuil de confiance, sinon indéterminée.
+
+    Parmi les commentaires qui se prononcent (accord, nuance, désaccord), part d'accord et de
+    désaccord selon Jev et selon la référence, sur les mêmes commentaires.
+    """
+    refs = [r for r, e in etiquettes.items() if e.position is not None and r in jev]
+    if not refs or all(jev[r].confiance_position is None for r in refs):
+        return []
+    out = [
+        "## Position de Jev par seuil de confiance",
+        "",
+        "Sous le seuil, la position est « indéterminée ». Parts parmi les commentaires qui se "
+        "prononcent (référence entre parenthèses, mêmes commentaires).",
+        "",
+        "| Seuil | Retenus | Accord | Désaccord | Justesse |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    prononce = ("accord_video", "nuance", "desaccord_video")
+    for s in SEUILS_POSITION:
+        gardes = [r for r in refs if (jev[r].confiance_position or 0.0) >= s]
+        justes = sum(1 for r in gardes if jev[r].position == etiquettes[r].position)
+
+        def parts(positions: list[Position | None]) -> tuple[str, str]:
+            p = [x for x in positions if x in prononce]
+            if not p:
+                return "—", "—"
+            return (
+                f"{100 * p.count('accord_video') / len(p):.0f} %",
+                f"{100 * p.count('desaccord_video') / len(p):.0f} %",
+            )
+
+        acc_j, des_j = parts([jev[r].position for r in gardes])
+        acc_r, des_r = parts([etiquettes[r].position for r in gardes])
+        out.append(
+            f"| {s:.1f} | {_pct(len(gardes), len(refs))} | {acc_j} ({acc_r}) | "
+            f"{des_j} ({des_r}) | {_pct(justes, len(gardes))} |".replace(".", ",", 1)
+        )
+    out.append("")
+    return out
+
+
+def comparaison_contexte(
+    sans: Mapping[Modele, Mapping[str, Classement]],
+    avec: Mapping[Modele, Mapping[str, Classement]],
+    etiquettes: Mapping[str, Etiquette],
+) -> str:
+    """Justesse face aux étiquettes, sans puis avec le résumé de la vidéo."""
+    out = [
+        "## Effet du résumé de la vidéo",
+        "",
+        "| Dimension | Jev sans | Jev avec | Claude sans | Claude avec |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for dim in DIMENSIONS:
+        cellules = [
+            _pct(*taux(res[m], etiquettes, dim)) for m in ("jev", "claude") for res in (sans, avec)
+        ]
+        out.append(f"| {LIBELLES_DIMENSIONS[dim]} | " + " | ".join(cellules) + " |")
+    return "\n".join(out)
+
+
 def _type(lignes: list[Ligne], ref: str) -> str:
     return next((li.type_source for li in lignes if li.ref == ref), "?")
 
@@ -702,33 +915,114 @@ def recommandation(
 # --- Fichiers du bucket ---
 
 
-def chemin(jour: date, nom: str) -> str:
-    return f"{DOSSIER_EVALUATION}/{jour.isoformat()}-{nom}"
+# Base d'un échantillon : sa date (série 1) ou « date-sN » (séries suivantes). Le nom des
+# fichiers commence toujours par la date : la purge à 30 jours s'applique à toutes les séries.
+Base = date | str
 
 
-def dernier_echantillon(st: Stockage) -> date | None:
-    jours = [
-        j
+def chemin(jour: Base, nom: str) -> str:
+    return f"{DOSSIER_EVALUATION}/{jour}-{nom}"
+
+
+def base_serie(jour: date, serie: int) -> str:
+    return jour.isoformat() if serie == 1 else f"{jour.isoformat()}-s{serie}"
+
+
+def dernier_echantillon(st: Stockage, serie: int = 1) -> str | None:
+    """Base du dernier échantillon de la série demandée, None s'il n'y en a pas."""
+    suffixe = "" if serie == 1 else f"-s{serie}"
+    motif = re.compile(rf"^(\d{{4}}-\d{{2}}-\d{{2}}){suffixe}-echantillon\.parquet$")
+    bases = [
+        m.group(1) + suffixe
         for c in st.lister(DOSSIER_EVALUATION)
-        if c.endswith("-echantillon.parquet") and (j := date_fichier(c)) is not None
+        if (m := motif.match(c.rsplit("/", 1)[-1])) and date_fichier(c) is not None
     ]
-    return max(jours, default=None)
+    return max(bases, default=None)
 
 
-def ecrire_echantillon(st: Stockage, jour: date, lignes: list[Ligne]) -> None:
+def etiquetage_rempli_existe(st: Stockage, serie: int = 1) -> bool:
+    """Vrai si un étiquetage rempli existe pour la série : son échantillon ne doit pas changer."""
+    suffixe = "" if serie == 1 else f"-s{serie}"
+    motif = re.compile(rf"^\d{{4}}-\d{{2}}-\d{{2}}{suffixe}-etiquetage-rempli\.csv$")
+    return any(motif.match(c.rsplit("/", 1)[-1]) for c in st.lister(DOSSIER_EVALUATION))
+
+
+def _norm(texte: str) -> str:
+    return " ".join(texte.split())
+
+
+def restaurer_depuis_etiquetage(
+    donnees: bytes,
+    commentaires_bruts: Iterable[Mapping[str, Any]],
+    titres: Mapping[str, str],
+) -> tuple[list[Ligne], list[str]]:
+    """Lignes étiquetées retrouvées dans le brut (même titre de vidéo, même texte masqué).
+
+    Renvoie (lignes avec leur référence d'origine, références introuvables).
+    """
+    index: dict[tuple[str, str], Mapping[str, Any]] = {}
+    for x in commentaires_bruts:
+        vid = str(x["video_id"])
+        cle = (_norm(titres.get(vid, "")), _norm(masquer(str(x["texte"]))))
+        index.setdefault(cle, x)
+    texte = donnees.decode("utf-8-sig")
+    separateur = (
+        ";" if texte.split("\n", 1)[0].count(";") >= texte.split("\n", 1)[0].count(",") else ","
+    )
+    lignes: list[Ligne] = []
+    introuvables: list[str] = []
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        ref = (r.get("ref") or "").strip()
+        x = index.get((_norm(r.get("titre_video") or ""), _norm(r.get("commentaire") or "")))
+        if x is None:
+            introuvables.append(ref)
+            continue
+        lignes.append(
+            Ligne(
+                ref=ref,
+                comment_id=str(x["comment_id"]),
+                video_id=str(x["video_id"]),
+                type_source=(r.get("categorie") or "").strip(),
+                format=(r.get("format") or "").strip(),
+                nature=en_nature((r.get("nature_video") or "").strip()),
+                chaine=r.get("chaine") or "",
+                titre=r.get("titre_video") or "",
+                texte=masquer(str(x["texte"])),
+                verite=True,
+                recupere_le=_date(x["recupere_le"]),
+                resume=r.get("resume_video") or "",
+            )
+        )
+    return lignes, introuvables
+
+
+def commentaires_deja_tires(st: Stockage) -> set[str]:
+    """Identifiants des commentaires de tous les échantillons existants (toutes séries)."""
+    tires: set[str] = set()
+    for c in st.lister(DOSSIER_EVALUATION):
+        if c.endswith("-echantillon.parquet"):
+            table = pq.read_table(io.BytesIO(st.lire(c)), columns=["comment_id"])  # pyright: ignore[reportUnknownMemberType]
+            tires.update(str(x) for x in table.column("comment_id").to_pylist())
+    return tires
+
+
+def ecrire_echantillon(st: Stockage, jour: Base, lignes: list[Ligne]) -> None:
     tampon = io.BytesIO()
     table = pa.Table.from_pylist([li.__dict__ for li in lignes], schema=SCHEMA_ECHANTILLON)
     pq.write_table(table, tampon)  # pyright: ignore[reportUnknownMemberType]
     st.ecrire(chemin(jour, "echantillon.parquet"), tampon.getvalue())
 
 
-def lire_echantillon(st: Stockage, jour: date) -> list[Ligne]:
+def lire_echantillon(st: Stockage, jour: Base) -> list[Ligne]:
     table = pq.read_table(io.BytesIO(st.lire(chemin(jour, "echantillon.parquet"))))  # pyright: ignore[reportUnknownMemberType]
     return [Ligne(**r) for r in table.to_pylist()]
 
 
 def ecrire_resultats(
-    st: Stockage, jour: date, resultats: Mapping[str, Mapping[str, Classement]]
+    st: Stockage,
+    jour: Base,
+    resultats: Mapping[Modele, Mapping[str, Classement]],
+    nom: str = "resultats.parquet",
 ) -> None:
     lignes = [
         {
@@ -740,17 +1034,20 @@ def ecrire_resultats(
             "tonalite": c.tonalite,
             "hostilite": c.hostilite,
             "confiance": c.confiance,
+            "confiance_position": c.confiance_position,
         }
         for m, res in resultats.items()
         for r, c in sorted(res.items())
     ]
     tampon = io.BytesIO()
     pq.write_table(pa.Table.from_pylist(lignes, schema=SCHEMA_RESULTATS), tampon)  # pyright: ignore[reportUnknownMemberType]
-    st.ecrire(chemin(jour, "resultats.parquet"), tampon.getvalue())
+    st.ecrire(chemin(jour, nom), tampon.getvalue())
 
 
-def lire_resultats(st: Stockage, jour: date) -> dict[Modele, dict[str, Classement]]:
-    table = pq.read_table(io.BytesIO(st.lire(chemin(jour, "resultats.parquet"))))  # pyright: ignore[reportUnknownMemberType]
+def lire_resultats(
+    st: Stockage, jour: Base, nom: str = "resultats.parquet"
+) -> dict[Modele, dict[str, Classement]]:
+    table = pq.read_table(io.BytesIO(st.lire(chemin(jour, nom))))  # pyright: ignore[reportUnknownMemberType]
     res: dict[Modele, dict[str, Classement]] = {"jev": {}, "claude": {}}
     for r in table.to_pylist():
         modele: Modele = "jev" if r["modele"] == "jev" else "claude"
@@ -761,15 +1058,16 @@ def lire_resultats(st: Stockage, jour: date) -> dict[Modele, dict[str, Classemen
             tonalite=en_tonalite(r["tonalite"]),
             hostilite=bool(r["hostilite"]),
             confiance=r["confiance"],
+            confiance_position=r.get("confiance_position"),
         )
     return res
 
 
-def ecrire_json(st: Stockage, jour: date, nom: str, donnees: Mapping[str, Any]) -> None:
+def ecrire_json(st: Stockage, jour: Base, nom: str, donnees: Mapping[str, Any]) -> None:
     st.ecrire(chemin(jour, nom), json.dumps(donnees, sort_keys=True).encode())
 
 
-def lire_json(st: Stockage, jour: date, nom: str) -> dict[str, Any]:
+def lire_json(st: Stockage, jour: Base, nom: str) -> dict[str, Any]:
     resultat: dict[str, Any] = json.loads(st.lire(chemin(jour, nom)))
     return resultat
 
@@ -859,7 +1157,8 @@ COLONNES_ARBITRAGE = (
 
 def _valeur(c: Reference, dimension: str) -> str | None:
     if dimension == "themes":
-        return "+".join(c.themes) or AUCUN_THEME
+        # Ensemble de thèmes, ordre ignoré : le Radar compte 1/n dans chacun, sans hiérarchie.
+        return "+".join(sorted(c.themes)) or AUCUN_THEME
     if dimension == "position":
         return c.position or SANS_POSITION
     if dimension == "tonalite":
@@ -875,6 +1174,7 @@ def fichier_arbitrage(
     claude: Mapping[str, Classement],
     etiquettes: Mapping[str, Etiquette],
     rng: random.Random,
+    dimensions: Sequence[str] = DIMENSIONS_ARBITRAGE,
 ) -> tuple[bytes, dict[str, dict[str, list[str]]]]:
     """Une ligne par désaccord (commentaire et dimension), options anonymes A/B/C mélangées.
 
@@ -893,7 +1193,7 @@ def fichier_arbitrage(
         }
         if any(v is None for v in sources.values()):
             continue
-        for dim in DIMENSIONS_ARBITRAGE:
+        for dim in dimensions:
             if dim == "position" and not position_applicable(li.nature):
                 continue
             options: dict[str, list[str]] = {}
@@ -980,3 +1280,142 @@ def rapport_arbitrage(donnees: bytes, cle: Mapping[str, Mapping[str, list[str]]]
         "ligne n'est pas proposée. Plusieurs lettres = réponses également acceptables.",
     ]
     return "\n".join(out)
+
+
+# --- Arbitrage sur les vrais commentaires (fichiers dans le bucket) ---
+
+DIMENSIONS_ARBITRAGE_REEL = ("themes", "position", "hostilite")
+
+
+def _depuis_valeur(e: Etiquette, dimension: str, valeur: str | None) -> Etiquette:
+    """Étiquette dont une dimension prend la valeur retenue (None = aucune réponse acceptable)."""
+    if dimension == "themes":
+        if valeur is None:
+            return e  # thèmes : pas de valeur nulle possible, l'étiquette d'origine reste
+        themes = () if valeur == AUCUN_THEME else tuple(en_theme(t) for t in valeur.split("+"))
+        if set(themes) == set(e.themes):
+            return e  # même ensemble : l'ordre d'origine (thème principal) est gardé
+        return replace(e, est_politique=bool(themes), themes=themes)
+    if dimension == "position":
+        position = None if valeur in (None, SANS_POSITION) else en_position(valeur)
+        return replace(e, position=position)
+    if dimension == "hostilite":
+        return replace(e, hostilite=None if valeur is None else valeur == "hostile")
+    raise ValueError(dimension)
+
+
+def _normaliser(dimension: str, valeur: str) -> str:
+    """Valeur comparable : ensemble de thèmes trié (l'ordre n'est pas un désaccord)."""
+    if dimension == "themes" and valeur != AUCUN_THEME:
+        return "+".join(sorted(valeur.split("+")))
+    return valeur
+
+
+def cle_depuis_valeurs(
+    donnees: bytes,
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> dict[str, dict[str, list[str]]]:
+    """Clé {id: {lettre: [sources]}} retrouvée en comparant les options aux réponses de chacun.
+
+    Ne dépend pas du fichier de clé : un fichier rempli reste lisible même si l'arbitrage a été
+    régénéré entre-temps.
+    """
+    texte = donnees.decode("utf-8-sig")
+    separateur = ";" if texte.split("\n", 1)[0].count(";") else ","
+    cle: dict[str, dict[str, list[str]]] = {}
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        ident, ref = (r.get("id") or "").strip(), (r.get("ref") or "").strip()
+        dim = (r.get("dimension") or "").strip()
+        sources: dict[str, Reference | None] = {
+            "tristan": etiquettes.get(ref),
+            "jev": jev.get(ref),
+            "claude": claude.get(ref),
+        }
+        options: dict[str, list[str]] = {}
+        for lettre in LETTRES:
+            option = (r.get(lettre) or "").strip()
+            if not option:
+                continue
+            options[lettre] = [
+                nom
+                for nom, c in sources.items()
+                if c is not None
+                and (v := _valeur(c, dim)) is not None
+                and _normaliser(dim, v) == _normaliser(dim, option)
+            ]
+        cle[ident] = options
+    return cle
+
+
+def reference_arbitree(
+    etiquettes: Mapping[str, Etiquette], donnees: bytes
+) -> tuple[dict[str, Etiquette], int]:
+    """Étiquettes de Tristan corrigées par l'arbitrage à l'aveugle ; (référence, lignes appliquées).
+
+    Plusieurs lettres : l'étiquette d'origine est gardée si elle en fait partie, sinon la
+    première retenue. `aucune` : dimension ignorée (thèmes : étiquette d'origine gardée).
+    """
+    texte = donnees.decode("utf-8-sig")
+    separateur = ";" if texte.split("\n", 1)[0].count(";") else ","
+    ref = dict(etiquettes)
+    appliquees = 0
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        cle_ref = (r.get("ref") or "").strip()
+        dim = (r.get("dimension") or "").strip()
+        choix = (r.get("choix") or "").strip().upper().replace(" ", "")
+        if not choix or cle_ref not in ref or dim not in DIMENSIONS_ARBITRAGE:
+            continue
+        e = ref[cle_ref]
+        if choix == AUCUNE.upper():
+            ref[cle_ref] = _depuis_valeur(e, dim, None)
+        else:
+            retenues = [(r.get(lettre) or "").strip() for lettre in sorted(set(choix.split("+")))]
+            actuelle = _valeur(e, dim)
+            valeur = actuelle if actuelle in retenues else retenues[0]
+            ref[cle_ref] = _depuis_valeur(e, dim, valeur)
+        appliquees += 1
+    return ref, appliquees
+
+
+def fiche_definitions() -> str:
+    """Définitions et règles données aux modèles, à garder sous les yeux pour étiqueter."""
+
+    def liste(d: Iterable[tuple[str, str]]) -> list[str]:
+        return [f"- `{k}` : {v}" for k, v in d]
+
+    return "\n".join(
+        [
+            "# Fiche des définitions (consignes données à Jev et à Claude, en anglais)",
+            "",
+            "Source unique : `radar/classification.py`. Règles de lecture en français : "
+            "`docs/etiquetage.md`.",
+            "",
+            "## Politique",
+            "",
+            REGLE_POLITIQUE,
+            "",
+            "## Thèmes (du commentaire, pas de la vidéo ; 1 à 3, le principal d'abord)",
+            "",
+            REGLE_THEMES,
+            "",
+            *liste(DEFINITIONS_THEMES.items()),
+            "",
+            "## Position (seulement sous une vidéo `opinion`)",
+            "",
+            REGLE_POSITION,
+            "",
+            *liste(DEFINITIONS_POSITIONS.items()),
+            "",
+            "## Tonalité",
+            "",
+            *liste(DEFINITIONS_TONALITES.items()),
+            "",
+            "## Hostilité",
+            "",
+            f"- `hostile` : {HOSTILITE_OUI}",
+            f"- `non hostile` : {HOSTILITE_NON}",
+            "",
+        ]
+    )

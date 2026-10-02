@@ -13,7 +13,7 @@ Le fichier contient du texte brut : il reste dans le bucket, il est purgé avec 
 
 ## Colonnes à remplir
 
-Ne modifier que les quatre colonnes `themes`, `position`, `tonalite`, `hostilite`. Les autres servent de contexte : `ref`, catégorie, format, nature de la vidéo (`info_factuelle`, `opinion` ou `debat`, classée par Claude), chaîne, titre, commentaire (mentions et liens masqués, comme pour les modèles).
+Ne modifier que les quatre colonnes `themes`, `position`, `tonalite`, `hostilite`. Les autres servent de contexte : `ref`, catégorie, format, nature de la vidéo (`info_factuelle`, `opinion` ou `debat`, classée par Claude), chaîne, titre, résumé de la vidéo (`resume_video`, une phrase rédigée par Claude à partir du titre et de la description, comme pour les modèles ; à partir du 02/10/2026), commentaire (mentions et liens masqués, comme pour les modèles).
 
 - **`themes`** : le ou les thèmes **du commentaire lui-même** (pas de la vidéo), du plus au moins important, séparés par `+` (3 au plus). Exemple : `retraites+economie_emploi`. Écrire `aucun` si le commentaire ne parle pas de politique ni d'un enjeu d'intérêt public.
   Valeurs : `pouvoir_achat`, `securite`, `immigration`, `retraites`, `sante`, `education`, `ecologie_energie`, `economie_emploi`, `logement`, `institutions`, `international_defense`, `agriculture`, `societe`, `autre`.
@@ -24,15 +24,21 @@ Ne modifier que les quatre colonnes `themes`, `position`, `tonalite`, `hostilite
 - **`hostilite`** : `oui` ou `non` (vide = pas encore tranché, la dimension est alors ignorée).
   Oui : insulte, attaque personnelle, mépris ou déshumanisation visant une personne ou un groupe, menace, appel à la violence, colère agressive contre quelqu'un ; accusation de mentir, manipuler ou truquer visant une personne, un média ou une institution ; généralisation dénigrante d'un groupe ; moquerie méprisante envers une personne, un groupe ou les autorités. Non : désaccord même ferme, critique d'une politique, d'une mesure, d'une règle ou d'une décision, grief ou indignation sans attaque (« c'est un scandale »), ironie légère sur une situation.
 
+## Second échantillon, étiqueté à froid (série 2)
+
+Pour confirmer les résultats sans biais d'ajustement : `preparer` avec la série `2` tire 500 nouveaux commentaires (jamais un commentaire déjà tiré, toutes séries confondues), dont 100 à étiqueter. Fichiers `evaluation/AAAA-MM-JJ-s2-…` (même circuit, mêmes noms suivis de `-s2`), fiche `AAAA-MM-JJ-s2-definitions.md` à garder sous les yeux. Puis `evaluer` avec la série `2`. Étiqueter sans regarder les résultats des modèles.
+
 ## Règles de lecture (01/10/2026)
 
 Tirées du premier étiquetage, et données telles quelles aux modèles :
 
 1. **Politique** : un commentaire est politique s'il parle de politique ou d'un enjeu d'intérêt public, **y compris quand il réagit à l'événement d'intérêt public montré dans la vidéo sans nommer le sujet**. Il ne l'est pas s'il ne parle que de la vidéo ou du média lui-même (compliment, son, graphiques, musique, choix des invités, équilibre d'un plateau, choix des sujets traités), de la vie personnelle, de sport, d'un produit ou d'une publicité.
 2. **Thèmes** : ceux du commentaire, pas ceux de la vidéo. Un commentaire qui réagit à l'événement de la vidéo sans nommer de sujet prend le thème de cet événement.
-3. **Position** : accord avec la thèse défendue par la vidéo, jamais l'opinion sur le sujet ni un jugement sur la forme. Seulement sous une vidéo `opinion` (une thèse) ; jamais sous `info_factuelle` ni sous `debat` (plusieurs voix, pas de thèse unique). Un compliment ou une critique de la forme (qualité, son, invités, équilibre) = `hors_sujet` (v6, 01/10/2026).
+3. **Position** : accord avec la thèse défendue par la vidéo, jamais l'opinion sur le sujet ni un jugement sur la forme. Seulement sous une vidéo `opinion` (une thèse) ; jamais sous `info_factuelle` ni sous `debat` (plusieurs voix, pas de thèse unique). Un compliment ou une critique de la forme (qualité, son, invités, équilibre) = `hors_sujet` (v6, 01/10/2026). **Désaccord implicite** (02/10/2026) : contre-argument, moquerie de la thèse ou de celui qui la défend, accusation d'hypocrisie ou de mauvaise foi, solution opposée = `desaccord_video` ; `hors_sujet` seulement si le commentaire ne dit rien de la thèse. (La règle « en cas de doute, désaccord », essayée le 02/10, a été retirée : elle faisait surestimer le désaccord.)
 4. **Tonalité** : une opinion exprimée calmement est `neutre`, même en désaccord.
 5. **Hostilité** : attaque, mépris ou accusation de mauvaise foi. La moquerie n'est hostile que si elle vise une personne, un groupe ou les autorités avec mépris (« les boomers… », 🤡) ; pas si c'est une ironie sur une situation (« Génial, merci pour ce cadeau »). Accuser un média, une personne ou une institution de mentir, manipuler ou truquer est hostile (« les chiffres sont truqués ») ; critiquer une mesure ne l'est pas (v6).
+
+Quand le titre ne suffit pas pour trancher, mettre `x` dans `doute` et `contexte insuffisant` dans `note` : le rapport mesurera l'effet du manque de contexte.
 
 Définitions complètes : celles des prompts (`radar/classification.py`, en anglais), publiées avec la méthodologie. Une ligne laissée vide est ignorée. Une valeur inconnue fait échouer `evaluer`, qui liste les lignes à corriger.
 
@@ -53,5 +59,13 @@ Quand Tristan, Jev et Claude ne sont pas d'accord, qui a raison ? La commande `s
 - `cle_<fichier>.json` : la clé. **Ne pas l'ouvrir avant d'avoir arbitré.**
 
 Remplir la colonne `choix` : la lettre de la meilleure réponse, plusieurs lettres (`A+B`) si elles se valent, `aucune` si aucune ne convient. Puis `python scripts/evaluation.py arbitrage --fichier arbitrage_<fichier>.csv --cle cle_<fichier>.json` (aucun appel aux modèles) : part des désaccords gagnés par Tristan (premier jet), Jev et Claude, par dimension.
+
+## Arbitrage à l'aveugle (vrais commentaires, 02/10/2026)
+
+Même principe sur l'échantillon réel, limité aux thèmes, à la position et à l'hostilité (classements des modèles sans résumé de la vidéo). Tout reste dans le bucket privé, purgé avec le brut :
+
+1. Workflow, commande `arbitrer` : dépose `evaluation/AAAA-MM-JJ-arbitrage.csv` (une ligne par désaccord, réponses mélangées sous A, B, C), `AAAA-MM-JJ-definitions.md` (fiche des définitions données aux modèles, à garder sous les yeux) et `AAAA-MM-JJ-arbitrage-cle.json` (**ne pas l'ouvrir**).
+2. Remplir la colonne `choix` comme ci-dessus, redéposer le fichier sous **`AAAA-MM-JJ-arbitrage-rempli.csv`**, supprimer la copie locale.
+3. Commande `arbitrage` (sans option) : part des désaccords gagnés par chaque source, puis justesse et parts agrégées recalculées face à la **référence arbitrée** (étiquettes de Tristan corrigées par ses choix ; plusieurs lettres : l'étiquette d'origine est gardée si elle en fait partie ; `aucune` : dimension ignorée, sauf les thèmes). Aucun appel aux modèles, rapport en agrégats.
 
 **Passage à la taxonomie v5 (01/10/2026).** Les étiquettes `emotion` des fichiers synthétiques ont été converties automatiquement : enthousiasme → positive ; neutre → neutre ; inquiétude, lassitude → negative, non hostile ; colère, moquerie → negative, **hostilité laissée vide** (à trancher par Tristan, colonne `note`). Claude n'a pas tranché ces cas, pour ne pas biaiser la comparaison.

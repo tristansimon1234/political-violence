@@ -55,3 +55,16 @@ Page `/admin` de l'app Next.js, réservée à Tristan (Supabase Auth, un seul co
 - Vue d'ensemble de l'équilibre du panel : nombre de sources par type et sous-type, audience cumulée, pour vérifier la couverture avant d'ajouter.
 - Alerte si une source n'a rien publié depuis 14 jours ou si la résolution échoue.
 - Estimation du quota ajouté par la nouvelle source (vidéos par jour × pages de commentaires) avant validation.
+
+## Espace admin : comparatif permanent des modèles (décision du 02/10/2026)
+
+Contrôle qualité continu de la classification, réservé à l'admin (texte brut visible, jamais public).
+
+- **Échantillon** : chaque semaine, 100 commentaires de la semaine écoulée, tirés par strate (catégorie de chaîne × format × nature de vidéo), comme le test de l'étape 4.
+- **Trois modèles** sur les mêmes commentaires : Jev (classification en production), Claude Haiku et Claude Sonnet (même sous-traitant qu'Haiku, rien de nouveau dans l'AIPD). Mêmes consignes, même contexte minimisé.
+- **Vue par commentaire** : texte, chaîne, titre, nature, lien vers la vidéo ; les trois réponses côte à côte (politique, thèmes, position, tonalité, hostilité), désaccords en évidence.
+- **Vue d'ensemble** : taux d'accord par dimension et par paire de modèles, parts agrégées par modèle, évolution semaine après semaine. Une chute d'accord signale un changement (modèle mis à jour, nouveau type de sujet) et déclenche une vérification.
+- **Option** : étiquetage ou arbitrage à l'aveugle par Tristan directement dans l'interface (remplace les fichiers CSV), qui alimente la justesse mesurée en continu.
+- **Règles** : texte purgé à 30 jours avec le brut, aucun pseudo ni identifiant d'auteur, aucun export.
+- **Coût** : quelques centimes par semaine (100 commentaires × 3 modèles).
+
