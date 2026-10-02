@@ -56,4 +56,12 @@ Quand Tristan, Jev et Claude ne sont pas d'accord, qui a raison ? La commande `s
 
 Remplir la colonne `choix` : la lettre de la meilleure réponse, plusieurs lettres (`A+B`) si elles se valent, `aucune` si aucune ne convient. Puis `python scripts/evaluation.py arbitrage --fichier arbitrage_<fichier>.csv --cle cle_<fichier>.json` (aucun appel aux modèles) : part des désaccords gagnés par Tristan (premier jet), Jev et Claude, par dimension.
 
+## Arbitrage à l'aveugle (vrais commentaires, 02/10/2026)
+
+Même principe sur l'échantillon réel, limité aux thèmes, à la position et à l'hostilité (classements des modèles sans résumé de la vidéo). Tout reste dans le bucket privé, purgé avec le brut :
+
+1. Workflow, commande `arbitrer` : dépose `evaluation/AAAA-MM-JJ-arbitrage.csv` (une ligne par désaccord, réponses mélangées sous A, B, C), `AAAA-MM-JJ-definitions.md` (fiche des définitions données aux modèles, à garder sous les yeux) et `AAAA-MM-JJ-arbitrage-cle.json` (**ne pas l'ouvrir**).
+2. Remplir la colonne `choix` comme ci-dessus, redéposer le fichier sous **`AAAA-MM-JJ-arbitrage-rempli.csv`**, supprimer la copie locale.
+3. Commande `arbitrage` (sans option) : part des désaccords gagnés par chaque source, puis justesse et parts agrégées recalculées face à la **référence arbitrée** (étiquettes de Tristan corrigées par ses choix ; plusieurs lettres : l'étiquette d'origine est gardée si elle en fait partie ; `aucune` : dimension ignorée, sauf les thèmes). Aucun appel aux modèles, rapport en agrégats.
+
 **Passage à la taxonomie v5 (01/10/2026).** Les étiquettes `emotion` des fichiers synthétiques ont été converties automatiquement : enthousiasme → positive ; neutre → neutre ; inquiétude, lassitude → negative, non hostile ; colère, moquerie → negative, **hostilité laissée vide** (à trancher par Tristan, colonne `note`). Claude n'a pas tranché ces cas, pour ne pas biaiser la comparaison.

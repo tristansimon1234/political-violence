@@ -28,6 +28,14 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from radar.classification import (
+    DEFINITIONS_POSITIONS,
+    DEFINITIONS_THEMES,
+    DEFINITIONS_TONALITES,
+    HOSTILITE_NON,
+    HOSTILITE_OUI,
+    REGLE_POLITIQUE,
+    REGLE_POSITION,
+    REGLE_THEMES,
     SYSTEME_COMMENTAIRES,
     SYSTEME_NATURE_VIDEO,
     Classement,
@@ -273,6 +281,11 @@ def controle_resumes(resumes: Mapping[str, str]) -> str:
         f"Résumés : {len(pleins)} non vides sur {len(resumes)} vidéos, {mots:.0f} mots en "
         f"moyenne, {vagues} « {PEU_PRECIS} »."
     )
+
+
+def sans_resumes(lignes: Iterable[Ligne]) -> list[Ligne]:
+    """Résumé retiré du contexte envoyé aux modèles (aucun gain mesuré le 02/10/2026)."""
+    return [replace(li, resume="") for li in lignes]
 
 
 def avec_resumes(lignes: Iterable[Ligne], resumes: Mapping[str, str]) -> list[Ligne]:
@@ -600,24 +613,7 @@ def rapport(
 
     if etiquettes:
         out += ["## Justesse face aux étiquettes de Tristan", ""]
-        out += [
-            f"| Dimension | Jev | Claude | Accord Jev / Claude ({len(lignes)}) |",
-            "|---|---:|---:|---:|",
-        ]
-        for d in DIMENSIONS:
-            out.append(
-                f"| {LIBELLES_DIMENSIONS[d]} | {_pct(*taux(jev, etiquettes, d))} | "
-                f"{_pct(*taux(claude, etiquettes, d))} | {_pct(*taux(jev, claude, d))} |"
-            )
-        out += ["", "Par catégorie de source (« tout juste ») :", ""]
-        out += ["| Catégorie | Jev | Claude |", "|---|---:|---:|"]
-        for t in TYPES_SOURCE:
-            refs = {r: e for r, e in etiquettes.items() if _type(lignes, r) == t}
-            out.append(
-                f"| {t} | {_pct(*taux(jev, refs, 'complet'))} | "
-                f"{_pct(*taux(claude, refs, 'complet'))} |"
-            )
-        out.append("")
+        out += table_justesse(lignes, jev, claude, etiquettes)
     else:
         out += [
             "## Justesse face aux étiquettes de Tristan",
@@ -698,6 +694,33 @@ def rapport(
         "la projection suppose le volume quotidien de l'échantillon et les prix mesurés.",
     ]
     return "\n".join(out)
+
+
+def table_justesse(
+    lignes: list[Ligne],
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> list[str]:
+    out = [
+        f"| Dimension | Jev | Claude | Accord Jev / Claude ({len(lignes)}) |",
+        "|---|---:|---:|---:|",
+    ]
+    for d in DIMENSIONS:
+        out.append(
+            f"| {LIBELLES_DIMENSIONS[d]} | {_pct(*taux(jev, etiquettes, d))} | "
+            f"{_pct(*taux(claude, etiquettes, d))} | {_pct(*taux(jev, claude, d))} |"
+        )
+    out += ["", "Par catégorie de source (« tout juste ») :", ""]
+    out += ["| Catégorie | Jev | Claude |", "|---|---:|---:|"]
+    for t in TYPES_SOURCE:
+        refs = {r: e for r, e in etiquettes.items() if _type(lignes, r) == t}
+        out.append(
+            f"| {t} | {_pct(*taux(jev, refs, 'complet'))} | "
+            f"{_pct(*taux(claude, refs, 'complet'))} |"
+        )
+    out.append("")
+    return out
 
 
 Distribution = dict[str, float]
@@ -1020,6 +1043,7 @@ def fichier_arbitrage(
     claude: Mapping[str, Classement],
     etiquettes: Mapping[str, Etiquette],
     rng: random.Random,
+    dimensions: Sequence[str] = DIMENSIONS_ARBITRAGE,
 ) -> tuple[bytes, dict[str, dict[str, list[str]]]]:
     """Une ligne par désaccord (commentaire et dimension), options anonymes A/B/C mélangées.
 
@@ -1038,7 +1062,7 @@ def fichier_arbitrage(
         }
         if any(v is None for v in sources.values()):
             continue
-        for dim in DIMENSIONS_ARBITRAGE:
+        for dim in dimensions:
             if dim == "position" and not position_applicable(li.nature):
                 continue
             options: dict[str, list[str]] = {}
@@ -1125,3 +1149,95 @@ def rapport_arbitrage(donnees: bytes, cle: Mapping[str, Mapping[str, list[str]]]
         "ligne n'est pas proposée. Plusieurs lettres = réponses également acceptables.",
     ]
     return "\n".join(out)
+
+
+# --- Arbitrage sur les vrais commentaires (fichiers dans le bucket) ---
+
+DIMENSIONS_ARBITRAGE_REEL = ("themes", "position", "hostilite")
+
+
+def _depuis_valeur(e: Etiquette, dimension: str, valeur: str | None) -> Etiquette:
+    """Étiquette dont une dimension prend la valeur retenue (None = aucune réponse acceptable)."""
+    if dimension == "themes":
+        if valeur is None:
+            return e  # thèmes : pas de valeur nulle possible, l'étiquette d'origine reste
+        themes = () if valeur == AUCUN_THEME else tuple(en_theme(t) for t in valeur.split("+"))
+        return replace(e, est_politique=bool(themes), themes=themes)
+    if dimension == "position":
+        position = None if valeur in (None, SANS_POSITION) else en_position(valeur)
+        return replace(e, position=position)
+    if dimension == "hostilite":
+        return replace(e, hostilite=None if valeur is None else valeur == "hostile")
+    raise ValueError(dimension)
+
+
+def reference_arbitree(
+    etiquettes: Mapping[str, Etiquette], donnees: bytes
+) -> tuple[dict[str, Etiquette], int]:
+    """Étiquettes de Tristan corrigées par l'arbitrage à l'aveugle ; (référence, lignes appliquées).
+
+    Plusieurs lettres : l'étiquette d'origine est gardée si elle en fait partie, sinon la
+    première retenue. `aucune` : dimension ignorée (thèmes : étiquette d'origine gardée).
+    """
+    texte = donnees.decode("utf-8-sig")
+    separateur = ";" if texte.split("\n", 1)[0].count(";") else ","
+    ref = dict(etiquettes)
+    appliquees = 0
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        cle_ref = (r.get("ref") or "").strip()
+        dim = (r.get("dimension") or "").strip()
+        choix = (r.get("choix") or "").strip().upper().replace(" ", "")
+        if not choix or cle_ref not in ref or dim not in DIMENSIONS_ARBITRAGE:
+            continue
+        e = ref[cle_ref]
+        if choix == AUCUNE.upper():
+            ref[cle_ref] = _depuis_valeur(e, dim, None)
+        else:
+            retenues = [(r.get(lettre) or "").strip() for lettre in sorted(set(choix.split("+")))]
+            actuelle = _valeur(e, dim)
+            valeur = actuelle if actuelle in retenues else retenues[0]
+            ref[cle_ref] = _depuis_valeur(e, dim, valeur)
+        appliquees += 1
+    return ref, appliquees
+
+
+def fiche_definitions() -> str:
+    """Définitions et règles données aux modèles, à garder sous les yeux pour étiqueter."""
+
+    def liste(d: Iterable[tuple[str, str]]) -> list[str]:
+        return [f"- `{k}` : {v}" for k, v in d]
+
+    return "\n".join(
+        [
+            "# Fiche des définitions (consignes données à Jev et à Claude, en anglais)",
+            "",
+            "Source unique : `radar/classification.py`. Règles de lecture en français : "
+            "`docs/etiquetage.md`.",
+            "",
+            "## Politique",
+            "",
+            REGLE_POLITIQUE,
+            "",
+            "## Thèmes (du commentaire, pas de la vidéo ; 1 à 3, le principal d'abord)",
+            "",
+            REGLE_THEMES,
+            "",
+            *liste(DEFINITIONS_THEMES.items()),
+            "",
+            "## Position (seulement sous une vidéo `opinion`)",
+            "",
+            REGLE_POSITION,
+            "",
+            *liste(DEFINITIONS_POSITIONS.items()),
+            "",
+            "## Tonalité",
+            "",
+            *liste(DEFINITIONS_TONALITES.items()),
+            "",
+            "## Hostilité",
+            "",
+            f"- `hostile` : {HOSTILITE_OUI}",
+            f"- `non hostile` : {HOSTILITE_NON}",
+            "",
+        ]
+    )

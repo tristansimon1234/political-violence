@@ -5,7 +5,9 @@
     python scripts/evaluation.py evaluer    # classement Jev et Claude, rapport en agrégats
     python scripts/evaluation.py evaluer --contexte  # idem avec le résumé de chaque vidéo
     python scripts/evaluation.py synthetique  # commentaires fictifs étiquetés (versionnés)
-    python scripts/evaluation.py arbitrage --fichier arbitrage_x.csv --cle cle_x.json
+    python scripts/evaluation.py arbitrer   # désaccords réels à arbitrer, déposés dans le bucket
+    python scripts/evaluation.py arbitrage  # lit l'arbitrage rempli (bucket), référence corrigée
+    python scripts/evaluation.py arbitrage --fichier arbitrage_x.csv --cle cle_x.json  # synthétique
 
 Variables : SUPABASE_URL, SUPABASE_SECRET_KEY, ANTHROPIC_API_KEY, AI_GATEWAY_API_KEY.
 Fichiers dans le bucket privé `radar-brut`, dossier `evaluation/` (purgés à 30 jours avec le brut) :
@@ -15,15 +17,21 @@ Fichiers dans le bucket privé `radar-brut`, dossier `evaluation/` (purgés à 3
 - AAAA-MM-JJ-resultats.parquet       étiquettes de Jev et de Claude (aucun texte)
 - AAAA-MM-JJ-resumes.json            résumé de chaque vidéo (--contexte, dérivé du brut)
 - AAAA-MM-JJ-resultats-contexte.parquet  étiquettes avec le résumé (--contexte)
+- AAAA-MM-JJ-definitions.md          fiche des définitions données aux modèles
+- AAAA-MM-JJ-arbitrage.csv           désaccords à arbitrer (arbitrer), à déposer rempli sous
+- AAAA-MM-JJ-arbitrage-rempli.csv    le nom ci-contre ; clé : AAAA-MM-JJ-arbitrage-cle.json
 Rien n'est affiché ni écrit hors du bucket, sauf des agrégats.
 """
 
 import argparse
+import csv
+import io
 import json
 import logging
 import os
 import random
 import sys
+from collections import Counter
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -38,8 +46,10 @@ from radar.classification import (
     questions_jev,
 )
 from radar.evaluation import (
+    DIMENSIONS_ARBITRAGE_REEL,
     Candidate,
     Couts,
+    Etiquette,
     Ligne,
     Modele,
     Volume,
@@ -58,14 +68,19 @@ from radar.evaluation import (
     ecrire_echantillon,
     ecrire_json,
     ecrire_resultats,
+    fiche_definitions,
     fichier_arbitrage,
     fichier_etiquetage,
     lire_echantillon,
     lire_etiquettes,
     lire_json,
     lire_resultats,
+    parts_agregees,
     rapport,
     rapport_arbitrage,
+    reference_arbitree,
+    sans_resumes,
+    table_justesse,
 )
 from radar.llm import (
     ClientClaude,
@@ -161,6 +176,7 @@ def preparer(args: argparse.Namespace) -> int:
     jour = min(li.recupere_le for li in lignes)
     ecrire_echantillon(st, jour, lignes)
     st.ecrire(chemin(jour, "etiquetage.csv"), fichier_etiquetage(lignes))
+    st.ecrire(chemin(jour, "definitions.md"), fiche_definitions().encode())
     jours_pub = {str(v["publiee_at"])[:10] for v in videos}
     ecrire_json(
         st,
@@ -229,6 +245,8 @@ def evaluer(args: argparse.Namespace) -> int:
     claude_client = ClientClaude(budget_usd=args.budget_claude)
     if args.contexte:
         lignes = _resumes(st, jour, lignes, claude_client, args.reclasser)
+    else:
+        lignes = sans_resumes(lignes)
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
     if f"{jour.isoformat()}-{fichier_res}" in deja and not args.reclasser:
         res = lire_resultats(st, jour, fichier_res)
@@ -311,19 +329,101 @@ def synthetique(args: argparse.Namespace) -> int:
     return 0
 
 
-def arbitrage(args: argparse.Namespace) -> int:
-    """Taux de victoires après arbitrage à l'aveugle (aucun appel aux modèles)."""
-    if args.cle is None:
-        print("--cle obligatoire (fichier cle_*.json produit par synthetique).")
+def _etat_reel(
+    st: Stockage,
+) -> tuple[date, list[Ligne], dict[Modele, dict[str, Classement]], dict[str, Etiquette]] | None:
+    """Échantillon, classements sans résumé et étiquettes de Tristan, lus dans le bucket."""
+    jour = dernier_echantillon(st)
+    deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
+    if jour is None or f"{jour.isoformat()}-resultats.parquet" not in deja:
+        print("Échantillon ou résultats absents : lancer `preparer` puis `evaluer`.")
+        return None
+    if f"{jour.isoformat()}-etiquetage-rempli.csv" not in deja:
+        print("Étiquetage rempli absent : voir docs/etiquetage.md.")
+        return None
+    lignes = lire_echantillon(st, jour)
+    etiquettes = lire_etiquettes(st.lire(chemin(jour, "etiquetage-rempli.csv")), lignes)
+    return jour, lignes, lire_resultats(st, jour), etiquettes
+
+
+def arbitrer(args: argparse.Namespace) -> int:
+    """Désaccords Tristan / Jev / Claude sur les vrais commentaires, à arbitrer à l'aveugle."""
+    st = _stockage(args)
+    etat = _etat_reel(st)
+    if etat is None:
         return 1
-    cle: dict[str, dict[str, list[str]]] = json.loads(args.cle.read_text())
-    print(rapport_arbitrage(args.fichier.read_bytes(), cle))
+    jour, lignes, res, etiquettes = etat
+    deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
+    if f"{jour.isoformat()}-arbitrage.csv" in deja and not args.remplacer:
+        print("Un fichier d'arbitrage existe déjà (--remplacer pour le refaire).")
+        return 1
+    a_remplir, cle = fichier_arbitrage(
+        lignes,
+        res["jev"],
+        res["claude"],
+        etiquettes,
+        random.Random(args.graine),
+        DIMENSIONS_ARBITRAGE_REEL,
+    )
+    st.ecrire(chemin(jour, "arbitrage.csv"), a_remplir)
+    st.ecrire(chemin(jour, "arbitrage-cle.json"), json.dumps(cle).encode())
+    st.ecrire(chemin(jour, "definitions.md"), fiche_definitions().encode())
+    par_dim = Counter(
+        r["dimension"]
+        for r in csv.DictReader(io.StringIO(a_remplir.decode("utf-8-sig")), delimiter=";")
+    )
+    print(
+        f"Arbitrage : {len(cle)} désaccords ("
+        + ", ".join(f"{d} {par_dim[d]}" for d in DIMENSIONS_ARBITRAGE_REEL)
+        + ")."
+    )
+    print(f"Fichier : {BUCKET}/{chemin(jour, 'arbitrage.csv')}")
+    print(f"Définitions : {BUCKET}/{chemin(jour, 'definitions.md')}")
+    print(f"À déposer une fois rempli : {BUCKET}/{chemin(jour, 'arbitrage-rempli.csv')}")
+    print("Ne pas ouvrir la clé (arbitrage-cle.json) avant d'avoir arbitré.")
+    return 0
+
+
+def arbitrage(args: argparse.Namespace) -> int:
+    """Taux de victoires après arbitrage à l'aveugle (aucun appel aux modèles).
+
+    Sans --cle : arbitrage des vrais commentaires lu dans le bucket, puis justesse et parts
+    agrégées recalculées face à la référence corrigée. Avec --cle : fichiers synthétiques locaux.
+    """
+    if args.cle is not None:
+        cle: dict[str, dict[str, list[str]]] = json.loads(args.cle.read_text())
+        print(rapport_arbitrage(args.fichier.read_bytes(), cle))
+        return 0
+    st = _stockage(args)
+    etat = _etat_reel(st)
+    if etat is None:
+        return 1
+    jour, lignes, res, etiquettes = etat
+    deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
+    if f"{jour.isoformat()}-arbitrage-rempli.csv" not in deja:
+        print(f"Arbitrage rempli absent : {BUCKET}/{chemin(jour, 'arbitrage-rempli.csv')}")
+        return 1
+    rempli = st.lire(chemin(jour, "arbitrage-rempli.csv"))
+    cle_reelle: dict[str, dict[str, list[str]]] = json.loads(
+        st.lire(chemin(jour, "arbitrage-cle.json"))
+    )
+    print(rapport_arbitrage(rempli, cle_reelle))
+    reference, appliquees = reference_arbitree(etiquettes, rempli)
+    print(
+        f"\n# Justesse face à la référence arbitrée\n\n{appliquees} arbitrages appliqués aux "
+        "étiquettes de Tristan (classements des modèles sans résumé de la vidéo).\n"
+    )
+    print("\n".join(table_justesse(lignes, res["jev"], res["claude"], reference)))
+    print("\n".join(parts_agregees(res["jev"], res["claude"], reference)))
     return 0
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    p.add_argument("commande", choices=["sonde", "preparer", "evaluer", "synthetique", "arbitrage"])
+    p.add_argument(
+        "commande",
+        choices=["sonde", "preparer", "evaluer", "synthetique", "arbitrer", "arbitrage"],
+    )
     p.add_argument("--cle", type=Path, help="arbitrage : clé produite par synthetique")
     p.add_argument(
         "--sortie", type=Path, default=Path("arbitrage"), help="synthetique : dossier d'arbitrage"
@@ -337,7 +437,9 @@ def main() -> int:
     p.add_argument("--budget-claude", type=float, default=3.0, help="dollars max pour Claude")
     p.add_argument("--budget-jev", type=float, default=1.0, help="dollars max pour Jev")
     p.add_argument("--graine", type=int, default=20260901, help="graine du tirage")
-    p.add_argument("--remplacer", action="store_true", help="preparer : écraser l'échantillon")
+    p.add_argument(
+        "--remplacer", action="store_true", help="preparer, arbitrer : écraser le fichier existant"
+    )
     p.add_argument("--reclasser", action="store_true", help="evaluer : refaire les appels")
     p.add_argument(
         "--contexte", action="store_true", help="evaluer : ajouter le résumé de chaque vidéo"
@@ -351,10 +453,17 @@ def main() -> int:
         "preparer": preparer,
         "evaluer": evaluer,
         "synthetique": synthetique,
+        "arbitrer": arbitrer,
         "arbitrage": arbitrage,
     }
     return commandes[args.commande](args)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    code = main()
+    # Sortie immédiate une fois tout écrit et affiché : la fermeture normale de l'interpréteur
+    # plantait (« terminate called without an active exception », 02/10/2026) après le rapport.
+    logging.shutdown()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(code)

@@ -173,3 +173,5 @@ Parts agrégées avec résumé : hostilité 13 % (Tristan) / 43 % (Jev) / 28 % (
 
 Incident : le run se termine par « terminate called without an active exception » (code 134) après l'écriture du rapport et des résultats ; rien de perdu, cause à chercher (fermeture d'une bibliothèque à la sortie).
 
+**Hostilité non valable dans ces deux tests** (signalé par Tristan) : l'étiquetage de l'hostilité a subi un bug ; 10 cas évidents corrigés, 8 cas limites laissés à « non » sans être tranchés. La référence (13 %) est probablement trop basse ; l'écart avec Jev (43 %) et Claude (28 %) n'est pas interprétable. À refaire après l'arbitrage à l'aveugle des désaccords (thèmes, position, hostilité) sur ces vrais commentaires.
+

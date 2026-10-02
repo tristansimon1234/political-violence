@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       commande:
-        description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport ; synthetique : 100 commentaires fictifs"
+        description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport ; synthetique : 100 commentaires fictifs ; arbitrer : désaccords à trancher ; arbitrage : lecture de l'arbitrage rempli"
         type: choice
-        options: [sonde, preparer, evaluer, synthetique]
+        options: [sonde, preparer, evaluer, synthetique, arbitrer, arbitrage]
         default: sonde
       budget_claude:
         description: "Dollars max pour Claude"
@@ -20,7 +20,7 @@ on:
         description: "Dollars max pour Jev"
         default: "1"
       option:
-        description: "Facultatif : --remplacer (preparer) ; --reclasser, --contexte ou --contexte --reclasser (evaluer)"
+        description: "Facultatif : --remplacer (preparer, arbitrer) ; --reclasser, --contexte ou --contexte --reclasser (evaluer)"
         default: ""
       fichier:
         description: "synthetique : fichier du dossier evaluation/"

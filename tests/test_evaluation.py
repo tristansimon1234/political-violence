@@ -609,6 +609,29 @@ def test_script_preparer_evaluer(
     n_jev, n_claude = len(faux_jev.envois), len(faux_claude.envois)
     lancer("evaluer", "--contexte")
     assert (len(faux_jev.envois), len(faux_claude.envois)) == (n_jev, n_claude)
+    # Sans --contexte, le résumé n'est jamais envoyé (aucun gain mesuré le 02/10).
+    faux_jev.envois.clear()
+    lancer("evaluer", "--reclasser")
+    assert faux_jev.envois and all(RESUME not in e for e in faux_jev.envois)
+    # Arbitrage des vrais désaccords : fichiers dans le bucket, rapport sans texte.
+    n_jev, n_claude = len(faux_jev.envois), len(faux_claude.envois)
+    sortie = lancer("arbitrer")
+    assert "désaccords" in sortie and TEXTE not in sortie
+    noms = set(st.lister("evaluation"))
+    assert {
+        f"evaluation/{jour}-arbitrage.csv",
+        f"evaluation/{jour}-arbitrage-cle.json",
+        f"evaluation/{jour}-definitions.md",
+    } <= noms
+    a_remplir = st.lire(f"evaluation/{jour}-arbitrage.csv").decode("utf-8-sig").splitlines()
+    assert len(a_remplir) > 1
+    rempli_arb = [a_remplir[0]] + [";".join([*x.split(";")[:-2], "A", ""]) for x in a_remplir[1:]]
+    st.ecrire(f"evaluation/{jour}-arbitrage-rempli.csv", "\n".join(rempli_arb).encode())
+    rapport_ = lancer("arbitrage")
+    assert "Justesse face à la référence arbitrée" in rapport_ and "Parts agrégées" in rapport_
+    for interdit in (TEXTE, TITRE, CHAINE, AUTEUR_HASH, RESUME):
+        assert interdit not in rapport_
+    assert (len(faux_jev.envois), len(faux_claude.envois)) == (n_jev, n_claude)  # aucun appel
 
 
 def test_resume_video_transmis_seulement_s_il_existe() -> None:
@@ -832,3 +855,36 @@ def test_resume_obligatoire_dans_la_reponse_de_claude() -> None:
         texte.startswith("Résumés : 2 non vides sur 3 vidéos") and "1 « Sujet peu précis »" in texte
     )
     assert "X" not in texte and "Y" not in texte
+
+
+def test_reference_arbitree_applique_les_choix() -> None:
+    from radar.evaluation import reference_arbitree
+
+    etiquettes = {
+        "C001": Etiquette(True, ("societe",), "accord_video", "negative", False),
+        "C002": Etiquette(True, ("retraites",), "nuance", "neutre", True),
+    }
+    fichier = "\n".join(
+        [
+            "id;ref;dimension;chaine;titre_video;nature_video;commentaire;A;B;C;choix;note",
+            "R001;C001;hostilite;c;t;opinion;x;non hostile;hostile;;B;",
+            "R002;C001;themes;c;t;opinion;x;institutions;societe;;A+B;",  # origine gardée
+            "R003;C002;position;c;t;opinion;x;desaccord_video;nuance;;aucune;",
+            "R004;C002;themes;c;t;opinion;x;aucun;retraites;;A;",
+            "R005;C002;hostilite;c;t;opinion;x;hostile;non hostile;;;",  # non arbitrée
+        ]
+    ).encode()
+    ref, n = reference_arbitree(etiquettes, fichier)
+    assert n == 4
+    assert ref["C001"].hostilite is True and ref["C001"].themes == ("societe",)
+    assert ref["C002"].position is None  # aucune réponse acceptable : dimension ignorée
+    assert ref["C002"].themes == () and ref["C002"].est_politique is False
+    assert ref["C002"].hostilite is True  # ligne non arbitrée : inchangée
+
+
+def test_fiche_definitions_reprend_les_consignes() -> None:
+    from radar.classification import DEFINITIONS_THEMES, HOSTILITE_OUI
+    from radar.evaluation import fiche_definitions
+
+    fiche = fiche_definitions()
+    assert HOSTILITE_OUI in fiche and all(d in fiche for d in DEFINITIONS_THEMES.values())
