@@ -25,6 +25,9 @@ on:
       fichier:
         description: "synthetique : fichier du dossier evaluation/"
         default: "synthetique_v2.csv"
+      serie:
+        description: "Échantillon : 1 = premier, 2 = second (étiqueté à froid)"
+        default: "1"
 
 concurrency:
   group: evaluation
@@ -57,6 +60,8 @@ jobs:
             "") ;;
             *) echo "option inconnue"; exit 1 ;;
           esac
+          [[ "${{ inputs.serie }}" =~ ^[1-9]$ ]] || { echo "série invalide"; exit 1; }
+          ARGS+=(--serie "${{ inputs.serie }}")
           if [ "${{ inputs.commande }}" = "synthetique" ]; then
             [[ "$FICHIER" =~ ^[A-Za-z0-9_.-]+\.csv$ ]] || { echo "nom de fichier invalide"; exit 1; }
             ARGS+=(--fichier "evaluation/$FICHIER")

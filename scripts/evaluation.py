@@ -54,6 +54,7 @@ from radar.evaluation import (
     Modele,
     Volume,
     avec_resumes,
+    base_serie,
     candidates,
     charger_synthetique,
     chemin,
@@ -61,6 +62,7 @@ from radar.evaluation import (
     classer_jev,
     classer_videos,
     cle_depuis_valeurs,
+    commentaires_deja_tires,
     comparaison_contexte,
     controle_resumes,
     dernier_echantillon,
@@ -158,10 +160,21 @@ def preparer(args: argparse.Namespace) -> int:
         for x in lire_partition(st, c):
             commentaires.setdefault(str(x["video_id"]), []).append(x)
             total += 1
-    nb = {vid: len(xs) for vid, xs in commentaires.items()}
-    if dernier_echantillon(st) is not None and not args.remplacer:
-        print("Un échantillon existe déjà (--remplacer pour en tirer un nouveau).")
+    if dernier_echantillon(st, args.serie) is not None and not args.remplacer:
+        print(
+            f"Un échantillon de la série {args.serie} existe déjà (--serie {args.serie + 1} "
+            "pour un nouvel échantillon, --remplacer pour l'écraser)."
+        )
         return 1
+    # Jamais deux fois le même commentaire : une nouvelle série est étiquetée à froid.
+    deja_tires = commentaires_deja_tires(st)
+    if deja_tires:
+        commentaires = {
+            vid: [x for x in xs if str(x["comment_id"]) not in deja_tires]
+            for vid, xs in commentaires.items()
+        }
+        print(f"Commentaires déjà tirés dans un échantillon, exclus : {len(deja_tires)}")
+    nb = {vid: len(xs) for vid, xs in commentaires.items()}
     rng = random.Random(args.graine)
     cands = candidates(videos, sources, bruts_videos, nb, rng)
     print(f"Vidéos collectées : {len(videos)}, candidates : {len(cands)}, commentaires : {total}")
@@ -174,7 +187,7 @@ def preparer(args: argparse.Namespace) -> int:
     if not lignes:
         print("Aucun commentaire à échantillonner.")
         return 1
-    jour = min(li.recupere_le for li in lignes)
+    jour = base_serie(min(li.recupere_le for li in lignes), args.serie)
     ecrire_echantillon(st, jour, lignes)
     st.ecrire(chemin(jour, "etiquetage.csv"), fichier_etiquetage(lignes))
     st.ecrire(chemin(jour, "definitions.md"), fiche_definitions().encode())
@@ -200,7 +213,7 @@ def preparer(args: argparse.Namespace) -> int:
 
 
 def _resumes(
-    st: Stockage, jour: date, lignes: list[Ligne], claude: ClientClaude, refaire: bool
+    st: Stockage, jour: str, lignes: list[Ligne], claude: ClientClaude, refaire: bool
 ) -> list[Ligne]:
     """Résumé de chaque vidéo de l'échantillon (calculé une fois, gardé dans le bucket).
 
@@ -208,7 +221,7 @@ def _resumes(
     Recalculé avec --reclasser, ou si les résumés gardés sont vides.
     """
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
-    if f"{jour.isoformat()}-resumes.json" in deja and not refaire:
+    if f"{jour}-resumes.json" in deja and not refaire:
         gardes: dict[str, str] = lire_json(st, jour, "resumes.json")
         if any(r.strip() for r in gardes.values()):
             print(controle_resumes(gardes) + "\n")
@@ -235,9 +248,9 @@ def _resumes(
 
 def evaluer(args: argparse.Namespace) -> int:
     st = _stockage(args)
-    jour = dernier_echantillon(st)
+    jour = dernier_echantillon(st, args.serie)
     if jour is None:
-        print("Aucun échantillon : lancer d'abord `preparer`.")
+        print(f"Aucun échantillon de la série {args.serie} : lancer d'abord `preparer`.")
         return 1
     lignes = lire_echantillon(st, jour)
     prep = lire_json(st, jour, "preparation.json")
@@ -249,7 +262,7 @@ def evaluer(args: argparse.Namespace) -> int:
     else:
         lignes = sans_resumes(lignes)
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
-    if f"{jour.isoformat()}-{fichier_res}" in deja and not args.reclasser:
+    if f"{jour}-{fichier_res}" in deja and not args.reclasser:
         res = lire_resultats(st, jour, fichier_res)
         couts_brut = lire_json(st, jour, fichier_couts)
     else:
@@ -269,13 +282,13 @@ def evaluer(args: argparse.Namespace) -> int:
             "claude_erreurs": claude_client.compteur.erreurs,
         }
         ecrire_json(st, jour, fichier_couts, couts_brut)
-    rempli = f"{jour.isoformat()}-etiquetage-rempli.csv"
+    rempli = f"{jour}-etiquetage-rempli.csv"
     etiquettes = (
         lire_etiquettes(st.lire(chemin(jour, "etiquetage-rempli.csv")), lignes)
         if rempli in deja
         else {}
     )
-    if etiquettes and f"{jour.isoformat()}-arbitrage-rempli.csv" in deja:
+    if etiquettes and f"{jour}-arbitrage-rempli.csv" in deja:
         # Référence = étiquettes de Tristan corrigées par l'arbitrage à l'aveugle.
         etiquettes, n = reference_arbitree(
             etiquettes, st.lire(chemin(jour, "arbitrage-rempli.csv"))
@@ -292,7 +305,7 @@ def evaluer(args: argparse.Namespace) -> int:
     if args.contexte:
         print("Avec le résumé de chaque vidéo (titre, chaîne, nature et résumé envoyés).\n")
     print(rapport(lignes, res["jev"], res["claude"], etiquettes, couts, volume, date.today()))
-    if args.contexte and etiquettes and f"{jour.isoformat()}-resultats.parquet" in deja:
+    if args.contexte and etiquettes and f"{jour}-resultats.parquet" in deja:
         print("\n" + comparaison_contexte(lire_resultats(st, jour), res, etiquettes))
     erreurs = int(couts_brut.get("jev_erreurs", 0)) + int(couts_brut.get("claude_erreurs", 0))
     if erreurs:
@@ -337,15 +350,15 @@ def synthetique(args: argparse.Namespace) -> int:
 
 
 def _etat_reel(
-    st: Stockage,
-) -> tuple[date, list[Ligne], dict[Modele, dict[str, Classement]], dict[str, Etiquette]] | None:
+    st: Stockage, serie: int
+) -> tuple[str, list[Ligne], dict[Modele, dict[str, Classement]], dict[str, Etiquette]] | None:
     """Échantillon, classements sans résumé et étiquettes de Tristan, lus dans le bucket."""
-    jour = dernier_echantillon(st)
+    jour = dernier_echantillon(st, serie)
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
-    if jour is None or f"{jour.isoformat()}-resultats.parquet" not in deja:
+    if jour is None or f"{jour}-resultats.parquet" not in deja:
         print("Échantillon ou résultats absents : lancer `preparer` puis `evaluer`.")
         return None
-    if f"{jour.isoformat()}-etiquetage-rempli.csv" not in deja:
+    if f"{jour}-etiquetage-rempli.csv" not in deja:
         print("Étiquetage rempli absent : voir docs/etiquetage.md.")
         return None
     lignes = lire_echantillon(st, jour)
@@ -356,12 +369,12 @@ def _etat_reel(
 def arbitrer(args: argparse.Namespace) -> int:
     """Désaccords Tristan / Jev / Claude sur les vrais commentaires, à arbitrer à l'aveugle."""
     st = _stockage(args)
-    etat = _etat_reel(st)
+    etat = _etat_reel(st, args.serie)
     if etat is None:
         return 1
     jour, lignes, res, etiquettes = etat
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
-    if f"{jour.isoformat()}-arbitrage.csv" in deja and not args.remplacer:
+    if f"{jour}-arbitrage.csv" in deja and not args.remplacer:
         print("Un fichier d'arbitrage existe déjà (--remplacer pour le refaire).")
         return 1
     a_remplir, cle = fichier_arbitrage(
@@ -402,12 +415,12 @@ def arbitrage(args: argparse.Namespace) -> int:
         print(rapport_arbitrage(args.fichier.read_bytes(), cle))
         return 0
     st = _stockage(args)
-    etat = _etat_reel(st)
+    etat = _etat_reel(st, args.serie)
     if etat is None:
         return 1
     jour, lignes, res, etiquettes = etat
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
-    if f"{jour.isoformat()}-arbitrage-rempli.csv" not in deja:
+    if f"{jour}-arbitrage-rempli.csv" not in deja:
         print(f"Arbitrage rempli absent : {BUCKET}/{chemin(jour, 'arbitrage-rempli.csv')}")
         return 1
     rempli = st.lire(chemin(jour, "arbitrage-rempli.csv"))
@@ -444,6 +457,12 @@ def main() -> int:
     p.add_argument("--budget-claude", type=float, default=3.0, help="dollars max pour Claude")
     p.add_argument("--budget-jev", type=float, default=1.0, help="dollars max pour Jev")
     p.add_argument("--graine", type=int, default=20260901, help="graine du tirage")
+    p.add_argument(
+        "--serie",
+        type=int,
+        default=1,
+        help="échantillon : 1 = premier (2026-10-02), 2 = second, étiqueté à froid, etc.",
+    )
     p.add_argument(
         "--remplacer", action="store_true", help="preparer, arbitrer : écraser le fichier existant"
     )

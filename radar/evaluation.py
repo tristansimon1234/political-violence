@@ -18,6 +18,7 @@ import io
 import json
 import logging
 import random
+import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -914,34 +915,56 @@ def recommandation(
 # --- Fichiers du bucket ---
 
 
-def chemin(jour: date, nom: str) -> str:
-    return f"{DOSSIER_EVALUATION}/{jour.isoformat()}-{nom}"
+# Base d'un échantillon : sa date (série 1) ou « date-sN » (séries suivantes). Le nom des
+# fichiers commence toujours par la date : la purge à 30 jours s'applique à toutes les séries.
+Base = date | str
 
 
-def dernier_echantillon(st: Stockage) -> date | None:
-    jours = [
-        j
+def chemin(jour: Base, nom: str) -> str:
+    return f"{DOSSIER_EVALUATION}/{jour}-{nom}"
+
+
+def base_serie(jour: date, serie: int) -> str:
+    return jour.isoformat() if serie == 1 else f"{jour.isoformat()}-s{serie}"
+
+
+def dernier_echantillon(st: Stockage, serie: int = 1) -> str | None:
+    """Base du dernier échantillon de la série demandée, None s'il n'y en a pas."""
+    suffixe = "" if serie == 1 else f"-s{serie}"
+    motif = re.compile(rf"^(\d{{4}}-\d{{2}}-\d{{2}}){suffixe}-echantillon\.parquet$")
+    bases = [
+        m.group(1) + suffixe
         for c in st.lister(DOSSIER_EVALUATION)
-        if c.endswith("-echantillon.parquet") and (j := date_fichier(c)) is not None
+        if (m := motif.match(c.rsplit("/", 1)[-1])) and date_fichier(c) is not None
     ]
-    return max(jours, default=None)
+    return max(bases, default=None)
 
 
-def ecrire_echantillon(st: Stockage, jour: date, lignes: list[Ligne]) -> None:
+def commentaires_deja_tires(st: Stockage) -> set[str]:
+    """Identifiants des commentaires de tous les échantillons existants (toutes séries)."""
+    tires: set[str] = set()
+    for c in st.lister(DOSSIER_EVALUATION):
+        if c.endswith("-echantillon.parquet"):
+            table = pq.read_table(io.BytesIO(st.lire(c)), columns=["comment_id"])  # pyright: ignore[reportUnknownMemberType]
+            tires.update(str(x) for x in table.column("comment_id").to_pylist())
+    return tires
+
+
+def ecrire_echantillon(st: Stockage, jour: Base, lignes: list[Ligne]) -> None:
     tampon = io.BytesIO()
     table = pa.Table.from_pylist([li.__dict__ for li in lignes], schema=SCHEMA_ECHANTILLON)
     pq.write_table(table, tampon)  # pyright: ignore[reportUnknownMemberType]
     st.ecrire(chemin(jour, "echantillon.parquet"), tampon.getvalue())
 
 
-def lire_echantillon(st: Stockage, jour: date) -> list[Ligne]:
+def lire_echantillon(st: Stockage, jour: Base) -> list[Ligne]:
     table = pq.read_table(io.BytesIO(st.lire(chemin(jour, "echantillon.parquet"))))  # pyright: ignore[reportUnknownMemberType]
     return [Ligne(**r) for r in table.to_pylist()]
 
 
 def ecrire_resultats(
     st: Stockage,
-    jour: date,
+    jour: Base,
     resultats: Mapping[Modele, Mapping[str, Classement]],
     nom: str = "resultats.parquet",
 ) -> None:
@@ -966,7 +989,7 @@ def ecrire_resultats(
 
 
 def lire_resultats(
-    st: Stockage, jour: date, nom: str = "resultats.parquet"
+    st: Stockage, jour: Base, nom: str = "resultats.parquet"
 ) -> dict[Modele, dict[str, Classement]]:
     table = pq.read_table(io.BytesIO(st.lire(chemin(jour, nom))))  # pyright: ignore[reportUnknownMemberType]
     res: dict[Modele, dict[str, Classement]] = {"jev": {}, "claude": {}}
@@ -984,11 +1007,11 @@ def lire_resultats(
     return res
 
 
-def ecrire_json(st: Stockage, jour: date, nom: str, donnees: Mapping[str, Any]) -> None:
+def ecrire_json(st: Stockage, jour: Base, nom: str, donnees: Mapping[str, Any]) -> None:
     st.ecrire(chemin(jour, nom), json.dumps(donnees, sort_keys=True).encode())
 
 
-def lire_json(st: Stockage, jour: date, nom: str) -> dict[str, Any]:
+def lire_json(st: Stockage, jour: Base, nom: str) -> dict[str, Any]:
     resultat: dict[str, Any] = json.loads(st.lire(chemin(jour, nom)))
     return resultat
 

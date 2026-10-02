@@ -955,3 +955,24 @@ def test_confiance_position_conservee() -> None:
     c = classement_jev(reps, "opinion")
     assert c.position == "desaccord_video" and c.confiance_position == pytest.approx(0.65)
     assert classement_jev(reps, "info_factuelle").confiance_position is None
+
+
+def test_series_d_echantillons_separees(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from radar.evaluation import base_serie, chemin, commentaires_deja_tires, dernier_echantillon
+
+    st = StockageLocal(tmp_path)
+    jour = date(2026, 10, 2)
+    lignes = _lignes()
+    ecrire_echantillon(st, base_serie(jour, 1), lignes)
+    assert dernier_echantillon(st) == "2026-10-02" and dernier_echantillon(st, 2) is None
+    autres = [replace(li, comment_id=li.comment_id + "-b") for li in lignes]
+    ecrire_echantillon(st, base_serie(jour, 2), autres)
+    assert dernier_echantillon(st, 2) == "2026-10-02-s2"
+    assert chemin("2026-10-02-s2", "etiquetage.csv") == "evaluation/2026-10-02-s2-etiquetage.csv"
+    # La série 1 n'est pas écrasée, et les deux séries sont connues pour l'exclusion.
+    assert lire_echantillon(st, "2026-10-02") == lignes
+    assert commentaires_deja_tires(st) == {li.comment_id for li in lignes + autres}
+    # Purge à 30 jours : toutes les séries partent avec la date.
+    assert len(purger(st, date(2026, 11, 2))) >= 2 and dernier_echantillon(st, 2) is None

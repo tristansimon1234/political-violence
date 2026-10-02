@@ -117,8 +117,7 @@ REGLE_THEMES = (
 REGLE_POSITION = (
     "Position is agreement with the thesis defended in the video, never the commenter's "
     "opinion on the topic, and never a judgement on the form of the video. It is only asked "
-    "for opinion videos, which defend a single thesis. When in doubt between disagreement and "
-    "no stance for a critical comment, choose disagreement."
+    "for opinion videos, which defend a single thesis."
 )
 
 
