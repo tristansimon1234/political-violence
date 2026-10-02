@@ -110,10 +110,16 @@ Transport = Callable[[str, dict[str, str], dict[str, Any]], dict[str, Any]]
 
 
 def _post(url: str, entetes: dict[str, str], corps: dict[str, Any]) -> dict[str, Any]:
-    statut = 0
+    """Reprise sur 429, 5xx et coupure réseau ; ReponseInvalide après 4 essais."""
+    statut = "?"
     for essai in range(4):
-        r = requests.post(url, headers=entetes, json=corps, timeout=60)
-        statut = r.status_code
+        try:
+            r = requests.post(url, headers=entetes, json=corps, timeout=60)
+        except (requests.ConnectionError, requests.Timeout) as e:
+            statut = f"réseau ({type(e).__name__})"
+            time.sleep(2**essai)
+            continue
+        statut = str(r.status_code)
         if r.status_code == 429 or r.status_code >= 500:
             time.sleep(2**essai)
             continue
@@ -122,7 +128,7 @@ def _post(url: str, entetes: dict[str, str], corps: dict[str, Any]) -> dict[str,
             raise ReponseInvalide(f"jev HTTP {r.status_code} ({_type_erreur(r)})")
         resultat: dict[str, Any] = r.json()
         return resultat
-    raise ReponseInvalide(f"jev HTTP {statut} après 4 essais")
+    raise ReponseInvalide(f"jev {statut} après 4 essais")
 
 
 def _type_erreur(r: requests.Response) -> str:

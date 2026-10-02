@@ -780,3 +780,39 @@ def test_recommandation_cascade_meilleure_que_chaque_modele() -> None:
     ]
     r = recommandation(lignes, 0.00006, 0.00069, 1_000_000)
     assert r.startswith("**0,7**") and "0,7, 75 %" in r
+
+
+def test_jev_reprise_sur_coupure_reseau(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Coupure réseau : nouvel essai ; après 4 coupures, commentaire ignoré (pas de plantage)."""
+    import requests
+
+    from radar import llm
+
+    class _Ok:
+        status_code = 200
+        ok = True
+
+        def json(self) -> dict[str, Any]:
+            return {"ok": True}
+
+    essais: list[int] = []
+
+    def post_coupe_une_fois(*args: Any, **kwargs: Any) -> _Ok:
+        essais.append(1)
+        if len(essais) == 1:
+            raise requests.ConnectionError("Connection reset by peer")
+        return _Ok()
+
+    def sans_attente(secondes: float) -> None:
+        return None
+
+    monkeypatch.setattr(llm.time, "sleep", sans_attente)
+    monkeypatch.setattr(llm.requests, "post", post_coupe_une_fois)
+    assert llm._post("u", {}, {}) == {"ok": True} and len(essais) == 2  # pyright: ignore[reportPrivateUsage]
+
+    def post_toujours_coupe(*args: Any, **kwargs: Any) -> _Ok:
+        raise requests.ConnectionError("Connection reset by peer")
+
+    monkeypatch.setattr(llm.requests, "post", post_toujours_coupe)
+    with pytest.raises(ReponseInvalide, match="réseau"):
+        llm._post("u", {}, {})  # pyright: ignore[reportPrivateUsage]
