@@ -27,7 +27,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - Critère commun d'activité : **≥ 10 vidéos sur 90 jours, Shorts compris** (partis exemptés).
 - Chaque source porte `type`, `sous_type`, et le critère (et les sources du vivier) qui justifient sa présence.
 - Réserve : chaînes de la liste qui échouent aux filtres, retestées à chaque revue mensuelle ; une chaîne qui passe est proposée, jamais ajoutée automatiquement.
-- Shorts inclus partout, avec un champ `format` (`short` / `long`). Une seule page de commentaires par Short. Vues séparées par format dans les métriques d'attention et d'intensité.
+- Shorts inclus partout, avec un champ `format` (`short` / `long`). Tous les commentaires de premier niveau, Shorts compris (décision du 02/10/2026). Vues séparées par format dans les métriques d'attention et d'intensité.
 - Pas de champ "orientation politique" sur les médias. L'équilibre du panel se vérifie à la main et se documente.
 
 ## Règles non négociables

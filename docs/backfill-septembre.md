@@ -6,6 +6,7 @@
 1. `dry_run` coché, `depuis` = `2026-09-01`, `jusqua` = `2026-09-07` : estimation du quota et du nombre de vidéos retenues par le pré-filtre.
 2. Même chose sans `dry_run` : collecte réelle de la semaine 1. Si le budget est atteint, le run s'arrête proprement : le relancer reprend là où il s'est arrêté (les uploads déjà parcourus ne sont pas reparcourus, les vidéos déjà collectées sont sautées).
 3. Puis `2026-09-08` → `2026-09-30`, en un ou plusieurs runs.
+4. **02/10/2026 : passage à « tout prendre ».** La semaine 1, collectée le 02/10 en « 200 par pertinence » (111 698 commentaires, 3 562 unités), est relue en entier en relançant le même backfill (`2026-09-01` → `2026-09-07`) : seules les vidéos de l'ancien mode sont relues. Les semaines 2 à 4 sont collectées directement en « tout prendre ».
 
 Objectif : récupérer tout le mois de septembre (du 1er au 30) pour construire le pipeline, calibrer le filtre et la classification, et constituer la baseline de vélocité d'octobre.
 

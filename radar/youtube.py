@@ -401,19 +401,23 @@ class YouTube:
                 )
         return details
 
-    def commentaires(self, video_id: str, max_pages: int) -> list[CommentaireAPI]:
-        """Commentaires de premier niveau, ordre de pertinence, pages de 100.
+    def commentaires(
+        self, video_id: str, max_pages: int, depuis: datetime | None = None
+    ) -> list[CommentaireAPI]:
+        """Tous les commentaires de premier niveau, du plus récent au plus ancien, pages de 100.
 
+        `depuis` (lecture incrémentale) : arrêt à la première page qui atteint un commentaire
+        publié avant cette date ; seuls les commentaires publiés depuis sont renvoyés.
         Coût : 1 unité par page. Commentaires fermés : liste vide (l'appel est quand même compté).
         """
         resultat: list[CommentaireAPI] = []
         page: str | None = None
-        for _ in range(max_pages):
+        for n in range(max_pages):
             params = {
                 "part": "snippet",
                 "videoId": video_id,
                 "maxResults": "100",
-                "order": "relevance",
+                "order": "time",
                 "textFormat": "plainText",
             }
             if page:
@@ -429,8 +433,12 @@ class YouTube:
                     raise VideoIndisponible(f"{video_id} : HTTP {statut} ({raison})") from e
                 raise
             rep = _FilsResponse.model_validate(brut)
+            atteint = False
             for fil in rep.items:
                 c = fil.snippet.topLevelComment
+                if depuis is not None and c.snippet.publishedAt < depuis:
+                    atteint = True
+                    continue
                 resultat.append(
                     CommentaireAPI(
                         comment_id=c.id,
@@ -446,6 +454,10 @@ class YouTube:
                     )
                 )
             page = rep.nextPageToken
+            if atteint:
+                break
+            if page is not None and n == max_pages - 1:
+                log.warning("%s : commentaires tronqués à %d pages", video_id, max_pages)
             if page is None:
                 break
         return resultat

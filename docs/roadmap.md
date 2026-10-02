@@ -15,7 +15,7 @@
 
 **À décider** :
 - Page publique "Le panel" listant les chaînes avec type et critère d'inclusion.
-- Couverture des commentaires : 200 par vidéo en ordre « pertinence » (actuel) ou tout prendre (lecture chronologique incrémentale), selon le total annoncé par YouTube mesuré sur la semaine 1.
+- ~~Couverture des commentaires~~ : tranché le 02/10/2026, tout prendre (lecture chronologique incrémentale).
 - Classification : Jev seul, cascade Jev → Claude (quel seuil) ou Claude seul, après le test de la semaine 1 et l'arbitrage (`docs/evaluation-resultats.md`).
 - ~~Émotion~~ : tranché le 01/10/2026, tonalité + hostilité (taxonomie v5).
 - Taxonomie des thèmes (remarques de Tristan, 01/10) : justice rangée dans `securite`, Europe dans `international_defense`, pas de thème « finances publiques » (dette rangée dans `economie_emploi`). À trancher avant le test de la semaine 1 : changer la liste casse la comparaison avec les tests déjà faits.

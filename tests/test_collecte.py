@@ -197,7 +197,7 @@ def test_prefiltre_commentaires_seulement_pour_videos_retenues(tmp_path: Path) -
     assert bilan.videos_prefiltre == 3 and bilan.commentaires == 9
 
 
-def test_shorts_une_seule_page(tmp_path: Path) -> None:
+def test_format_short_long(tmp_path: Path) -> None:
     faux = FauxYouTube(J1)
     _run(tmp_path, faux, FausseBase(SOURCES), _quotidien())
     base = FausseBase(SOURCES)
@@ -232,6 +232,9 @@ def test_invariant_commentaire_unique_date_de_sa_derniere_recuperation(tmp_path:
     faux = FauxYouTube(J1)
     base = FausseBase(SOURCES)
     _, _, st = _run(tmp_path, faux, base, _quotidien(), J1)
+    # Relecture complète le lendemain (vidéos de l'ancien mode « 200 par pertinence »).
+    for v in base.tables["videos"]:
+        v["mode_commentaires"] = "pertinence_200"
     j2 = J1 + timedelta(days=1)
     _run(tmp_path, faux, base, _quotidien(maintenant=j2), j2)
     lignes = _tous_commentaires(st)
@@ -317,7 +320,7 @@ def test_dry_run_n_ecrit_rien_et_estime_les_pages(tmp_path: Path) -> None:
     base = FausseBase(SOURCES)
     bilan, _, st = _run(tmp_path, faux, base, _quotidien(dry_run=True))
     assert not [a for a in faux.appels if a[0] == "commentThreads"]
-    assert bilan.pages_estimees == 2 + 1 + 2  # m1 long, m3 short, p1 long
+    assert bilan.pages_estimees == 3  # 3 commentaires annoncés par vidéo : 1 page chacune
     assert base.tables["videos"] == [] and not partitions(st, "commentaires")
 
 
@@ -456,3 +459,74 @@ def test_prefiltre_mots_entiers_sans_accents(titre: str, attendu: bool) -> None:
 def test_dry_run_mesure_le_cout_de_tout_prendre(tmp_path: Path) -> None:
     bilan, _, _ = _run(tmp_path, FauxYouTube(J1), FausseBase(SOURCES), _quotidien(dry_run=True))
     assert bilan.commentaires_annonces == 3 * 3  # m1, m3, p1 : commentCount = 3 chacune
+
+
+def test_tous_les_commentaires_puis_lecture_incrementale(tmp_path: Path) -> None:
+    """Toutes les pages en ordre chronologique, puis seulement les nouveaux commentaires."""
+    faux = FauxYouTube(J1)
+    nouveaux: list[str] = []
+    params_vus: list[dict[str, str]] = []
+
+    def transport(url: str, params: dict[str, str]) -> Any:
+        rep = faux(url, params)
+        if url.endswith("commentThreads"):
+            params_vus.append(params)
+            vid = params["videoId"]
+            if vid in nouveaux and "pageToken" not in params:
+                recent = {
+                    "snippet": {
+                        "totalReplyCount": 0,
+                        "topLevelComment": {
+                            "id": f"{vid}-nouveau",
+                            "snippet": {
+                                "textDisplay": "nouveau",
+                                "authorChannelId": {"value": AUTEUR_ID},
+                                "likeCount": 0,
+                                "publishedAt": (J1 + timedelta(hours=12)).isoformat(),
+                            },
+                        },
+                    }
+                }
+                rep = {"items": [recent, *rep["items"]]}
+        return rep
+
+    base = FausseBase(SOURCES)
+    st = StockageLocal(tmp_path)
+    collecter(_quotidien(), YouTube("cle", 1000, transport=transport), base, st, charger(), SEL, J1)
+    assert all(p["order"] == "time" for p in params_vus)
+    v = {x["video_id"]: x for x in base.tables["videos"]}
+    assert v["m1"]["mode_commentaires"] == "tout" and v["m1"]["commentaires_lus_jusqua"]
+    # Le lendemain : un nouveau commentaire sous m1 ; les anciens ne sont pas relus.
+    nouveaux.append("m1")
+    j2 = J1 + timedelta(days=1)
+    bilan = collecter(
+        _quotidien(maintenant=j2),
+        YouTube("cle", 1000, transport=transport),
+        base,
+        st,
+        charger(),
+        SEL,
+        j2,
+    )
+    assert bilan.commentaires == 1  # seul le nouveau commentaire de m1
+    ids = [ligne["comment_id"] for ligne in _tous_commentaires(st)]
+    assert len(ids) == len(set(ids)) == 10
+
+
+def test_backfill_recollecte_l_ancien_mode(tmp_path: Path) -> None:
+    """Une vidéo collectée en « 200 par pertinence » est relue en entier au backfill suivant."""
+    faux = FauxYouTube(datetime(2026, 9, 3, 12, tzinfo=UTC))
+    base = FausseBase(SOURCES)
+    p = Parametres(
+        "backfill", datetime(2026, 9, 1, tzinfo=UTC), datetime(2026, 9, 8, tzinfo=UTC), False
+    )
+    _run(tmp_path, faux, base, p, J1)
+    for v in base.tables["videos"]:
+        v["mode_commentaires"] = "pertinence_200"
+    bilan, _, st = _run(tmp_path, faux, base, p, J1 + timedelta(days=1))
+    assert bilan.videos_commentees == 3
+    assert all(v["mode_commentaires"] == "tout" for v in base.tables["videos"] if v["prefiltre"])
+    ids = [ligne["comment_id"] for ligne in _tous_commentaires(st)]
+    assert len(ids) == len(set(ids)) == 9
+    _, yt3, _ = _run(tmp_path, faux, base, p, J1 + timedelta(days=2))
+    assert yt3.consomme == 0  # tout est en mode « tout » : rien à refaire
