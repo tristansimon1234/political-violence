@@ -111,3 +111,45 @@ Constats :
 
 **Suite** : même échantillon avec un résumé de chaque vidéo (`evaluer --contexte`), puis lecture des parts agrégées.
 
+## 02/10/2026 — Semaine 1 réelle, avec résumé de la vidéo
+
+Même échantillon et mêmes étiquettes ; résumé d'une phrase par vidéo ajouté au contexte (180 vidéos, 10 sans description, 0,18 $).
+
+| Dimension | Jev sans | Jev avec | Claude sans | Claude avec |
+|---|---:|---:|---:|---:|
+| Politique / non politique | 90 % | 85 % | 78 % | 74 % |
+| Thème principal | 59 % | 56 % | 48 % | 47 % |
+| Au moins un thème commun | 72 % | 69 % | 64 % | 59 % |
+| Position (36) | 44 % | 44 % | 58 % | 58 % |
+| Tonalité | 75 % | 75 % | 71 % | 72 % |
+| Hostilité | 69 % | 70 % | 80 % | 81 % |
+| Tout juste | 23 % | 22 % | 26 % | 28 % |
+
+**Le résumé n'apporte rien de mesurable** (écarts dans la marge, plutôt en baisse sur politique et thème). Le manque de contexte n'est pas le facteur limitant, ou les descriptions sont trop pauvres pour le combler.
+
+Parts agrégées (100 commentaires étiquetés, avec résumé) :
+
+| Part | Tristan | Jev | Claude |
+|---|---:|---:|---:|
+| institutions | 25 % | 38 % | 28 % |
+| societe | 17 % | 9 % | 8 % |
+| international_defense | 15 % | 10 % | 10 % |
+| non politique | 15 % | 16 % | 35 % |
+| Écart thèmes (points) | — | 16 | 23 |
+| tonalité neutre | 24 % | 9 % | 26 % |
+| tonalité négative | 59 % | 69 % | 53 % |
+| Écart tonalité (points) | — | 15 | 6 |
+| **hostile** | **13 %** | **43 %** | **30 %** |
+| position : désaccord | 47 % | 17 % | 28 % |
+| position : hors sujet | 19 % | 53 % | 33 % |
+| Écart position (points) | — | 33 | 19 |
+
+Constats : les erreurs **ne se compensent pas**, ce sont des biais systématiques, donc corrigeables par la grille plutôt que par le modèle :
+
+- **Hostilité** : 13 % pour Tristan, 43 % pour Jev, 30 % pour Claude. La définition élargie en v6 (accusations de mauvaise foi, généralisations, moquerie) est appliquée beaucoup plus largement par les modèles que par l'étiquetage. En l'état, la part publiée serait 2 à 3 fois trop haute.
+- **Position** : Jev classe `hors_sujet` la moitié des commentaires et manque les désaccords ; Claude est plus proche.
+- **Thèmes** : frontière `institutions` / `societe` floue (Jev met en `institutions` ce que Tristan met en `societe`) ; Claude classe non politique un commentaire sur trois (règle « réaction à l'événement » toujours mal suivie).
+- **Tonalité** : Jev voit du négatif là où Tristan voit du neutre ; Claude proche (6 points).
+
+Recommandation automatique (seuil 0,9) non retenue : bruit sur 100 étiquettes.
+
