@@ -1,11 +1,15 @@
 """Classification des commentaires et des vidéos : prompts neutres, sorties typées.
 
 Minimisation (RGPD) : un modèle ne reçoit que le texte du commentaire, mentions @ et URL
-masquées, et le contexte de la vidéo (titre, chaîne, nature). Jamais l'auteur, même hashé,
+masquées, et le contexte de la vidéo (titre, chaîne, nature, résumé). Jamais l'auteur, même hashé,
 ni l'identifiant du commentaire : les commentaires d'une requête sont numérotés 1..n.
 
 La position (accord avec la vidéo) n'est demandée et conservée que pour les vidéos `opinion` ;
 elle vaut toujours None sur une vidéo `info_factuelle` ou `debat`.
+
+Résumé de la vidéo (décision du 02/10/2026) : une phrase neutre écrite par Claude à partir du
+titre et de la description, dans le même appel que la nature. Dérivé du brut, il est conservé
+et purgé avec lui (30 jours).
 """
 
 import re
@@ -126,6 +130,7 @@ class ContexteVideo:
     titre: str
     chaine: str
     nature: NatureVideo
+    resume: str = ""  # sujet et thèse de la vidéo ; vide si non calculé
 
 
 # --- Sorties typées ---
@@ -146,6 +151,7 @@ class ReponseCommentaires(BaseModel):
 
 class ReponseNatureVideo(BaseModel):
     nature_video: NatureVideo
+    resume: str = ""
 
 
 @dataclass(frozen=True)
@@ -211,6 +217,7 @@ def message_commentaires(contexte: ContexteVideo, textes: list[str]) -> str:
         f"Channel: {contexte.chaine}",
         f"Video title: {contexte.titre}",
         f"Video type: {contexte.nature}",
+        *([f"Video summary: {contexte.resume}"] if contexte.resume else []),
         "",
         "Comments:",
     ]
@@ -219,14 +226,24 @@ def message_commentaires(contexte: ContexteVideo, textes: list[str]) -> str:
     return "\n".join(lignes)
 
 
-SYSTEME_NATURE_VIDEO = """You give the type of a French YouTube video from its title, description
-and channel, without judging its content.
+SYSTEME_NATURE_VIDEO = """You describe a French YouTube video from its title, description and
+channel, without judging its content.
+
+nature_video, the type of the video:
 - info_factuelle: the video reports facts (news bulletin, report, unedited excerpt of a speech
   or session, announcement).
 - opinion: the video defends one point of view (editorial, column, rant, opinionated
   analysis, video of a party or a candidate, interview of a single guest presenting views).
 - debat: the video confronts several points of view (debate show, panel with opposing guests,
-  face-to-face)."""
+  face-to-face).
+
+resume: one neutral sentence in French, at most 35 words, giving the subject of the video and:
+for an opinion video, the thesis it defends ("La vidéo soutient que ...");
+for a debate, the question debated ("Débat sur ...");
+for a factual video, the fact reported.
+Use only the title and the description; never add facts, never judge. Ignore links, sponsors
+and calls to subscribe. When the title and description are too vague, start with
+"Sujet peu précis :" and say what can be inferred."""
 
 
 def message_nature_video(titre: str, description: str, chaine: str) -> str:
@@ -288,7 +305,12 @@ def questions_jev(nature: NatureVideo) -> dict[str, Question]:
 def etat_jev(contexte: ContexteVideo, texte: str) -> dict[str, Any]:
     """État évalué par Jev : objet JSON à champs nommés (contexte vidéo + commentaire masqué)."""
     return {
-        "video": {"channel": contexte.chaine, "title": contexte.titre, "type": contexte.nature},
+        "video": {
+            "channel": contexte.chaine,
+            "title": contexte.titre,
+            "type": contexte.nature,
+            **({"summary": contexte.resume} if contexte.resume else {}),
+        },
         "comment": masquer(texte),
     }
 

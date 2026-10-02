@@ -3,6 +3,7 @@
     python scripts/evaluation.py sonde      # 1 appel Jev + 1 appel Claude sur un texte fictif
     python scripts/evaluation.py preparer   # échantillon + fichier d'étiquetage dans le bucket
     python scripts/evaluation.py evaluer    # classement Jev et Claude, rapport en agrégats
+    python scripts/evaluation.py evaluer --contexte  # idem avec le résumé de chaque vidéo
     python scripts/evaluation.py synthetique  # commentaires fictifs étiquetés (versionnés)
     python scripts/evaluation.py arbitrage --fichier arbitrage_x.csv --cle cle_x.json
 
@@ -12,6 +13,8 @@ Fichiers dans le bucket privé `radar-brut`, dossier `evaluation/` (purgés à 3
 - AAAA-MM-JJ-etiquetage.csv          à télécharger, remplir, puis déposer sous le nom
 - AAAA-MM-JJ-etiquetage-rempli.csv   (voir docs/etiquetage.md)
 - AAAA-MM-JJ-resultats.parquet       étiquettes de Jev et de Claude (aucun texte)
+- AAAA-MM-JJ-resumes.json            résumé de chaque vidéo (--contexte, dérivé du brut)
+- AAAA-MM-JJ-resultats-contexte.parquet  étiquettes avec le résumé (--contexte)
 Rien n'est affiché ni écrit hors du bucket, sauf des agrégats.
 """
 
@@ -27,6 +30,7 @@ from typing import Any
 
 from radar.classification import (
     SYSTEME_COMMENTAIRES,
+    Classement,
     ContexteVideo,
     ReponseCommentaires,
     etat_jev,
@@ -34,14 +38,19 @@ from radar.classification import (
     questions_jev,
 )
 from radar.evaluation import (
+    Candidate,
     Couts,
+    Ligne,
+    Modele,
     Volume,
+    avec_resumes,
     candidates,
     charger_synthetique,
     chemin,
     classer_claude,
     classer_jev,
-    classer_natures,
+    classer_videos,
+    comparaison_contexte,
     dernier_echantillon,
     desaccords,
     echantillonner,
@@ -65,6 +74,7 @@ from radar.llm import (
     cout_jev,
     lire_reponse_jev,
 )
+from radar.schemas import NatureVideo
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.supabase_rest import Supabase
 
@@ -140,8 +150,10 @@ def preparer(args: argparse.Namespace) -> int:
     print(f"Vidéos collectées : {len(videos)}, candidates : {len(cands)}, commentaires : {total}")
 
     claude = ClientClaude(budget_usd=args.budget_claude)
-    natures = classer_natures(claude, cands)
-    lignes = echantillonner(natures, cands, commentaires, rng)
+    videos_classees = classer_videos(claude, cands)
+    natures: dict[str, NatureVideo] = {v: r.nature_video for v, r in videos_classees.items()}
+    resumes = {v: r.resume for v, r in videos_classees.items()}
+    lignes = echantillonner(natures, cands, commentaires, rng, resumes=resumes)
     if not lignes:
         print("Aucun commentaire à échantillonner.")
         return 1
@@ -169,6 +181,33 @@ def preparer(args: argparse.Namespace) -> int:
     return 0
 
 
+def _resumes(st: Stockage, jour: date, lignes: list[Ligne], claude: ClientClaude) -> list[Ligne]:
+    """Résumé de chaque vidéo de l'échantillon (calculé une fois, gardé dans le bucket).
+
+    La nature déjà attribuée est conservée : seul le résumé est repris de la réponse.
+    """
+    deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
+    if f"{jour.isoformat()}-resumes.json" in deja:
+        return avec_resumes(lignes, lire_json(st, jour, "resumes.json"))
+    descriptions: dict[str, str] = {}
+    for c in partitions(st, "videos").values():
+        for v in lire_partition(st, c):
+            descriptions[str(v["video_id"])] = str(v.get("description") or "")
+    par_video = {li.video_id: li for li in lignes}
+    cands = [
+        Candidate(v, li.type_source, li.format, li.chaine, li.titre, descriptions.get(v, ""))
+        for v, li in sorted(par_video.items())
+    ]
+    resumes = {v: r.resume for v, r in classer_videos(claude, cands).items()}
+    ecrire_json(st, jour, "resumes.json", resumes)
+    sans_description = sum(1 for c in cands if not c.description.strip())
+    print(
+        f"Résumés : {len(resumes)}/{len(cands)} vidéos, {sans_description} sans description, "
+        f"coût Claude {claude.compteur.cout_usd:.4f} $.\n"
+    )
+    return avec_resumes(lignes, resumes)
+
+
 def evaluer(args: argparse.Namespace) -> int:
     st = _stockage(args)
     jour = dernier_echantillon(st)
@@ -177,27 +216,32 @@ def evaluer(args: argparse.Namespace) -> int:
         return 1
     lignes = lire_echantillon(st, jour)
     prep = lire_json(st, jour, "preparation.json")
+    suffixe = "-contexte" if args.contexte else ""
+    fichier_res, fichier_couts = f"resultats{suffixe}.parquet", f"couts{suffixe}.json"
+    claude_client = ClientClaude(budget_usd=args.budget_claude)
+    if args.contexte:
+        lignes = _resumes(st, jour, lignes, claude_client)
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
-    if f"{jour.isoformat()}-resultats.parquet" in deja and not args.reclasser:
-        res = lire_resultats(st, jour)
-        couts_brut = lire_json(st, jour, "couts.json")
+    if f"{jour.isoformat()}-{fichier_res}" in deja and not args.reclasser:
+        res = lire_resultats(st, jour, fichier_res)
+        couts_brut = lire_json(st, jour, fichier_couts)
     else:
         jev_client = ClientJev(budget_usd=args.budget_jev)
-        claude_client = ClientClaude(budget_usd=args.budget_claude)
-        res = {
+        avant = claude_client.compteur.cout_usd  # résumés exclus du coût par commentaire
+        res: dict[Modele, dict[str, Classement]] = {
             "jev": classer_jev(jev_client, lignes),
             "claude": classer_claude(claude_client, lignes),
         }
-        ecrire_resultats(st, jour, res)
+        ecrire_resultats(st, jour, res, fichier_res)
         couts_brut = {
             "jev_usd": jev_client.compteur.cout_usd,
             "jev_n": len(res["jev"]),
             "jev_erreurs": jev_client.compteur.erreurs,
-            "claude_usd": claude_client.compteur.cout_usd,
+            "claude_usd": claude_client.compteur.cout_usd - avant,
             "claude_n": len(res["claude"]),
             "claude_erreurs": claude_client.compteur.erreurs,
         }
-        ecrire_json(st, jour, "couts.json", couts_brut)
+        ecrire_json(st, jour, fichier_couts, couts_brut)
     rempli = f"{jour.isoformat()}-etiquetage-rempli.csv"
     etiquettes = (
         lire_etiquettes(st.lire(chemin(jour, "etiquetage-rempli.csv")), lignes)
@@ -212,7 +256,11 @@ def evaluer(args: argparse.Namespace) -> int:
         float(prep["natures_usd"]),
     )
     volume = Volume(int(prep["commentaires"]), int(prep["jours"]))
+    if args.contexte:
+        print("Avec le résumé de chaque vidéo (titre, chaîne, nature et résumé envoyés).\n")
     print(rapport(lignes, res["jev"], res["claude"], etiquettes, couts, volume, date.today()))
+    if args.contexte and etiquettes and f"{jour.isoformat()}-resultats.parquet" in deja:
+        print("\n" + comparaison_contexte(lire_resultats(st, jour), res, etiquettes))
     erreurs = int(couts_brut.get("jev_erreurs", 0)) + int(couts_brut.get("claude_erreurs", 0))
     if erreurs:
         print(f"\nAppels en erreur (ignorés) : {erreurs}")
@@ -283,6 +331,9 @@ def main() -> int:
     p.add_argument("--graine", type=int, default=20260901, help="graine du tirage")
     p.add_argument("--remplacer", action="store_true", help="preparer : écraser l'échantillon")
     p.add_argument("--reclasser", action="store_true", help="evaluer : refaire les appels")
+    p.add_argument(
+        "--contexte", action="store_true", help="evaluer : ajouter le résumé de chaque vidéo"
+    )
     p.add_argument("--stockage-local", type=Path, help="dossier local au lieu du bucket")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")

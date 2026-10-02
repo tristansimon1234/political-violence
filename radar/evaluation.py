@@ -1,7 +1,8 @@
 """Test de qualité Jev / Claude / vérité terrain (étape 4, docs/roadmap.md).
 
 1. `preparer` : échantillon stratifié de commentaires collectés (catégorie de source, format,
-   nature de vidéo), dont un sous-ensemble à étiqueter à la main. Nature des vidéos par Claude.
+   nature de vidéo), dont un sous-ensemble à étiqueter à la main. Nature et résumé des vidéos
+   par Claude.
 2. Étiquetage par Tristan d'un fichier CSV déposé dans le bucket brut.
 3. `evaluer` : classement par Jev et par Claude, comparaison aux étiquettes, justesse de Jev
    par tranche de confiance, seuil de reprise recommandé et coût projeté sur la campagne.
@@ -19,7 +20,7 @@ import logging
 import random
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Literal, TypeVar
 
@@ -107,6 +108,7 @@ class Ligne:
     texte: str  # déjà masqué
     verite: bool
     recupere_le: date
+    resume: str = ""  # sujet et thèse de la vidéo (Claude), dérivé du brut
 
     @property
     def strate(self) -> Strate:
@@ -114,7 +116,7 @@ class Ligne:
 
     @property
     def contexte(self) -> ContexteVideo:
-        return ContexteVideo(self.titre, self.chaine, self.nature)
+        return ContexteVideo(self.titre, self.chaine, self.nature, self.resume)
 
 
 SCHEMA_ECHANTILLON = pa.schema(
@@ -130,6 +132,7 @@ SCHEMA_ECHANTILLON = pa.schema(
         ("texte", pa.string()),
         ("verite", pa.bool_()),
         ("recupere_le", pa.date32()),
+        ("resume", pa.string()),
     ]
 )
 
@@ -208,6 +211,7 @@ def echantillonner(
     rng: random.Random,
     n: int = N_ECHANTILLON,
     n_verite: int = N_VERITE,
+    resumes: Mapping[str, str] | None = None,
 ) -> list[Ligne]:
     """Échantillon stratifié (égal entre strates, plafonné par vidéo) ; `n_verite` à étiqueter."""
     par_strate: dict[Strate, list[tuple[Candidate, list[Mapping[str, Any]]]]] = defaultdict(list)
@@ -251,9 +255,14 @@ def echantillonner(
             texte=masquer(str(x["texte"])),
             verite=verite,
             recupere_le=_date(x["recupere_le"]),
+            resume=(resumes or {}).get(c.video_id, ""),
         )
         for i, (c, x, verite, s) in enumerate(tout, start=1)
     ]
+
+
+def avec_resumes(lignes: Iterable[Ligne], resumes: Mapping[str, str]) -> list[Ligne]:
+    return [replace(li, resume=resumes.get(li.video_id, li.resume)) for li in lignes]
 
 
 def _date(v: Any) -> date:
@@ -263,21 +272,22 @@ def _date(v: Any) -> date:
 # --- Classement ---
 
 
-def classer_natures(claude: ClientClaude, cands: Iterable[Candidate]) -> dict[str, NatureVideo]:
-    natures: dict[str, NatureVideo] = {}
+def classer_videos(
+    claude: ClientClaude, cands: Iterable[Candidate]
+) -> dict[str, ReponseNatureVideo]:
+    """Nature et résumé de chaque vidéo, un appel Claude par vidéo."""
+    videos: dict[str, ReponseNatureVideo] = {}
     for c in cands:
         try:
-            r = claude.classer(
+            videos[c.video_id] = claude.classer(
                 SYSTEME_NATURE_VIDEO,
                 message_nature_video(c.titre, c.description, c.chaine),
                 ReponseNatureVideo,
-                max_tokens=100,
+                max_tokens=200,
             )
         except ReponseInvalide as e:
-            log.warning("nature vidéo ignorée : %s", e)
-            continue
-        natures[c.video_id] = r.nature_video
-    return natures
+            log.warning("vidéo ignorée : %s", e)
+    return videos
 
 
 def classer_claude(claude: ClientClaude, lignes: Iterable[Ligne]) -> dict[str, Classement]:
@@ -327,6 +337,7 @@ COLONNES_ETIQUETAGE = (
     "nature_video",
     "chaine",
     "titre_video",
+    "resume_video",
     "commentaire",
     "themes",
     "position",
@@ -362,6 +373,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
                 li.nature,
                 li.chaine,
                 li.titre,
+                li.resume,
                 li.texte,
                 "",
                 position,
@@ -620,6 +632,9 @@ def rapport(
         )
     out.append("")
 
+    if etiquettes:
+        out += parts_agregees(jev, claude, etiquettes)
+
     jours, projetes = volume.campagne(aujourdhui)
     if volume.commentaires:
         projection = (
@@ -668,6 +683,117 @@ def rapport(
         "Lecture : justesse mesurée sur les commentaires étiquetés (petits effectifs) ; "
         "la projection suppose le volume quotidien de l'échantillon et les prix mesurés.",
     ]
+    return "\n".join(out)
+
+
+Distribution = dict[str, float]
+NON_POLITIQUE = "non politique"
+
+
+def distributions(
+    sources: Mapping[str, Mapping[str, Reference]], refs: Iterable[str]
+) -> dict[str, dict[str, Distribution]]:
+    """Parts par dimension et par source, sur les mêmes commentaires ; en % des commentaires.
+
+    Thèmes : un commentaire multi-thèmes compte 1/n dans chacun (comme dans le Radar).
+    Position et hostilité : seulement là où la référence (première source) est renseignée.
+    """
+    refs = list(refs)
+    reference = next(iter(sources.values()))
+    res: dict[str, dict[str, Distribution]] = {}
+    for dim in ("themes", "tonalite", "hostilite", "position"):
+        utiles = [
+            r
+            for r in refs
+            if not (dim == "position" and reference[r].position is None)
+            and not (dim == "hostilite" and reference[r].hostilite is None)
+        ]
+        res[dim] = {}
+        for nom, classements in sources.items():
+            compte: defaultdict[str, float] = defaultdict(float)
+            for r in utiles:
+                c = classements[r]
+                if dim == "themes":
+                    for t in c.themes or (NON_POLITIQUE,):
+                        compte[t] += 1 / max(1, len(c.themes))
+                elif dim == "tonalite":
+                    compte[c.tonalite] += 1
+                elif dim == "hostilite":
+                    compte["hostile"] += int(bool(c.hostilite))
+                else:
+                    compte[c.position or SANS_POSITION] += 1
+            res[dim][nom] = {k: 100 * v / len(utiles) for k, v in compte.items()} if utiles else {}
+    return res
+
+
+def ecart(a: Distribution, b: Distribution) -> float:
+    """Part de la masse mal placée (en points) : demi-somme des écarts absolus."""
+    cles = set(a) | set(b)
+    return sum(abs(a.get(k, 0.0) - b.get(k, 0.0)) for k in cles) / 2
+
+
+def parts_agregees(
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> list[str]:
+    refs = sorted(r for r in etiquettes if r in jev and r in claude)
+    if not refs:
+        return []
+    d = distributions({"tristan": etiquettes, "jev": jev, "claude": claude}, refs)
+    ordres: dict[str, tuple[str, ...]] = {
+        "themes": (*THEMES, NON_POLITIQUE),
+        "tonalite": TONALITES,
+        "hostilite": ("hostile",),
+        "position": POSITIONS,
+    }
+    titres = {
+        "themes": "Thème (1/n par commentaire multi-thèmes)",
+        "tonalite": "Tonalité",
+        "hostilite": "Hostilité",
+        "position": "Position (vidéos d'opinion)",
+    }
+    out = [
+        f"## Parts agrégées ({len(refs)} commentaires étiquetés)",
+        "",
+        "Ce que le Radar affichera : des parts, pas des commentaires un par un. Les erreurs "
+        "individuelles peuvent se compenser ; l'écart mesure ce qui reste.",
+        "",
+    ]
+    for dim, ordre in ordres.items():
+        dist = d[dim]
+        out += [f"| {titres[dim]} | Tristan | Jev | Claude |", "|---|---:|---:|---:|"]
+        for k in ordre:
+            vals = [dist[s].get(k, 0.0) for s in ("tristan", "jev", "claude")]
+            if any(vals):
+                out.append(f"| {k} | " + " | ".join(f"{v:.0f} %" for v in vals) + " |")
+        if dim != "hostilite":
+            e_jev, e_claude = (
+                ecart(dist["tristan"], dist["jev"]),
+                ecart(dist["tristan"], dist["claude"]),
+            )
+            out.append(f"| *Écart avec Tristan (points)* | — | {e_jev:.0f} | {e_claude:.0f} |")
+        out.append("")
+    return out
+
+
+def comparaison_contexte(
+    sans: Mapping[Modele, Mapping[str, Classement]],
+    avec: Mapping[Modele, Mapping[str, Classement]],
+    etiquettes: Mapping[str, Etiquette],
+) -> str:
+    """Justesse face aux étiquettes, sans puis avec le résumé de la vidéo."""
+    out = [
+        "## Effet du résumé de la vidéo",
+        "",
+        "| Dimension | Jev sans | Jev avec | Claude sans | Claude avec |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for dim in DIMENSIONS:
+        cellules = [
+            _pct(*taux(res[m], etiquettes, dim)) for m in ("jev", "claude") for res in (sans, avec)
+        ]
+        out.append(f"| {LIBELLES_DIMENSIONS[dim]} | " + " | ".join(cellules) + " |")
     return "\n".join(out)
 
 
@@ -728,7 +854,10 @@ def lire_echantillon(st: Stockage, jour: date) -> list[Ligne]:
 
 
 def ecrire_resultats(
-    st: Stockage, jour: date, resultats: Mapping[str, Mapping[str, Classement]]
+    st: Stockage,
+    jour: date,
+    resultats: Mapping[Modele, Mapping[str, Classement]],
+    nom: str = "resultats.parquet",
 ) -> None:
     lignes = [
         {
@@ -746,11 +875,13 @@ def ecrire_resultats(
     ]
     tampon = io.BytesIO()
     pq.write_table(pa.Table.from_pylist(lignes, schema=SCHEMA_RESULTATS), tampon)  # pyright: ignore[reportUnknownMemberType]
-    st.ecrire(chemin(jour, "resultats.parquet"), tampon.getvalue())
+    st.ecrire(chemin(jour, nom), tampon.getvalue())
 
 
-def lire_resultats(st: Stockage, jour: date) -> dict[Modele, dict[str, Classement]]:
-    table = pq.read_table(io.BytesIO(st.lire(chemin(jour, "resultats.parquet"))))  # pyright: ignore[reportUnknownMemberType]
+def lire_resultats(
+    st: Stockage, jour: date, nom: str = "resultats.parquet"
+) -> dict[Modele, dict[str, Classement]]:
+    table = pq.read_table(io.BytesIO(st.lire(chemin(jour, nom))))  # pyright: ignore[reportUnknownMemberType]
     res: dict[Modele, dict[str, Classement]] = {"jev": {}, "claude": {}}
     for r in table.to_pylist():
         modele: Modele = "jev" if r["modele"] == "jev" else "claude"

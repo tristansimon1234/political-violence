@@ -12,8 +12,11 @@ import pytest
 from radar.classification import (
     Classement,
     ClassementCommentaire,
+    ContexteVideo,
     classement_jev,
+    etat_jev,
     masquer,
+    message_commentaires,
     normaliser,
     questions_jev,
 )
@@ -23,12 +26,15 @@ from radar.evaluation import (
     Couts,
     Etiquette,
     Ligne,
+    Modele,
     Volume,
     candidates,
     cascade,
     classer_claude,
     classer_jev,
     comparer,
+    distributions,
+    ecart,
     echantillonner,
     ecrire_echantillon,
     ecrire_resultats,
@@ -56,6 +62,7 @@ TITRE = "TitreVideoTresReconnaissable"
 CHAINE = "ChaineTresReconnaissable"
 TEXTE = "TexteCommentaireTresReconnaissable"
 AUTEUR_HASH = "a" * 32
+RESUME = "ResumeVideoTresReconnaissable"
 
 
 def test_masquer_mentions_et_url() -> None:
@@ -362,12 +369,12 @@ def test_etiquetage_aller_retour() -> None:
         champs = ligne.split(";")
         ref = champs[0]
         nature = next(li.nature for li in lignes if li.ref == ref)
-        champs[7] = "retraites+sante" if ref != "C002" else "aucun"
-        champs[8] = "desaccord_video" if nature == "opinion" else "-"
-        champs[9] = "negative"
-        champs[10] = "oui" if ref == "C001" else ("" if ref == "C003" else "non")
+        champs[8] = "retraites+sante" if ref != "C002" else "aucun"
+        champs[9] = "desaccord_video" if nature == "opinion" else "-"
+        champs[10] = "negative"
+        champs[11] = "oui" if ref == "C001" else ("" if ref == "C003" else "non")
         remplies.append(";".join(champs))
-    remplies[-1] = ";".join([*remplies[-1].split(";")[:7], "", "", "", ""])  # non remplie
+    remplies[-1] = ";".join([*remplies[-1].split(";")[:8], "", "", "", ""])  # non remplie
     etiquettes = lire_etiquettes(("\n".join(remplies) + "\n").encode(), lignes)
     assert len(etiquettes) == sum(li.verite for li in lignes) - 1
     assert etiquettes["C002"].est_politique is False and etiquettes["C002"].themes == ()
@@ -461,7 +468,10 @@ def test_fichiers_evaluation_et_purge(tmp_path: Path) -> None:
     jour = date(2026, 10, 2)
     ecrire_echantillon(st, jour, lignes)
     assert lire_echantillon(st, jour) == lignes
-    res = {"jev": {"C001": _cl(0.8)}, "claude": {"C001": _cl(None)}}
+    res: dict[Modele, dict[str, Classement]] = {
+        "jev": {"C001": _cl(0.8)},
+        "claude": {"C001": _cl(None)},
+    }
     ecrire_resultats(st, jour, res)
     assert lire_resultats(st, jour) == res
     st.ecrire("evaluation/2026-10-02-etiquetage-rempli.csv", b"x")
@@ -486,7 +496,7 @@ class FauxAnthropicNature(FauxAnthropic):
     def parse(self, **kwargs: Any) -> _Reponse:
         if kwargs["output_format"].__name__ == "ReponseNatureVideo":
             self.envois.append(kwargs["messages"][0]["content"])
-            return _Reponse(kwargs["output_format"](nature_video="opinion"))
+            return _Reponse(kwargs["output_format"](nature_video="opinion", resume=RESUME))
         return super().parse(**kwargs)
 
 
@@ -568,7 +578,7 @@ def test_script_preparer_evaluer(
     appels = len(faux_jev.envois)
     brut = st.lire(f"evaluation/{jour}-etiquetage.csv").decode("utf-8-sig").splitlines()
     rempli = [brut[0]] + [
-        ";".join([*x.split(";")[:7], "retraites", "accord_video", "negative", "non"])
+        ";".join([*x.split(";")[:8], "retraites", "accord_video", "negative", "non"])
         for x in brut[1:]
     ]
     st.ecrire(f"evaluation/{jour}-etiquetage-rempli.csv", "\n".join(rempli).encode())
@@ -579,6 +589,53 @@ def test_script_preparer_evaluer(
     )
     assert len(faux_jev.envois) == appels
     assert "Recommandation" in rapport_ and TEXTE not in rapport_
+    assert "Parts agrégées" in rapport_
+    # Résumé de la vidéo : dans le fichier d'étiquetage (bucket), jamais dans le rapport.
+    assert RESUME in "\n".join(brut)
+    # --contexte : résumés recalculés, envoyés aux modèles, résultats gardés à part.
+    faux_jev.envois.clear()
+    rapport_ = lancer("evaluer", "--contexte")
+    assert faux_jev.envois and all(RESUME in e for e in faux_jev.envois)
+    assert "Effet du résumé de la vidéo" in rapport_
+    for interdit in (TEXTE, TITRE, CHAINE, AUTEUR_HASH, RESUME):
+        assert interdit not in rapport_
+    assert {
+        f"evaluation/{jour}-resultats.parquet",
+        f"evaluation/{jour}-resultats-contexte.parquet",
+        f"evaluation/{jour}-resumes.json",
+    } <= set(st.lister("evaluation"))
+    # Relance : ni nouveau résumé ni nouveau classement.
+    n_jev, n_claude = len(faux_jev.envois), len(faux_claude.envois)
+    lancer("evaluer", "--contexte")
+    assert (len(faux_jev.envois), len(faux_claude.envois)) == (n_jev, n_claude)
+
+
+def test_resume_video_transmis_seulement_s_il_existe() -> None:
+    sans = ContexteVideo("Titre", "Chaîne", "opinion")
+    avec = ContexteVideo("Titre", "Chaîne", "opinion", "La vidéo soutient que X.")
+    assert "summary" not in etat_jev(sans, "c")["video"]
+    assert etat_jev(avec, "c")["video"]["summary"] == "La vidéo soutient que X."
+    assert "Video summary" not in message_commentaires(sans, ["c"])
+    assert "Video summary: La vidéo soutient que X." in message_commentaires(avec, ["c"])
+
+
+def test_parts_agregees_multi_themes_et_ecart() -> None:
+    tristan = {
+        "C1": Etiquette(True, ("retraites", "sante"), None, "negative", True),
+        "C2": Etiquette(False, (), None, "neutre", None),
+    }
+    jev = {
+        "C1": Classement(True, ("retraites",), None, "negative", False),
+        "C2": Classement(True, ("sante",), None, "negative", True),
+    }
+    d = distributions({"tristan": tristan, "jev": jev}, ["C1", "C2"])
+    # 1/n : C1 compte pour moitié dans chaque thème ; les parts somment à 100 %.
+    assert d["themes"]["tristan"] == {"retraites": 25, "sante": 25, "non politique": 50}
+    assert sum(d["themes"]["tristan"].values()) == pytest.approx(100)
+    assert sum(d["themes"]["jev"].values()) == pytest.approx(100)
+    # Hostilité : seulement là où Tristan a tranché (C1).
+    assert d["hostilite"]["tristan"] == {"hostile": 100} and d["hostilite"]["jev"] == {"hostile": 0}
+    assert ecart({"a": 60, "b": 40}, {"a": 40, "b": 60}) == pytest.approx(20)
 
 
 def test_corps_jev_protocole_typesafe() -> None:

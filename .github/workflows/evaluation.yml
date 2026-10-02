@@ -20,7 +20,7 @@ on:
         description: "Dollars max pour Jev"
         default: "1"
       option:
-        description: "Facultatif : --remplacer (preparer) ou --reclasser (evaluer)"
+        description: "Facultatif : --remplacer (preparer) ; --reclasser, --contexte ou --contexte --reclasser (evaluer)"
         default: ""
       fichier:
         description: "synthetique : fichier du dossier evaluation/"
@@ -52,7 +52,8 @@ jobs:
           set -o pipefail
           ARGS=("${{ inputs.commande }}" --budget-claude "${{ inputs.budget_claude }}" --budget-jev "${{ inputs.budget_jev }}")
           case "${{ inputs.option }}" in
-            --remplacer|--reclasser) ARGS+=("${{ inputs.option }}") ;;
+            --remplacer|--reclasser|--contexte) ARGS+=("${{ inputs.option }}") ;;
+            "--contexte --reclasser") ARGS+=(--contexte --reclasser) ;;
             "") ;;
             *) echo "option inconnue"; exit 1 ;;
           esac

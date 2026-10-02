@@ -13,7 +13,7 @@ Le fichier contient du texte brut : il reste dans le bucket, il est purgé avec 
 
 ## Colonnes à remplir
 
-Ne modifier que les quatre colonnes `themes`, `position`, `tonalite`, `hostilite`. Les autres servent de contexte : `ref`, catégorie, format, nature de la vidéo (`info_factuelle`, `opinion` ou `debat`, classée par Claude), chaîne, titre, commentaire (mentions et liens masqués, comme pour les modèles).
+Ne modifier que les quatre colonnes `themes`, `position`, `tonalite`, `hostilite`. Les autres servent de contexte : `ref`, catégorie, format, nature de la vidéo (`info_factuelle`, `opinion` ou `debat`, classée par Claude), chaîne, titre, résumé de la vidéo (`resume_video`, une phrase rédigée par Claude à partir du titre et de la description, comme pour les modèles ; à partir du 02/10/2026), commentaire (mentions et liens masqués, comme pour les modèles).
 
 - **`themes`** : le ou les thèmes **du commentaire lui-même** (pas de la vidéo), du plus au moins important, séparés par `+` (3 au plus). Exemple : `retraites+economie_emploi`. Écrire `aucun` si le commentaire ne parle pas de politique ni d'un enjeu d'intérêt public.
   Valeurs : `pouvoir_achat`, `securite`, `immigration`, `retraites`, `sante`, `education`, `ecologie_energie`, `economie_emploi`, `logement`, `institutions`, `international_defense`, `agriculture`, `societe`, `autre`.

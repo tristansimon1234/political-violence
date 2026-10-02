@@ -1,6 +1,23 @@
 # Résultats des tests de classification (étape 4)
 
-Journal des mesures, en agrégats. Le détail commentaire par commentaire n'est conservé que pour les jeux synthétiques (`evaluation/`). Référence : étiquettes de Tristan. « Tout juste » = politique, thème principal, position et émotion tous justes (indicateur le plus sévère).
+Journal des mesures, en agrégats. Le détail commentaire par commentaire n'est conservé que pour les jeux synthétiques (`evaluation/`). Référence : étiquettes de Tristan. « Tout juste » = toutes les dimensions justes à la fois : politique, thème principal, position, tonalité et hostilité (émotion avant la v5). C'est l'indicateur le plus sévère.
+
+## Démarche
+
+Question : un modèle peut-il classer les commentaires assez bien, et à quel coût, pour que les parts publiées par le Radar (thèmes, tonalité, hostilité, position) soient fiables ?
+
+1. **Référence humaine.** Tristan étiquette à la main un jeu de commentaires selon la grille publiée (`docs/etiquetage.md`). Ses étiquettes servent de référence, sans être tenues pour infaillibles : il signale lui-même des doutes fréquents.
+2. **Jeux synthétiques d'abord** (commentaires fictifs, versionnés) : ils permettent de mettre au point la grille et les consignes sans données personnelles, et d'afficher les désaccords mot à mot. Limite : un jeu qui a servi à écrire les règles surestime la justesse ; le jeu v2 (écrit par Tristan, jamais vu) sert de contrôle.
+3. **Vrais commentaires ensuite** : 500 commentaires de la semaine 1, tirés par strate (catégorie de chaîne × format × nature de vidéo) pour que chaque type de chaîne et de vidéo soit représenté, pas seulement les plus commentés ; 100 étiquetés par Tristan. Fichiers dans le bucket brut, purgés à 30 jours ; seuls les agrégats sortent.
+4. **Mesures** :
+   - justesse par dimension face à Tristan, et accord entre Jev et Claude (sur les 500) : un accord faible signale une tâche ambiguë plutôt qu'un modèle défaillant ;
+   - justesse de Jev par tranche de confiance : dit si la confiance permet de trier les classements sûrs ;
+   - cascade (Jev, puis Claude sous un seuil de confiance) : justesse et coût projeté sur la campagne pour chaque seuil ;
+   - **parts agrégées** (à partir du 02/10) : parts par thème, tonalité, hostilité et position selon Tristan, Jev et Claude, et écart en points. C'est ce que le Radar publie : des erreurs individuelles qui se compensent ne faussent pas une part.
+5. **Une variable à la fois.** Chaque changement (langue des consignes, grille, contexte de la vidéo) est mesuré sur le même échantillon, avant / après.
+6. **Arbitrage à l'aveugle** des désaccords (jeux synthétiques) : les réponses de Tristan, Jev et Claude sont présentées anonymisées ; mesure qui de la référence ou des modèles a raison quand ils divergent.
+
+Limites : 100 étiquettes donnent une marge d'environ ±9 points sur une justesse ; une différence plus petite entre deux options n'est pas significative. Un seul annotateur. Les vidéos ne sont vues qu'à travers leur titre, leur chaîne et (à partir du 02/10) un résumé de leur description : les sous-titres ne sont pas accessibles par l'API.
 
 ## 01/10/2026 — Sonde (1 commentaire fictif)
 
@@ -68,4 +85,29 @@ Confiance de Jev bien calibrée (47 %, 45 %, 79 %, 94 % par tranche). **Cascade 
 Correction : la recommandation automatique comparait chaque seuil à Claude seul ; elle retient maintenant l'option la moins chère à 2 points de la meilleure, cascade comprise (ici 0,7).
 
 Réserve : ce jeu a servi à écrire les règles ; à confirmer sur v2 et sur la semaine 1.
+
+## 02/10/2026 — Semaine 1 réelle, sans résumé de vidéo
+
+500 commentaires classés par Jev et Claude, 100 étiquetés par Tristan (17 strates ; corrections d'étiquetage avant le run : 10 hostilités, 19 `societe` → `institutions`, faute de définitions sous les yeux). Contexte envoyé : titre, chaîne, nature.
+
+| Dimension | Jev | Claude | Accord Jev / Claude (500) |
+|---|---:|---:|---:|
+| Politique / non politique | 90 % | 78 % | 81 % |
+| Thème principal | 59 % | 48 % | 76 % |
+| Au moins un thème commun | 72 % | 64 % | 87 % |
+| Position (36 commentaires) | 44 % | 58 % | 59 % |
+| Tonalité | 75 % | 71 % | 77 % |
+| Hostilité | 69 % | 80 % | 77 % |
+| Tout juste | 23 % | 26 % | 33 % |
+
+Confiance de Jev : justesse « tout juste » 10 %, 21 %, 13 % puis 90 % (9/10) au-dessus de 0,9, soit 7 % des commentaires seulement. Cascade : 24 à 27 % selon le seuil, contre 23 % pour Jev seul, un écart dans la marge d'erreur, pour 5 à 15 fois le coût (Jev seul ~375 $ sur la campagne, cascade à 0,5 ~2 060 $, Claude seul ~5 540 $ ; ~6 M de commentaires projetés). Coût mesuré : Jev 0,06 $ / 1 000, Claude 0,92 $ / 1 000.
+
+Constats :
+
+- Chute nette par rapport aux jeux synthétiques (« tout juste » 66 % → 23-26 %). Jev et Claude ne s'accordent entre eux que sur un tiers des commentaires : sur de vrais commentaires, la tâche est ambiguë pour les modèles comme pour l'étiquetage humain.
+- Jev fait mieux sur politique, thème et tonalité ; Claude sur position et hostilité.
+- **La position est la dimension la plus faible** (44 % / 58 %) : c'est elle qui dépend le plus de ce que dit la vidéo, que ni Tristan ni les modèles ne voyaient.
+- La recommandation automatique (seuil 0,5) n'est pas retenue : le gain de la cascade n'est pas significatif.
+
+**Suite** : même échantillon avec un résumé de chaque vidéo (`evaluer --contexte`), puis lecture des parts agrégées.
 

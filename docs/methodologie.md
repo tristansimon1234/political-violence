@@ -49,8 +49,16 @@ Le panel part d'une **liste fermée** de chaînes candidates, publiée. Aucune a
 
 **Neutralité.** Les consignes données aux modèles décrivent ce que dit le commentaire, sans juger s'il a raison et sans tenir compte de l'orientation de la vidéo ou de la chaîne. Les définitions des catégories sont publiées ici avant toute utilisation.
 
-**Données envoyées aux modèles.** Le texte du commentaire, avec les mentions et les liens masqués, et le contexte de la vidéo (titre, chaîne, nature). Jamais l'auteur ni l'identifiant du commentaire. Les prestataires ne conservent pas les données et ne s'en servent pas pour entraîner leurs modèles (liste des sous-traitants publiée).
+**Données envoyées aux modèles.** Le texte du commentaire, avec les mentions et les liens masqués, et le contexte de la vidéo : titre, chaîne, nature et un résumé neutre d'une phrase (sujet, thèse défendue), rédigé par un modèle à partir du titre et de la description. Jamais l'auteur ni l'identifiant du commentaire. Les prestataires ne conservent pas les données et ne s'en servent pas pour entraîner leurs modèles (liste des sous-traitants publiée).
 
-**Contrôle de qualité.** Avant l'usage, les modèles sont comparés à un étiquetage manuel d'un échantillon stratifié par catégorie de chaîne, format et nature de vidéo.
+**Contrôle de qualité.** Avant l'usage, les modèles sont comparés à un étiquetage manuel :
+
+- **Échantillon.** Commentaires réels tirés par strate (catégorie de chaîne × format × nature de vidéo), pour que chaque type de chaîne et de vidéo pèse dans la mesure, pas seulement les vidéos les plus commentées. Une partie est étiquetée à la main selon la grille ci-dessus ; les définitions et règles de lecture appliquées sont celles données aux modèles.
+- **Mesures.** Justesse de chaque modèle, dimension par dimension, face à l'étiquetage manuel ; accord entre modèles ; fiabilité de la confiance déclarée par le modèle ; et surtout **écart sur les parts agrégées** (part de chaque thème, de chaque tonalité, de commentaires hostiles), puisque le Radar ne publie que des parts.
+- **Un changement à la fois.** Toute modification des consignes ou du contexte transmis est mesurée sur le même échantillon, avant et après.
+- **Désaccords arbitrés à l'aveugle.** Quand l'étiquetage manuel et les modèles divergent, les réponses sont présentées anonymisées pour décider laquelle est juste, sans savoir qui l'a donnée.
+- **Limites publiées.** Taille de l'échantillon et marge d'erreur, nombre d'annotateurs, et le fait que les vidéos ne sont connues que par leur titre, leur chaîne et leur description (le contenu parlé n'est pas accessible).
+
+Les résultats de ces contrôles sont publiés en agrégats avec le choix de classification qui en découle.
 
 **Hostilité.** Elle inclut les accusations de mauvaise foi (« les chiffres sont truqués ») : elle mesure donc aussi une part de défiance envers les médias et les institutions, pas seulement l'agressivité. La part de commentaires hostiles est publiée par catégorie de chaînes et par sujet d'actualité, jamais chaîne par chaîne : un taux par chaîne se lirait comme un jugement sur son public, alors qu'il dépend aussi de la modération propre à chaque chaîne.
