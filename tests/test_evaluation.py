@@ -632,6 +632,15 @@ def test_script_preparer_evaluer(
     for interdit in (TEXTE, TITRE, CHAINE, AUTEUR_HASH, RESUME):
         assert interdit not in rapport_
     assert (len(faux_jev.envois), len(faux_claude.envois)) == (n_jev, n_claude)  # aucun appel
+    # Échantillon disparu (incident du 02/10) : preparer refuse, restaurer le reconstruit.
+    avant = {li.ref: (li.titre, li.texte) for li in lire_echantillon(st, jour) if li.verite}
+    st.supprimer([f"evaluation/{jour}-echantillon.parquet"])
+    monkeypatch.setattr(sys, "argv", ["evaluation", "preparer", "--stockage-local", str(tmp_path)])
+    assert script.main() == 1 and "verrouillé" in capsys.readouterr().out
+    sortie = lancer("restaurer")
+    assert "introuvables : 0" in sortie and TEXTE not in sortie
+    apres = {li.ref: (li.titre, li.texte) for li in lire_echantillon(st, jour) if li.verite}
+    assert apres == avant  # mêmes références, mêmes textes (donc mêmes étiquettes)
 
 
 def test_resume_video_transmis_seulement_s_il_existe() -> None:

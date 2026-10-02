@@ -940,6 +940,62 @@ def dernier_echantillon(st: Stockage, serie: int = 1) -> str | None:
     return max(bases, default=None)
 
 
+def etiquetage_rempli_existe(st: Stockage, serie: int = 1) -> bool:
+    """Vrai si un étiquetage rempli existe pour la série : son échantillon ne doit pas changer."""
+    suffixe = "" if serie == 1 else f"-s{serie}"
+    motif = re.compile(rf"^\d{{4}}-\d{{2}}-\d{{2}}{suffixe}-etiquetage-rempli\.csv$")
+    return any(motif.match(c.rsplit("/", 1)[-1]) for c in st.lister(DOSSIER_EVALUATION))
+
+
+def _norm(texte: str) -> str:
+    return " ".join(texte.split())
+
+
+def restaurer_depuis_etiquetage(
+    donnees: bytes,
+    commentaires_bruts: Iterable[Mapping[str, Any]],
+    titres: Mapping[str, str],
+) -> tuple[list[Ligne], list[str]]:
+    """Lignes étiquetées retrouvées dans le brut (même titre de vidéo, même texte masqué).
+
+    Renvoie (lignes avec leur référence d'origine, références introuvables).
+    """
+    index: dict[tuple[str, str], Mapping[str, Any]] = {}
+    for x in commentaires_bruts:
+        vid = str(x["video_id"])
+        cle = (_norm(titres.get(vid, "")), _norm(masquer(str(x["texte"]))))
+        index.setdefault(cle, x)
+    texte = donnees.decode("utf-8-sig")
+    separateur = (
+        ";" if texte.split("\n", 1)[0].count(";") >= texte.split("\n", 1)[0].count(",") else ","
+    )
+    lignes: list[Ligne] = []
+    introuvables: list[str] = []
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        ref = (r.get("ref") or "").strip()
+        x = index.get((_norm(r.get("titre_video") or ""), _norm(r.get("commentaire") or "")))
+        if x is None:
+            introuvables.append(ref)
+            continue
+        lignes.append(
+            Ligne(
+                ref=ref,
+                comment_id=str(x["comment_id"]),
+                video_id=str(x["video_id"]),
+                type_source=(r.get("categorie") or "").strip(),
+                format=(r.get("format") or "").strip(),
+                nature=en_nature((r.get("nature_video") or "").strip()),
+                chaine=r.get("chaine") or "",
+                titre=r.get("titre_video") or "",
+                texte=masquer(str(x["texte"])),
+                verite=True,
+                recupere_le=_date(x["recupere_le"]),
+                resume=r.get("resume_video") or "",
+            )
+        )
+    return lignes, introuvables
+
+
 def commentaires_deja_tires(st: Stockage) -> set[str]:
     """Identifiants des commentaires de tous les échantillons existants (toutes séries)."""
     tires: set[str] = set()

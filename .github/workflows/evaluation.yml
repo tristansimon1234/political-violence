@@ -11,7 +11,7 @@ on:
       commande:
         description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport ; synthetique : 100 commentaires fictifs ; arbitrer : désaccords à trancher ; arbitrage : lecture de l'arbitrage rempli"
         type: choice
-        options: [sonde, preparer, evaluer, synthetique, arbitrer, arbitrage]
+        options: [sonde, preparer, restaurer, evaluer, synthetique, arbitrer, arbitrage]
         default: sonde
       budget_claude:
         description: "Dollars max pour Claude"

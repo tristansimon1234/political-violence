@@ -32,6 +32,7 @@ import os
 import random
 import sys
 from collections import Counter
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,7 @@ from radar.classification import (
 )
 from radar.evaluation import (
     DIMENSIONS_ARBITRAGE_REEL,
+    N_ECHANTILLON,
     Candidate,
     Couts,
     Etiquette,
@@ -71,6 +73,7 @@ from radar.evaluation import (
     ecrire_echantillon,
     ecrire_json,
     ecrire_resultats,
+    etiquetage_rempli_existe,
     fiche_definitions,
     fichier_arbitrage,
     fichier_etiquetage,
@@ -82,6 +85,7 @@ from radar.evaluation import (
     rapport,
     rapport_arbitrage,
     reference_arbitree,
+    restaurer_depuis_etiquetage,
     sans_resumes,
     table_justesse,
 )
@@ -160,6 +164,13 @@ def preparer(args: argparse.Namespace) -> int:
         for x in lire_partition(st, c):
             commentaires.setdefault(str(x["video_id"]), []).append(x)
             total += 1
+    if etiquetage_rempli_existe(st, args.serie):
+        # Jamais : tirer un nouvel échantillon rendrait l'étiquetage faux (références décalées).
+        print(
+            f"La série {args.serie} a déjà un étiquetage rempli : échantillon verrouillé. "
+            f"Pour un nouvel échantillon : --serie {args.serie + 1}."
+        )
+        return 1
     if dernier_echantillon(st, args.serie) is not None and not args.remplacer:
         print(
             f"Un échantillon de la série {args.serie} existe déjà (--serie {args.serie + 1} "
@@ -244,6 +255,56 @@ def _resumes(
         f"coût Claude {claude.compteur.cout_usd:.4f} $.\n"
     )
     return avec_resumes(lignes, resumes)
+
+
+def restaurer(args: argparse.Namespace) -> int:
+    """Échantillon reconstruit depuis l'étiquetage rempli (texte et références d'origine).
+
+    Les lignes étiquetées sont retrouvées dans le brut ; les autres lignes de l'échantillon
+    courant (non étiquetées) complètent jusqu'à 500, renumérotées pour éviter tout conflit.
+    Aucun appel aux modèles ; les classements sont à refaire avec `evaluer --reclasser`.
+    """
+    st = _stockage(args)
+    suffixe = "" if args.serie == 1 else f"-s{args.serie}"
+    remplis = [
+        c.rsplit("/", 1)[-1]
+        for c in st.lister("evaluation")
+        if c.endswith(f"{suffixe}-etiquetage-rempli.csv")
+        and (args.serie > 1 or not c.rsplit("/", 1)[-1][10:].startswith("-s"))
+    ]
+    if not remplis:
+        print("Aucun étiquetage rempli à partir duquel restaurer.")
+        return 1
+    jour = max(remplis)[: -len("-etiquetage-rempli.csv")]
+    titres: dict[str, str] = {}
+    for c in partitions(st, "videos").values():
+        for v in lire_partition(st, c):
+            titres[str(v["video_id"])] = str(v.get("titre") or "")
+    bruts = [x for c in partitions(st, "commentaires").values() for x in lire_partition(st, c)]
+    retrouvees, introuvables = restaurer_depuis_etiquetage(
+        st.lire(chemin(jour, "etiquetage-rempli.csv")), bruts, titres
+    )
+    print(
+        f"Lignes étiquetées retrouvées dans le brut : {len(retrouvees)}, "
+        f"introuvables : {len(introuvables)}"
+    )
+    if introuvables:
+        print("Restauration annulée (références introuvables : " + ", ".join(introuvables) + ").")
+        return 1
+    ids = {li.comment_id for li in retrouvees}
+    courant = lire_echantillon(st, jour) if dernier_echantillon(st, args.serie) == jour else []
+    complement = [
+        replace(li, ref=f"N{i:03d}", verite=False)
+        for i, li in enumerate((li for li in courant if li.comment_id not in ids), start=1)
+    ][: N_ECHANTILLON - len(retrouvees)]
+    lignes = retrouvees + complement
+    ecrire_echantillon(st, jour, lignes)
+    st.ecrire(chemin(jour, "etiquetage.csv"), fichier_etiquetage(lignes))
+    print(
+        f"Échantillon restauré : {len(retrouvees)} lignes étiquetées (références d'origine) + "
+        f"{len(complement)} non étiquetées. Lancer `evaluer --reclasser`."
+    )
+    return 0
 
 
 def evaluer(args: argparse.Namespace) -> int:
@@ -442,7 +503,15 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     p.add_argument(
         "commande",
-        choices=["sonde", "preparer", "evaluer", "synthetique", "arbitrer", "arbitrage"],
+        choices=[
+            "sonde",
+            "preparer",
+            "restaurer",
+            "evaluer",
+            "synthetique",
+            "arbitrer",
+            "arbitrage",
+        ],
     )
     p.add_argument("--cle", type=Path, help="arbitrage : clé produite par synthetique")
     p.add_argument(
@@ -477,6 +546,7 @@ def main() -> int:
     commandes = {
         "sonde": sonde,
         "preparer": preparer,
+        "restaurer": restaurer,
         "evaluer": evaluer,
         "synthetique": synthetique,
         "arbitrer": arbitrer,
