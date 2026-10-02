@@ -60,7 +60,11 @@ function VueEnsemble() {
       .catch((e: unknown) => setErreur(e instanceof Error ? e.message : String(e)));
   }, []);
 
-  const vue = useMemo(() => (lignes ? themes(lignes, filtres) : null), [lignes, filtres]);
+  // Table vide : aucun calcul (pas de dernier jour, donc pas de fenêtre).
+  const vue = useMemo(
+    () => (lignes && lignes.length > 0 ? themes(lignes, filtres) : null),
+    [lignes, filtres],
+  );
   const actif = choisi ?? vue?.lignes[0]?.theme ?? null;
 
   return (

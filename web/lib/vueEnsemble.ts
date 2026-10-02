@@ -96,6 +96,7 @@ export function velocite(
   fin: string,
   premier: string,
 ): number | null {
+  if (!fin || !premier) return null;
   const debutBase = decaler(fin, -34);
   if (premier > debutBase) return null;
   const somme = (a: string, b: string) =>
