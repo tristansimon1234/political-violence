@@ -1174,6 +1174,51 @@ def _depuis_valeur(e: Etiquette, dimension: str, valeur: str | None) -> Etiquett
     raise ValueError(dimension)
 
 
+def _normaliser(dimension: str, valeur: str) -> str:
+    """Valeur comparable : ensemble de thèmes trié (l'ordre n'est pas un désaccord)."""
+    if dimension == "themes" and valeur != AUCUN_THEME:
+        return "+".join(sorted(valeur.split("+")))
+    return valeur
+
+
+def cle_depuis_valeurs(
+    donnees: bytes,
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> dict[str, dict[str, list[str]]]:
+    """Clé {id: {lettre: [sources]}} retrouvée en comparant les options aux réponses de chacun.
+
+    Ne dépend pas du fichier de clé : un fichier rempli reste lisible même si l'arbitrage a été
+    régénéré entre-temps.
+    """
+    texte = donnees.decode("utf-8-sig")
+    separateur = ";" if texte.split("\n", 1)[0].count(";") else ","
+    cle: dict[str, dict[str, list[str]]] = {}
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        ident, ref = (r.get("id") or "").strip(), (r.get("ref") or "").strip()
+        dim = (r.get("dimension") or "").strip()
+        sources: dict[str, Reference | None] = {
+            "tristan": etiquettes.get(ref),
+            "jev": jev.get(ref),
+            "claude": claude.get(ref),
+        }
+        options: dict[str, list[str]] = {}
+        for lettre in LETTRES:
+            option = (r.get(lettre) or "").strip()
+            if not option:
+                continue
+            options[lettre] = [
+                nom
+                for nom, c in sources.items()
+                if c is not None
+                and (v := _valeur(c, dim)) is not None
+                and _normaliser(dim, v) == _normaliser(dim, option)
+            ]
+        cle[ident] = options
+    return cle
+
+
 def reference_arbitree(
     etiquettes: Mapping[str, Etiquette], donnees: bytes
 ) -> tuple[dict[str, Etiquette], int]:

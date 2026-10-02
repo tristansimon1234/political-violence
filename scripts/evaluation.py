@@ -60,6 +60,7 @@ from radar.evaluation import (
     classer_claude,
     classer_jev,
     classer_videos,
+    cle_depuis_valeurs,
     comparaison_contexte,
     controle_resumes,
     dernier_echantillon,
@@ -404,10 +405,10 @@ def arbitrage(args: argparse.Namespace) -> int:
         print(f"Arbitrage rempli absent : {BUCKET}/{chemin(jour, 'arbitrage-rempli.csv')}")
         return 1
     rempli = st.lire(chemin(jour, "arbitrage-rempli.csv"))
-    cle_reelle: dict[str, dict[str, list[str]]] = json.loads(
-        st.lire(chemin(jour, "arbitrage-cle.json"))
+    # Clé retrouvée depuis les réponses : valable même si l'arbitrage a été régénéré.
+    print(
+        rapport_arbitrage(rempli, cle_depuis_valeurs(rempli, res["jev"], res["claude"], etiquettes))
     )
-    print(rapport_arbitrage(rempli, cle_reelle))
     reference, appliquees = reference_arbitree(etiquettes, rempli)
     print(
         f"\n# Justesse face à la référence arbitrée\n\n{appliquees} arbitrages appliqués aux "

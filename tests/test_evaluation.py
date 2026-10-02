@@ -899,3 +899,20 @@ def test_arbitrage_ignore_l_ordre_des_themes() -> None:
     claude = {li.ref: Classement(True, ("institutions", "sante"), None, "neutre", False)}
     a_remplir, cle = fichier_arbitrage([li], jev, claude, tristan, random.Random(1), ("themes",))
     assert cle == {} and a_remplir.decode("utf-8-sig").count("\n") == 1
+
+
+def test_cle_retrouvee_depuis_les_valeurs() -> None:
+    from radar.evaluation import cle_depuis_valeurs, fichier_arbitrage
+
+    lignes = _lignes()[:4]
+    tristan = {li.ref: Etiquette(True, ("institutions",), None, "neutre", False) for li in lignes}
+    jev = {li.ref: Classement(True, ("societe",), None, "neutre", True) for li in lignes}
+    claude = {li.ref: Classement(True, ("institutions",), None, "neutre", False) for li in lignes}
+    a_remplir, cle = fichier_arbitrage(
+        lignes, jev, claude, tristan, random.Random(3), ("themes", "hostilite")
+    )
+
+    def trie(c: dict[str, dict[str, list[str]]]) -> dict[str, dict[str, list[str]]]:
+        return {k: {lettre: sorted(v) for lettre, v in o.items()} for k, o in c.items()}
+
+    assert cle and trie(cle_depuis_valeurs(a_remplir, jev, claude, tristan)) == trie(cle)
