@@ -155,6 +155,7 @@ SCHEMA_RESULTATS = pa.schema(
         ("tonalite", pa.string()),
         ("hostilite", pa.bool_()),
         ("confiance", pa.float64()),
+        ("confiance_position", pa.float64()),
     ]
 )
 
@@ -644,6 +645,7 @@ def rapport(
 
     if etiquettes:
         out += parts_agregees(jev, claude, etiquettes)
+        out += position_par_seuil(jev, etiquettes)
 
     jours, projetes = volume.campagne(aujourdhui)
     if volume.commentaires:
@@ -814,6 +816,53 @@ def parts_agregees(
     return out
 
 
+SEUILS_POSITION = (0.0, 0.5, 0.6, 0.7, 0.8, 0.9)
+
+
+def position_par_seuil(
+    jev: Mapping[str, Classement], etiquettes: Mapping[str, Etiquette]
+) -> list[str]:
+    """Position de Jev retenue seulement au-dessus d'un seuil de confiance, sinon indéterminée.
+
+    Parmi les commentaires qui se prononcent (accord, nuance, désaccord), part d'accord et de
+    désaccord selon Jev et selon la référence, sur les mêmes commentaires.
+    """
+    refs = [r for r, e in etiquettes.items() if e.position is not None and r in jev]
+    if not refs or all(jev[r].confiance_position is None for r in refs):
+        return []
+    out = [
+        "## Position de Jev par seuil de confiance",
+        "",
+        "Sous le seuil, la position est « indéterminée ». Parts parmi les commentaires qui se "
+        "prononcent (référence entre parenthèses, mêmes commentaires).",
+        "",
+        "| Seuil | Retenus | Accord | Désaccord | Justesse |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    prononce = ("accord_video", "nuance", "desaccord_video")
+    for s in SEUILS_POSITION:
+        gardes = [r for r in refs if (jev[r].confiance_position or 0.0) >= s]
+        justes = sum(1 for r in gardes if jev[r].position == etiquettes[r].position)
+
+        def parts(positions: list[Position | None]) -> tuple[str, str]:
+            p = [x for x in positions if x in prononce]
+            if not p:
+                return "—", "—"
+            return (
+                f"{100 * p.count('accord_video') / len(p):.0f} %",
+                f"{100 * p.count('desaccord_video') / len(p):.0f} %",
+            )
+
+        acc_j, des_j = parts([jev[r].position for r in gardes])
+        acc_r, des_r = parts([etiquettes[r].position for r in gardes])
+        out.append(
+            f"| {s:.1f} | {_pct(len(gardes), len(refs))} | {acc_j} ({acc_r}) | "
+            f"{des_j} ({des_r}) | {_pct(justes, len(gardes))} |".replace(".", ",", 1)
+        )
+    out.append("")
+    return out
+
+
 def comparaison_contexte(
     sans: Mapping[Modele, Mapping[str, Classement]],
     avec: Mapping[Modele, Mapping[str, Classement]],
@@ -906,6 +955,7 @@ def ecrire_resultats(
             "tonalite": c.tonalite,
             "hostilite": c.hostilite,
             "confiance": c.confiance,
+            "confiance_position": c.confiance_position,
         }
         for m, res in resultats.items()
         for r, c in sorted(res.items())
@@ -929,6 +979,7 @@ def lire_resultats(
             tonalite=en_tonalite(r["tonalite"]),
             hostilite=bool(r["hostilite"]),
             confiance=r["confiance"],
+            confiance_position=r.get("confiance_position"),
         )
     return res
 

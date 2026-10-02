@@ -275,6 +275,12 @@ def evaluer(args: argparse.Namespace) -> int:
         if rempli in deja
         else {}
     )
+    if etiquettes and f"{jour.isoformat()}-arbitrage-rempli.csv" in deja:
+        # Référence = étiquettes de Tristan corrigées par l'arbitrage à l'aveugle.
+        etiquettes, n = reference_arbitree(
+            etiquettes, st.lire(chemin(jour, "arbitrage-rempli.csv"))
+        )
+        print(f"Référence arbitrée : {n} arbitrages appliqués aux étiquettes de Tristan.\n")
     couts = Couts(
         float(couts_brut["jev_usd"]),
         int(couts_brut["jev_n"]),

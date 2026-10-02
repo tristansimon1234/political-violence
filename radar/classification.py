@@ -72,10 +72,13 @@ DEFINITIONS_POSITIONS: dict[Position, str] = {
     "accord_video": "Agreement: the comment approves the thesis defended in the video.",
     "nuance": "Partial agreement: 'yes, but', agreement with reservations, or a point the video "
     "did not consider without rejecting its thesis.",
-    "desaccord_video": "Disagreement: the comment rejects the thesis defended in the video.",
-    "hors_sujet": "No stance on the thesis: practical question, unrelated remark, or a comment "
-    "only about the form of the video (praise or criticism of its quality, sound, graphics, "
-    "guests or balance).",
+    "desaccord_video": "Disagreement: the comment rejects or undermines the thesis defended in "
+    "the video, explicitly or not: counter-argument, mockery of the thesis or of the person "
+    "defending it, accusing the speaker of hypocrisy or bad faith, or proposing an opposite "
+    "solution.",
+    "hors_sujet": "No stance on the thesis: only when the comment says nothing about it "
+    "(practical question, unrelated chatter, or a comment only about the form of the video: "
+    "praise or criticism of its quality, sound, graphics, guests or balance).",
 }
 
 DEFINITIONS_TONALITES: dict[Tonalite, str] = {
@@ -114,7 +117,8 @@ REGLE_THEMES = (
 REGLE_POSITION = (
     "Position is agreement with the thesis defended in the video, never the commenter's "
     "opinion on the topic, and never a judgement on the form of the video. It is only asked "
-    "for opinion videos, which defend a single thesis."
+    "for opinion videos, which defend a single thesis. When in doubt between disagreement and "
+    "no stance for a critical comment, choose disagreement."
 )
 
 
@@ -164,6 +168,7 @@ class Classement:
     tonalite: Tonalite
     hostilite: bool
     confiance: float | None = None  # fournie par Jev ; None pour Claude
+    confiance_position: float | None = None  # Jev, vidéos d'opinion seulement
 
 
 def normaliser(c: ClassementCommentaire, nature: NatureVideo) -> Classement:
@@ -338,10 +343,12 @@ def classement_jev(reponses: dict[str, RepOuiNon | RepChoix], nature: NatureVide
         themes = tuple(t for t in THEMES if t in noms)
         themes = (en_theme(theme.choix), *(t for t in themes if t != theme.choix))
     position: Position | None = None
+    confiance_position: float | None = None
     if position_applicable(nature):
         rep = reponses["position"]
         assert isinstance(rep, RepChoix)
         position = en_position(rep.choix)
+        confiance_position = rep.confiance
         confiances.append(rep.confiance)
     return Classement(
         est_politique=est_politique,
@@ -350,6 +357,7 @@ def classement_jev(reponses: dict[str, RepOuiNon | RepChoix], nature: NatureVide
         tonalite=en_tonalite(tonalite.choix),
         hostilite=hostilite.probabilite_oui >= 0.5,
         confiance=min(confiances),
+        confiance_position=confiance_position,
     )
 
 

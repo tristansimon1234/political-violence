@@ -916,3 +916,42 @@ def test_cle_retrouvee_depuis_les_valeurs() -> None:
         return {k: {lettre: sorted(v) for lettre, v in o.items()} for k, o in c.items()}
 
     assert cle and trie(cle_depuis_valeurs(a_remplir, jev, claude, tristan)) == trie(cle)
+
+
+def test_position_par_seuil_de_confiance() -> None:
+    from radar.evaluation import position_par_seuil
+
+    ref = {
+        "C1": Etiquette(True, ("institutions",), "desaccord_video", "negative", False),
+        "C2": Etiquette(True, ("institutions",), "accord_video", "positive", False),
+        "C3": Etiquette(True, ("institutions",), "hors_sujet", "neutre", False),
+    }
+    jev = {
+        "C1": Classement(True, ("institutions",), "hors_sujet", "negative", False, 0.4, 0.4),
+        "C2": Classement(True, ("institutions",), "accord_video", "positive", False, 0.9, 0.95),
+        "C3": Classement(True, ("institutions",), "hors_sujet", "neutre", False, 0.8, 0.8),
+    }
+    table = "\n".join(position_par_seuil(jev, ref))
+    assert "| 0,0 | 100 % (3/3) |" in table  # tout retenu
+    assert "| 0,9 | 33 % (1/3) | 100 % (100 %) |" in table  # seul l'accord sûr reste
+    assert (
+        position_par_seuil({k: Classement(True, (), None, "neutre", False) for k in ref}, ref) == []
+    )
+
+
+def test_confiance_position_conservee() -> None:
+    reps = lire_reponse_jev(
+        questions_jev("opinion"),
+        {
+            "answers": {
+                "politique": {"probability": 0.9},
+                "theme": {"choice": "retraites", "confidence": 0.8},
+                "tonalite": {"choice": "neutre", "confidence": 0.7},
+                "hostilite": {"noul": 0.1},
+                "position": {"choice": "desaccord_video", "confidence": 0.65},
+            }
+        },
+    )
+    c = classement_jev(reps, "opinion")
+    assert c.position == "desaccord_video" and c.confiance_position == pytest.approx(0.65)
+    assert classement_jev(reps, "info_factuelle").confiance_position is None
