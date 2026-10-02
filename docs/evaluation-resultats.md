@@ -153,3 +153,23 @@ Constats : les erreurs **ne se compensent pas**, ce sont des biais systématique
 
 Recommandation automatique (seuil 0,9) non retenue : bruit sur 100 étiquettes.
 
+## 02/10/2026 — Semaine 1 réelle, avec résumé de la vidéo (test refait)
+
+Résumés contrôlés : 180 non vides sur 180 vidéos, 19 mots en moyenne, aucun « Sujet peu précis » (10 vidéos sans description, résumées depuis le titre seul). Coût des résumés : 0,18 $.
+
+| Dimension | Jev sans | Jev avec | Claude sans | Claude avec |
+|---|---:|---:|---:|---:|
+| Politique / non politique | 90 % | 85 % | 78 % | 77 % |
+| Thème principal | 59 % | 58 % | 48 % | 47 % |
+| Au moins un thème commun | 72 % | 69 % | 64 % | 60 % |
+| Position (36) | 44 % | 39 % | 58 % | 61 % |
+| Tonalité | 75 % | 76 % | 71 % | 66 % |
+| Hostilité | 69 % | 70 % | 80 % | 81 % |
+| Tout juste | 23 % | 21 % | 26 % | 25 % |
+
+Parts agrégées avec résumé : hostilité 13 % (Tristan) / 43 % (Jev) / 28 % (Claude) ; position `hors_sujet` 19 % / 56 % / 36 %, `desaccord_video` 47 % / 17 % / 28 % ; `institutions` 25 % / 39 % / 30 %, `societe` 17 % / 8 % / 8 % ; non politique 15 % / 16 % / 32 % ; écart tonalité 16 (Jev) et 10 (Claude) points.
+
+**Verdict : le résumé tiré de la description n'apporte rien** (tous les écarts dans la marge, biais inchangés). Le facteur limitant n'est pas le contexte transmis mais la grille (hostilité, position, `institutions` / `societe`) et peut-être la référence elle-même. Prochaine étape proposée : arbitrage à l'aveugle des désaccords sur ces vrais commentaires.
+
+Incident : le run se termine par « terminate called without an active exception » (code 134) après l'écriture du rapport et des résultats ; rien de perdu, cause à chercher (fermeture d'une bibliothèque à la sortie).
+
