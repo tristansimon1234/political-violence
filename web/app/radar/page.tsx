@@ -7,12 +7,15 @@ import {
   type Agenda,
   type SujetVideo,
   MIN_PRONONCES,
+  type Rattachement,
   type ReactionVideo,
+  type SujetActu,
   type These,
   type VideoDebattue,
   agendaParTheme,
   jourParis,
   sousSujets,
+  sujetsActu,
   sujetsFiltres,
   videosDebattues,
   videosQuiReagissent,
@@ -126,6 +129,9 @@ function VueEnsemble() {
     new Map(),
   );
   const [theses, setTheses] = useState<Map<string, These>>(new Map());
+  const [rattachements, setRattachements] = useState<Map<string, Rattachement>>(
+    new Map(),
+  );
 
   useEffect(() => {
     chargerAgregats()
@@ -147,6 +153,13 @@ function VueEnsemble() {
     chargerTout<These>("videos_theses", "video_id,these,explicite")
       .then((l) => setTheses(new Map(l.map((t) => [t.video_id, t]))))
       .catch(() => setTheses(new Map()));
+    // Sujets d'actualité (migration 12) : facultatifs ; sans eux, les sous-sujets bruts.
+    chargerTout<Rattachement>(
+      "sujets_videos",
+      "video_id,sujet_id,sujets(titre)",
+    )
+      .then((l) => setRattachements(new Map(l.map((r) => [r.video_id, r]))))
+      .catch(() => setRattachements(new Map()));
   }, []);
 
   // Table vide : aucun calcul (pas de dernier jour, donc pas de fenêtre).
@@ -248,6 +261,7 @@ function VueEnsemble() {
               sujets={sujetsPeriode}
               reactions={reactions}
               theses={theses}
+              rattachements={rattachements}
             />
           </div>
           <ComparaisonSemaines
@@ -712,6 +726,61 @@ function Legende({ items }: { items: [string, string][] }) {
 
 type Rangee = { nom: string; m: Mesures; aPart?: boolean };
 
+function SujetsDuTheme({ actu }: { actu: SujetActu[] }) {
+  if (actu.length === 0)
+    return (
+      <p className="discret petit-texte">
+        Aucun sujet d'actualité de 3 vidéos et 2 chaînes sur ce thème pour la
+        période.
+      </p>
+    );
+  return (
+    <>
+      <ul className="radar-sujets-actu">
+        {actu.map((x) => (
+          <li key={x.id}>
+            <details>
+              <summary>
+                <span>{x.titre}</span>
+                <span className="radar-mono discret">
+                  {x.videos.length} vidéo{x.videos.length > 1 ? "s" : ""} ·{" "}
+                  {x.chaines} chaînes · {entier(x.commentaires)} comm.
+                </span>
+              </summary>
+              <ol className="radar-videos">
+                {x.videos.map((v) => (
+                  <li key={v.video_id}>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${v.video_id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {v.sous_sujet}
+                    </a>
+                    <span className="discret petit-texte">
+                      {v.videos?.sources?.nom} ·{" "}
+                      {v.videos
+                        ? dateCourte(jourParis(v.videos.publiee_at))
+                        : ""}{" "}
+                      · {entier(v.videos?.nb_commentaires ?? 0)} commentaires
+                      annoncés
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </li>
+        ))}
+      </ul>
+      <p className="discret petit-texte">
+        Sujets d'actualité : vidéos regroupées par événement par une IA (titre
+        neutre, pas celui d'une vidéo), à partir de 3 vidéos de 2 chaînes.
+        Cliquer pour voir les vidéos.
+      </p>
+    </>
+  );
+}
+
 function ThemeSelectionne({
   ligne,
   lignes,
@@ -720,6 +789,7 @@ function ThemeSelectionne({
   sujets,
   reactions,
   theses,
+  rattachements,
 }: {
   ligne: LigneTheme;
   lignes: Agregat[];
@@ -728,10 +798,12 @@ function ThemeSelectionne({
   sujets: SujetVideo[];
   reactions: Map<string, ReactionVideo>;
   theses: Map<string, These>;
+  rattachements: Map<string, Rattachement>;
 }) {
   const [courante] = fenetres(lignes, filtres.periode);
   const debattues = videosDebattues(sujets, ligne.theme, reactions, theses);
   const ss = sousSujets(sujets, ligne.theme);
+  const actu = sujetsActu(sujets, ligne.theme, rattachements);
   const [toutes, setToutes] = useState(false);
   const toutesVideos = videosQuiReagissent(
     sujets,
@@ -774,7 +846,9 @@ function ThemeSelectionne({
         attend="le résumé par Claude à partir des agrégats et des vidéos de la période (sources numérotées, aucune citation, relu avant publication)."
       />
       <h3>De quoi parlent les vidéos</h3>
-      {ss.length === 0 ? (
+      {rattachements.size > 0 ? (
+        <SujetsDuTheme actu={actu} />
+      ) : ss.length === 0 ? (
         <EnPreparation
           titre="Sous-sujets"
           attend="le thème et le sous-sujet des vidéos."

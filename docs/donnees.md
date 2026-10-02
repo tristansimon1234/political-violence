@@ -25,7 +25,7 @@ Signal d'émergence : hausse de la part de `autre` + nouveaux groupes de `sous_s
 
 Unité principale du Radar. Les thèmes sont la grille de lecture stable ; les sujets d'actu sont ce à quoi les gens réagissent vraiment (un débat, une annonce, une petite phrase, un fait divers politisé).
 
-- **Détection quotidienne** : Claude regroupe les vidéos politiques des derniers jours par événement, à partir des titres, descriptions et dates (sortie typée : `story_id`, titre neutre, thèmes rattachés, vidéos membres). Une vidéo appartient à 0 ou 1 sujet d'actu.
+- **Détection quotidienne** : Claude regroupe les vidéos politiques par événement, jour par jour (date de publication, Paris), à partir de la date, de la chaîne, du titre et du sous-sujet neutre de chaque vidéo, avec la liste des sujets encore actifs. Sortie typée : pour chaque vidéo, un sujet actif, un nouveau sujet (titre neutre) ou aucun. Une vidéo appartient à 0 ou 1 sujet d'actu. Les thèmes d'un sujet sont ceux de ses vidéos (`videos_sujets`), pas une étiquette séparée.
 - **Cycle de vie** : un sujet naît quand au moins 3 vidéos de 2 chaînes différentes s'y rattachent, reste actif tant qu'il reçoit des réactions, s'éteint après 7 jours sans nouvelle vidéo ni hausse de commentaires.
 - **Validation** : dans l'admin, Tristan peut renommer, fusionner, scinder ou masquer un sujet. Titre toujours neutre et factuel, sans nom de personne quand ce n'est pas indispensable.
 - **Commentaires** : ils héritent du sujet d'actu de leur vidéo (on réagit à l'événement), mais gardent leurs propres thèmes.

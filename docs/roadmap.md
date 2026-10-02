@@ -8,7 +8,7 @@
 4. Intégration Jev + test de qualité : 500 commentaires (échantillon stratifié) classés par Jev et par Claude, comparés à 100 étiquettes de Tristan (`docs/etiquetage.md`) ; seuil de reprise par Claude et coût projeté. Puis test ponctuel du rattrapage du filtre politique par les commentaires (`docs/backfill-septembre.md`).
 4 bis. Classification en masse par Jev (`classification.yml`, bucket `radar-classe`) : en place le 02/10/2026, à lancer sur le brut avant sa purge à 30 jours.
 5. Calibration du filtre politique sur 200 vidéos étiquetées à la main.
-6. Détection des sujets d'actu, vérifiée sur les événements datés de septembre (vérité terrain).
+6. Détection des sujets d'actu, vérifiée sur les événements datés de septembre (vérité terrain). **Pipeline en place le 02/10/2026** (`sujets.yml`, tables `sujets` et `sujets_videos`, panneau du thème de `/radar`) ; reste la vérification sur septembre, puis renommer / fusionner / scinder dans l'admin.
 7. Agrégats + interface Next.js, à partir de la maquette "Radar 2027" : **Vue d'ensemble v1 faite le 02/10/2026** (`/radar`, admin seulement) ; Cette semaine après l'étape 6. Dans l'admin : comparatif permanent de 100 commentaires par semaine classés par Jev, Claude Haiku et Claude Sonnet (`docs/interface.md`).
 8. Politique de confidentialité et CGU, puis dépôt de la demande d'audit YouTube.
 
