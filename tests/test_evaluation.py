@@ -888,3 +888,14 @@ def test_fiche_definitions_reprend_les_consignes() -> None:
 
     fiche = fiche_definitions()
     assert HOSTILITE_OUI in fiche and all(d in fiche for d in DEFINITIONS_THEMES.values())
+
+
+def test_arbitrage_ignore_l_ordre_des_themes() -> None:
+    from radar.evaluation import fichier_arbitrage
+
+    li = _lignes()[0]
+    tristan = {li.ref: Etiquette(True, ("institutions", "sante"), None, "neutre", False)}
+    jev = {li.ref: Classement(True, ("sante", "institutions"), None, "neutre", False)}
+    claude = {li.ref: Classement(True, ("institutions", "sante"), None, "neutre", False)}
+    a_remplir, cle = fichier_arbitrage([li], jev, claude, tristan, random.Random(1), ("themes",))
+    assert cle == {} and a_remplir.decode("utf-8-sig").count("\n") == 1

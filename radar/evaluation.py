@@ -1027,7 +1027,8 @@ COLONNES_ARBITRAGE = (
 
 def _valeur(c: Reference, dimension: str) -> str | None:
     if dimension == "themes":
-        return "+".join(c.themes) or AUCUN_THEME
+        # Ensemble de thèmes, ordre ignoré : le Radar compte 1/n dans chacun, sans hiérarchie.
+        return "+".join(sorted(c.themes)) or AUCUN_THEME
     if dimension == "position":
         return c.position or SANS_POSITION
     if dimension == "tonalite":
@@ -1162,6 +1163,8 @@ def _depuis_valeur(e: Etiquette, dimension: str, valeur: str | None) -> Etiquett
         if valeur is None:
             return e  # thèmes : pas de valeur nulle possible, l'étiquette d'origine reste
         themes = () if valeur == AUCUN_THEME else tuple(en_theme(t) for t in valeur.split("+"))
+        if set(themes) == set(e.themes):
+            return e  # même ensemble : l'ordre d'origine (thème principal) est gardé
         return replace(e, est_politique=bool(themes), themes=themes)
     if dimension == "position":
         position = None if valeur in (None, SANS_POSITION) else en_position(valeur)
