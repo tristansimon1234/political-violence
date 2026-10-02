@@ -14,7 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from radar.agregats import agreger
+from radar.agregats import agreger, agreger_videos
 from radar.classement import DOSSIER_CLASSE
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition
 from radar.supabase_rest import Supabase
@@ -56,7 +56,12 @@ def main() -> int:
     if not args.dry_run:
         base = Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
         base.upsert("agregats_themes", lignes, "jour,theme,type_source,format")
-        print(f"\nÉcrit dans Supabase : {len(lignes)} lignes (agregats_themes).")
+        par_video = agreger_videos(classes)
+        base.upsert("agregats_videos", par_video, "video_id")
+        print(
+            f"\nÉcrit dans Supabase : {len(lignes)} lignes (agregats_themes), "
+            f"{len(par_video)} vidéos (agregats_videos)."
+        )
     return 0
 
 

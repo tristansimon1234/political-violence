@@ -78,3 +78,56 @@ export function videosQuiReagissent(sujets: SujetVideo[], theme: Theme, n = 5): 
     )
     .slice(0, n);
 }
+
+// --- Sur quoi les commentaires sont d'accord ou pas (vidéos d'opinion) ---
+
+export type ReactionVideo = {
+  video_id: string;
+  commentaires: number;
+  hostiles: number;
+  accord: number;
+  nuance: number;
+  desaccord: number;
+  hors_sujet: number;
+};
+
+export type These = { video_id: string; these: string; explicite: boolean };
+
+export const MIN_PRONONCES = 20; // commentaires qui se prononcent, pour afficher une vidéo
+
+export type VideoDebattue = {
+  sujet: SujetVideo;
+  reaction: ReactionVideo;
+  these: These | null;
+  prononces: number;
+  partAccord: number;
+  partDesaccord: number;
+};
+
+/** Vidéos d'opinion du thème avec assez de commentaires qui se prononcent sur leur thèse. */
+export function videosDebattues(
+  sujets: SujetVideo[],
+  theme: Theme,
+  reactions: Map<string, ReactionVideo>,
+  theses: Map<string, These>,
+): VideoDebattue[] {
+  const vues = new Set<string>();
+  const resultat: VideoDebattue[] = [];
+  for (const s of sujets) {
+    if (s.theme !== theme || vues.has(s.video_id)) continue;
+    vues.add(s.video_id);
+    const r = reactions.get(s.video_id);
+    if (!r) continue;
+    const prononces = r.accord + r.nuance + r.desaccord;
+    if (prononces < MIN_PRONONCES) continue;
+    resultat.push({
+      sujet: s,
+      reaction: r,
+      these: theses.get(s.video_id) ?? null,
+      prononces,
+      partAccord: r.accord / prononces,
+      partDesaccord: r.desaccord / prononces,
+    });
+  }
+  return resultat;
+}

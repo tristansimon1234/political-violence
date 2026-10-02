@@ -99,6 +99,34 @@ LIBELLES_THEMES: Final[dict[Theme, str]] = {
     "societe": "Société",
     "autre": "Autre",
 }
+# Définitions affichées dans l'interface et la méthodologie : traduction fidèle de celles
+# données aux modèles (radar/classification.py, en anglais). Modifier les deux ensemble.
+DEFINITIONS_THEMES_FR: Final[dict[Theme, str]] = {
+    "pouvoir_achat": "Prix, inflation, salaires face au coût de la vie, carburant et factures "
+    "d'énergie, impôts des ménages.",
+    "securite": "Délinquance, violences, police, justice pénale et peines, terrorisme.",
+    "immigration": "Flux migratoires, asile, obligations de quitter le territoire, intégration, "
+    "nationalité, régularisation des travailleurs sans papiers.",
+    "retraites": "Âge de départ, système de retraite et ses réformes, montant des pensions.",
+    "sante": "Hôpital et urgences, médecins et déserts médicaux, assurance maladie, soignants, "
+    "politique de santé.",
+    "education": "École, enseignants et leur rémunération, programmes, examens, université, "
+    "jeunes en formation.",
+    "ecologie_energie": "Changement climatique, canicules, pollution, sources d'énergie "
+    "(nucléaire, renouvelables), politique des transports.",
+    "economie_emploi": "Croissance, entreprises, emploi et chômage, pénuries de main-d'œuvre, "
+    "conditions de travail, dette publique et budget.",
+    "logement": "Loyers, prix de l'immobilier, accès à la propriété, construction.",
+    "institutions": "Élections, candidats, partis et leurs programmes, gouvernement, Parlement, "
+    "fabrication des lois, Constitution, démocratie.",
+    "international_defense": "Politique étrangère, Union européenne, guerres et conflits, "
+    "armées, règles du commerce international.",
+    "agriculture": "Agriculteurs, leurs mobilisations et leurs revenus, production alimentaire, "
+    "normes et aides agricoles.",
+    "societe": "Laïcité, religion, famille, mœurs, discriminations, cohésion sociale.",
+    "autre": "Autre sujet politique ou d'intérêt public qui n'entre dans aucun des thèmes "
+    "ci-dessus.",
+}
 LIBELLES_POSITIONS: Final[dict[Position, str]] = {
     "accord_video": "Accord avec la vidéo",
     "nuance": "Nuance",

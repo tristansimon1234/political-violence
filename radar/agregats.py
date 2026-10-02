@@ -74,3 +74,19 @@ def agreger(classes: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
         }
         for (jour, theme, type_source, fmt), s in sorted(sommes.items())
     ]
+
+
+def agreger_videos(classes: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Par vidéo : commentaires classés, hostiles, et position (vidéos d'opinion seulement)."""
+    par_video: dict[str, dict[str, int]] = defaultdict(
+        lambda: dict.fromkeys(
+            ("commentaires", "hostiles", "accord", "nuance", "desaccord", "hors_sujet"), 0
+        )
+    )
+    for c in classes:
+        s = par_video[str(c["video_id"])]
+        s["commentaires"] += 1
+        s["hostiles"] += int(bool(c["hostilite"]))
+        if c["nature"] == "opinion" and c["position"] in _POSITIONS:
+            s[_POSITIONS[str(c["position"])]] += 1
+    return [{"video_id": v, **s} for v, s in sorted(par_video.items())]

@@ -162,6 +162,8 @@ class ReponseNatureVideo(BaseModel):
     nature_video: NatureVideo
     resume: str  # obligatoire : un champ facultatif peut être omis par le modèle
     sujets: list[SujetVideo]  # 1 à 3 thèmes de la vidéo (agenda), décision du 02/10/2026
+    # La thèse (resume) est-elle dite clairement dans le titre ou la description, ou devinée ?
+    these_explicite: bool
 
 
 MAX_SUJETS_VIDEO = 3
@@ -276,6 +278,10 @@ for a factual video, the fact reported.
 Use only the title and the description; never add facts, never judge. Ignore links, sponsors
 and calls to subscribe. When the title and description are too vague, start with
 "Sujet peu précis :" and say what can be inferred.
+
+these_explicite: true only when the thesis (or, for other types, the subject) in resume is
+stated clearly in the title or the description; false when you had to guess it, when the
+description is empty or uninformative, or when resume starts with "Sujet peu précis".
 
 sujets: 1 to 3 themes the video is about, most important first, with a weight (poids, from 0
 to 1, summing to 1) and a sous_sujet: a short neutral label in French, 2 to 6 words, naming

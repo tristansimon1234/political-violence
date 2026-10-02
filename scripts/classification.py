@@ -15,7 +15,7 @@ import argparse
 import logging
 import os
 import sys
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +32,14 @@ from radar.classification import en_nature, normaliser_sujets
 from radar.evaluation import Candidate, classer_videos
 from radar.llm import BudgetDepasse, ClientClaude, ClientJev
 from radar.schemas import VERSION_TAXONOMIE, NatureVideo, Theme
-from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
+from radar.storage import (
+    RETENTION_JOURS,
+    Stockage,
+    StockageLocal,
+    StockageSupabase,
+    lire_partition,
+    partitions,
+)
 from radar.supabase_rest import Supabase
 
 log = logging.getLogger("classification")
@@ -101,6 +108,14 @@ def main() -> int:
     p.add_argument("--budget-claude", type=float, default=5.0, help="dollars max pour Claude")
     p.add_argument("--paralleles", type=int, default=PARALLELES, help="appels Jev simultanés")
     p.add_argument("--limite", type=int, default=0, help="au plus N commentaires (essai)")
+    p.add_argument(
+        "--videos-seulement",
+        action="store_true",
+        help="décrire les vidéos (nature, sujets, thèses) sans classer les commentaires",
+    )
+    p.add_argument(
+        "--paralleles-claude", type=int, default=8, help="descriptions de vidéos simultanées"
+    )
     p.add_argument("--stockage-local", type=Path, help="dossier local au lieu des buckets")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
@@ -134,6 +149,11 @@ def main() -> int:
     avec_sujets = {
         str(v["video_id"]) for v in base.select("videos_sujets", {"principal": "eq.true"})
     }
+    # Thèses (vidéos d'opinion) : dérivées du brut, effacées 30 jours après sa récupération.
+    limite_theses = aujourdhui - timedelta(days=RETENTION_JOURS - 1)
+    if not args.dry_run:
+        base.supprimer("videos_theses", {"recupere_le": f"lt.{limite_theses.isoformat()}"})
+    avec_these = {str(v["video_id"]) for v in base.select("videos_theses", {})}
     candidates_videos = (
         vids if args.limite else {v for v, ligne in lignes_videos.items() if ligne.get("prefiltre")}
     )
@@ -142,7 +162,11 @@ def main() -> int:
         for v in candidates_videos
         if v in lignes_videos
         and v in bruts_videos
-        and (not lignes_videos[v].get("nature") or v not in avec_sujets)
+        and (
+            not lignes_videos[v].get("nature")
+            or v not in avec_sujets
+            or (lignes_videos[v].get("nature") == "opinion" and v not in avec_these)
+        )
     )
     sans_nature = [v for v in a_decrire if not lignes_videos[v].get("nature")]
     inconnues = sorted(v for v in vids if v not in lignes_videos or v not in bruts_videos)
@@ -186,7 +210,7 @@ def main() -> int:
                 )
                 for v in a_decrire[i : i + LOT_NATURES]
             ]
-            reponses = classer_videos(claude, cands)
+            reponses = classer_videos(claude, cands, args.paralleles_claude)
             nouvelles: dict[str, NatureVideo] = {
                 v: r.nature_video for v, r in reponses.items() if not lignes_videos[v].get("nature")
             }
@@ -194,9 +218,31 @@ def main() -> int:
             natures.update(nouvelles)
             sujets = {v: normaliser_sujets(r.sujets) for v, r in reponses.items() if r.sujets}
             _ecrire_sujets(base, sujets, aujourdhui)
+            theses = [
+                {
+                    "video_id": v,
+                    "these": " ".join(r.resume.split())[:400],
+                    "explicite": r.these_explicite
+                    and not r.resume.strip().startswith("Sujet peu précis"),
+                    "recupere_le": str(bruts_videos[v].get("recupere_le") or aujourdhui)[:10],
+                    "classe_le": aujourdhui.isoformat(),
+                }
+                for v, r in reponses.items()
+                if (lignes_videos[v].get("nature") or r.nature_video) == "opinion"
+                and r.resume.strip()
+            ]
+            base.upsert("videos_theses", theses, "video_id")
             decrites += len(reponses)
     except BudgetDepasse as e:
         print(f"\nDescription des vidéos : arrêt au budget Claude ({e}).")
+
+    if args.videos_seulement:
+        print(
+            f"\n## Bilan (vidéos seulement)\n\n- Vidéos décrites (nature, sujets, thèses) : "
+            f"{decrites} / {len(a_decrire)}, coût Claude {claude.compteur.cout_usd:.2f} USD\n"
+            f"- Durée : {(datetime.now(UTC) - debut).total_seconds() / 60:.0f} min"
+        )
+        return 0
 
     # 2. Commentaires (Jev) des vidéos dont la nature est connue.
     videos: dict[str, Video] = {}

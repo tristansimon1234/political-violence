@@ -21,6 +21,7 @@ import random
 import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Literal, TypeVar
@@ -302,13 +303,13 @@ def _date(v: Any) -> date:
 
 
 def classer_videos(
-    claude: ClientClaude, cands: Iterable[Candidate]
+    claude: ClientClaude, cands: Iterable[Candidate], paralleles: int = 1
 ) -> dict[str, ReponseNatureVideo]:
-    """Nature et résumé de chaque vidéo, un appel Claude par vidéo."""
-    videos: dict[str, ReponseNatureVideo] = {}
-    for c in cands:
+    """Nature, résumé et sujets de chaque vidéo, un appel Claude par vidéo (en parallèle)."""
+
+    def une(c: Candidate) -> tuple[str, ReponseNatureVideo | None]:
         try:
-            videos[c.video_id] = claude.classer(
+            return c.video_id, claude.classer(
                 SYSTEME_NATURE_VIDEO,
                 message_nature_video(c.titre, c.description, c.chaine),
                 ReponseNatureVideo,
@@ -316,7 +317,10 @@ def classer_videos(
             )
         except ReponseInvalide as e:
             log.warning("vidéo ignorée : %s", e)
-    return videos
+            return c.video_id, None
+
+    with ThreadPoolExecutor(max_workers=max(1, paralleles)) as pool:
+        return {v: r for v, r in pool.map(une, list(cands)) if r is not None}
 
 
 def classer_claude(claude: ClientClaude, lignes: Iterable[Ligne]) -> dict[str, Classement]:
