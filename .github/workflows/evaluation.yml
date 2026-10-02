@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       commande:
-        description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport"
+        description: "sonde : 1 appel test ; preparer : échantillon ; evaluer : classement + rapport ; synthetique : 100 commentaires fictifs"
         type: choice
-        options: [sonde, preparer, evaluer]
+        options: [sonde, preparer, evaluer, synthetique]
         default: sonde
       budget_claude:
         description: "Dollars max pour Claude"
@@ -22,6 +22,9 @@ on:
       option:
         description: "Facultatif : --remplacer (preparer) ou --reclasser (evaluer)"
         default: ""
+      fichier:
+        description: "synthetique : fichier du dossier evaluation/"
+        default: "synthetique_v2.csv"
 
 concurrency:
   group: evaluation
@@ -43,6 +46,8 @@ jobs:
           python-version: "3.11"
       - run: pip install -e .
       - name: Évaluation
+        env:
+          FICHIER: ${{ inputs.fichier }}
         run: |
           set -o pipefail
           ARGS=("${{ inputs.commande }}" --budget-claude "${{ inputs.budget_claude }}" --budget-jev "${{ inputs.budget_jev }}")
@@ -51,7 +56,20 @@ jobs:
             "") ;;
             *) echo "option inconnue"; exit 1 ;;
           esac
+          if [ "${{ inputs.commande }}" = "synthetique" ]; then
+            [[ "$FICHIER" =~ ^[A-Za-z0-9_.-]+\.csv$ ]] || { echo "nom de fichier invalide"; exit 1; }
+            ARGS+=(--fichier "evaluation/$FICHIER")
+          fi
           python scripts/evaluation.py "${ARGS[@]}" | tee rapport.md
       - name: Résumé
         if: always()
         run: cat rapport.md >> "$GITHUB_STEP_SUMMARY" || true
+      # Données synthétiques uniquement (jamais de commentaire réel) : fichier d'arbitrage et clé.
+      - name: Arbitrage
+        if: inputs.commande == 'synthetique'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arbitrage
+          path: arbitrage/
+          retention-days: 7
+          if-no-files-found: ignore

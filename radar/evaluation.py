@@ -34,9 +34,10 @@ from radar.classification import (
     ReponseCommentaires,
     ReponseNatureVideo,
     classement_jev,
-    en_emotion,
+    en_nature,
     en_position,
     en_theme,
+    en_tonalite,
     etat_jev,
     masquer,
     message_commentaires,
@@ -46,16 +47,17 @@ from radar.classification import (
 )
 from radar.llm import ClientClaude, ClientJev, ReponseInvalide
 from radar.schemas import (
-    EMOTIONS,
     FORMATS_VIDEO,
     NATURES_VIDEO,
     POSITIONS,
     THEMES,
+    TONALITES,
     TYPES_SOURCE,
-    Emotion,
     NatureVideo,
     Position,
     Theme,
+    Tonalite,
+    position_applicable,
 )
 from radar.storage import DOSSIER_EVALUATION, Stockage, date_fichier
 
@@ -139,7 +141,8 @@ SCHEMA_RESULTATS = pa.schema(
         ("est_politique", pa.bool_()),
         ("themes", pa.list_(pa.string())),
         ("position", pa.string()),
-        ("emotion", pa.string()),
+        ("tonalite", pa.string()),
+        ("hostilite", pa.bool_()),
         ("confiance", pa.float64()),
     ]
 )
@@ -327,10 +330,12 @@ COLONNES_ETIQUETAGE = (
     "commentaire",
     "themes",
     "position",
-    "emotion",
+    "tonalite",
+    "hostilite",
 )
 AUCUN_THEME = "aucun"
 SANS_POSITION = "-"
+OUI, NON = "oui", "non"
 
 
 @dataclass(frozen=True)
@@ -338,7 +343,8 @@ class Etiquette:
     est_politique: bool
     themes: tuple[Theme, ...]
     position: Position | None
-    emotion: Emotion
+    tonalite: Tonalite
+    hostilite: bool | None  # None : pas encore tranché (dimension ignorée)
 
 
 def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
@@ -347,7 +353,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
     w = csv.writer(tampon, delimiter=";")
     w.writerow(COLONNES_ETIQUETAGE)
     for li in sorted((li for li in lignes if li.verite), key=lambda li: li.ref):
-        position = "" if li.nature == "opinion_debat" else SANS_POSITION
+        position = "" if position_applicable(li.nature) else SANS_POSITION
         w.writerow(
             [
                 li.ref,
@@ -360,6 +366,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
                 "",
                 position,
                 "",
+                "",
             ]
         )
     return ("﻿" + tampon.getvalue()).encode("utf-8")
@@ -367,7 +374,7 @@ def fichier_etiquetage(lignes: Iterable[Ligne]) -> bytes:
 
 def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etiquette]:
     """Lit le CSV rempli ; lignes vides ignorées ; lève ValueError listant les erreurs."""
-    natures = {li.ref: li.nature for li in lignes if li.verite}
+    natures: dict[str, NatureVideo] = {li.ref: li.nature for li in lignes if li.verite}
     texte = donnees.decode("utf-8-sig")
     separateur = (
         ";" if texte.split("\n", 1)[0].count(";") >= texte.split("\n", 1)[0].count(",") else ","
@@ -378,11 +385,13 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
         ref = (rang.get("ref") or "").strip()
         brut_themes = (rang.get("themes") or "").strip().lower()
         brut_position = (rang.get("position") or "").strip().lower()
-        brut_emotion = (rang.get("emotion") or "").strip().lower()
+        brut_tonalite = (rang.get("tonalite") or "").strip().lower()
+        brut_hostilite = (rang.get("hostilite") or "").strip().lower()
         if ref not in natures:
             erreurs.append(f"{ref or '?'} : référence inconnue")
             continue
-        if not brut_themes and not brut_emotion and brut_position in ("", SANS_POSITION):
+        vide = not (brut_themes or brut_tonalite or brut_hostilite)
+        if vide and brut_position in ("", SANS_POSITION):
             continue  # pas encore étiqueté
         nature = natures[ref]
         themes: list[Theme] = []
@@ -396,15 +405,20 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
             if not themes:
                 erreurs.append(f"{ref} : thèmes vides (écrire « {AUCUN_THEME} » si non politique)")
         position: Position | None = None
-        if nature == "opinion_debat":
+        # « - » sous une vidéo d'opinion : position volontairement non étiquetée (ignorée).
+        if position_applicable(nature) and brut_position != SANS_POSITION:
             position = next((p for p in POSITIONS if p == brut_position), None)
             if position is None:
-                erreurs.append(f"{ref} : position attendue ({', '.join(POSITIONS)})")
-        emotion: Emotion | None = next((e for e in EMOTIONS if e == brut_emotion), None)
-        if emotion is None:
-            erreurs.append(f"{ref} : émotion attendue ({', '.join(EMOTIONS)})")
+                erreurs.append(f"{ref} : position attendue ({', '.join(POSITIONS)} ou -)")
+        tonalite: Tonalite | None = next((t for t in TONALITES if t == brut_tonalite), None)
+        if tonalite is None:
+            erreurs.append(f"{ref} : tonalité attendue ({', '.join(TONALITES)})")
             continue
-        etiquettes[ref] = Etiquette(bool(themes), tuple(themes[:3]), position, emotion)
+        if brut_hostilite not in (OUI, NON, ""):
+            erreurs.append(f"{ref} : hostilité attendue ({OUI}, {NON} ou vide)")
+            continue
+        hostilite = None if not brut_hostilite else brut_hostilite == OUI
+        etiquettes[ref] = Etiquette(bool(themes), tuple(themes[:3]), position, tonalite, hostilite)
     if erreurs:
         raise ValueError("Étiquetage invalide :\n" + "\n".join(erreurs))
     return etiquettes
@@ -412,14 +426,24 @@ def lire_etiquettes(donnees: bytes, lignes: Iterable[Ligne]) -> dict[str, Etique
 
 # --- Comparaison ---
 
-DIMENSIONS = ("politique", "theme_principal", "theme_commun", "position", "emotion", "complet")
+DIMENSIONS = (
+    "politique",
+    "theme_principal",
+    "theme_commun",
+    "position",
+    "tonalite",
+    "hostilite",
+    "complet",
+)
+DIMENSIONS_COMPLET = ("politique", "theme_principal", "position", "tonalite", "hostilite")
 LIBELLES_DIMENSIONS = {
     "politique": "Politique / non politique",
     "theme_principal": "Thème principal",
     "theme_commun": "Au moins un thème commun",
     "position": "Position (vidéos d'opinion)",
-    "emotion": "Émotion",
-    "complet": "Tout juste (politique, thème principal, position, émotion)",
+    "tonalite": "Tonalité",
+    "hostilite": "Hostilité",
+    "complet": "Tout juste (politique, thème principal, position, tonalité, hostilité)",
 }
 
 Reference = Etiquette | Classement
@@ -432,13 +456,10 @@ def comparer(pred: Classement, ref: Reference) -> dict[str, bool | None]:
         "theme_principal": pred.themes[:1] == ref.themes[:1] if ref.est_politique else None,
         "theme_commun": bool(set(pred.themes) & set(ref.themes)) if ref.est_politique else None,
         "position": pred.position == ref.position if ref.position is not None else None,
-        "emotion": pred.emotion == ref.emotion,
+        "tonalite": pred.tonalite == ref.tonalite,
+        "hostilite": pred.hostilite == ref.hostilite if ref.hostilite is not None else None,
     }
-    d["complet"] = all(
-        v
-        for k, v in d.items()
-        if k in ("politique", "theme_principal", "position", "emotion") and v is not None
-    )
+    d["complet"] = all(v for k, v in d.items() if k in DIMENSIONS_COMPLET and v is not None)
     return d
 
 
@@ -553,7 +574,10 @@ def rapport(
 
     if etiquettes:
         out += ["## Justesse face aux étiquettes de Tristan", ""]
-        out += ["| Dimension | Jev | Claude | Accord Jev / Claude (500) |", "|---|---:|---:|---:|"]
+        out += [
+            f"| Dimension | Jev | Claude | Accord Jev / Claude ({len(lignes)}) |",
+            "|---|---:|---:|---:|",
+        ]
         for d in DIMENSIONS:
             out.append(
                 f"| {LIBELLES_DIMENSIONS[d]} | {_pct(*taux(jev, etiquettes, d))} | "
@@ -597,15 +621,23 @@ def rapport(
     out.append("")
 
     jours, projetes = volume.campagne(aujourdhui)
+    if volume.commentaires:
+        projection = (
+            f"Projection : {volume.commentaires} commentaires collectés sur {volume.jours} jours "
+            f"de publication, soit ~{projetes:,} commentaires sur les {jours} jours restants "
+            f"jusqu'au second tour ({FIN_CAMPAGNE:%d/%m/%Y})."
+        ).replace(",", " ")
+        colonne = "Coût campagne"
+    else:
+        projetes = 1_000_000
+        projection = "Pas de volume réel (données synthétiques) : coût exprimé pour 1 million."
+        colonne = "Coût / million"
     out += [
         "## Seuil de reprise par Claude",
         "",
-        f"Projection : {volume.commentaires} commentaires collectés sur {volume.jours} jours de "
-        f"publication, soit ~{projetes:,} commentaires sur les {jours} jours restants jusqu'au "
-        f"second tour ({FIN_CAMPAGNE:%d/%m/%Y}).".replace(",", " "),
+        projection,
         "",
-        "| Seuil | Part reprise par Claude | Justesse (tout juste) | Coût / 1 000 | "
-        "Coût campagne |",
+        f"| Seuil | Part reprise par Claude | Justesse (tout juste) | Coût / 1 000 | {colonne} |",
         "|---|---:|---:|---:|---:|",
     ]
     cj, cc = couts.jev_par_commentaire, couts.claude_par_commentaire
@@ -646,23 +678,25 @@ def _type(lignes: list[Ligne], ref: str) -> str:
 def recommandation(
     lignes_seuils: list[tuple[str, float, tuple[int, int]]], cj: float, cc: float, projetes: int
 ) -> str:
-    _, _, (ok_c, n_c) = lignes_seuils[-1]
-    if n_c == 0:
-        return "Pas de recommandation : étiquettes de Tristan absentes ou classement Claude vide."
-    cible = ok_c / n_c - TOLERANCE
-    for nom, part, (ok, n) in lignes_seuils[:-1]:
-        if n and ok / n >= cible:
-            cout = cj + part * cc
+    """Option la moins chère à TOLERANCE près de la meilleure justesse (cascade comprise).
+
+    Les lignes sont rangées par coût croissant : Jev seul, seuils croissants, Claude seul.
+    """
+    mesurees = [(nom, part, ok / n, ok, n) for nom, part, (ok, n) in lignes_seuils if n]
+    if not mesurees:
+        return "Pas de recommandation : étiquettes de Tristan absentes."
+    meilleure = max(j for _, _, j, _, _ in mesurees)
+    nom_m = next(nom for nom, _, j, _, _ in mesurees if j == meilleure)
+    for nom, part, j, ok, n in mesurees:
+        if j >= meilleure - TOLERANCE:
+            cout = cc if nom == "Claude seul" else cj + part * cc
             return (
-                f"Seuil **{nom}** : justesse {_pct(ok, n)}, à moins de "
-                f"{100 * TOLERANCE:.0f} points de Claude seul ({_pct(ok_c, n_c)}), "
+                f"**{nom}** : justesse {_pct(ok, n)}, à moins de {100 * TOLERANCE:.0f} points "
+                f"de la meilleure option ({nom_m}, {100 * meilleure:.0f} %), "
                 f"{100 * part:.0f} % des commentaires repris par Claude, coût projeté "
-                f"{_usd(projetes * cout)} sur la campagne (Claude seul : {_usd(projetes * cc)})."
+                f"{_usd(projetes * cout)} (Claude seul : {_usd(projetes * cc)})."
             )
-    return (
-        f"Aucun seuil n'approche Claude seul ({_pct(ok_c, n_c)}) à {100 * TOLERANCE:.0f} points "
-        f"près : Claude seul, coût projeté {_usd(projetes * cc)} sur la campagne."
-    )
+    raise AssertionError("inatteignable")
 
 
 # --- Fichiers du bucket ---
@@ -703,7 +737,8 @@ def ecrire_resultats(
             "est_politique": c.est_politique,
             "themes": list(c.themes),
             "position": c.position,
-            "emotion": c.emotion,
+            "tonalite": c.tonalite,
+            "hostilite": c.hostilite,
             "confiance": c.confiance,
         }
         for m, res in resultats.items()
@@ -723,7 +758,8 @@ def lire_resultats(st: Stockage, jour: date) -> dict[Modele, dict[str, Classemen
             est_politique=bool(r["est_politique"]),
             themes=tuple(en_theme(t) for t in r["themes"]),
             position=en_position(r["position"]) if r["position"] else None,
-            emotion=en_emotion(r["emotion"]),
+            tonalite=en_tonalite(r["tonalite"]),
+            hostilite=bool(r["hostilite"]),
             confiance=r["confiance"],
         )
     return res
@@ -736,3 +772,211 @@ def ecrire_json(st: Stockage, jour: date, nom: str, donnees: Mapping[str, Any]) 
 def lire_json(st: Stockage, jour: date, nom: str) -> dict[str, Any]:
     resultat: dict[str, Any] = json.loads(st.lire(chemin(jour, nom)))
     return resultat
+
+
+# --- Test synthétique (commentaires fictifs, versionnés dans Git) ---
+
+
+def charger_synthetique(donnees: bytes, aujourdhui: date) -> list[Ligne]:
+    """Commentaires fictifs au format du fichier d'étiquetage ; tous à comparer."""
+    texte = donnees.decode("utf-8-sig")
+    lignes: list[Ligne] = []
+    for r in csv.DictReader(io.StringIO(texte), delimiter=";"):
+        nature = en_nature(r["nature_video"])
+        lignes.append(
+            Ligne(
+                ref=r["ref"],
+                comment_id=r["ref"],
+                video_id=r["titre_video"],
+                type_source=r["categorie"],
+                format=r["format"],
+                nature=nature,
+                chaine=r["chaine"],
+                titre=r["titre_video"],
+                texte=masquer(r["commentaire"]),
+                verite=True,
+                recupere_le=aujourdhui,
+            )
+        )
+    return lignes
+
+
+def _etiquette(c: Reference) -> str:
+    themes = "+".join(c.themes) or AUCUN_THEME
+    hostile = "?" if c.hostilite is None else ("hostile" if c.hostilite else "non hostile")
+    return f"{themes} / {c.position or SANS_POSITION} / {c.tonalite} / {hostile}"
+
+
+def desaccords(
+    lignes: list[Ligne],
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+) -> str:
+    """Désaccords avec les étiquettes, texte affiché : réservé aux données synthétiques."""
+    out = [
+        "## Désaccords avec tes étiquettes (données synthétiques)",
+        "",
+        "| Réf | Commentaire | Tristan | Jev (confiance) | Claude |",
+        "|---|---|---|---|---|",
+    ]
+    for li in sorted(lignes, key=lambda li: li.ref):
+        e = etiquettes.get(li.ref)
+        j, c = jev.get(li.ref), claude.get(li.ref)
+        if e is None or j is None or c is None:
+            continue
+        if comparer(j, e)["complet"] and comparer(c, e)["complet"]:
+            continue
+        conf = f" ({j.confiance:.2f})" if j.confiance is not None else ""
+        texte = li.texte.replace("|", "/")
+        out.append(
+            f"| {li.ref} | {texte} | {_etiquette(e)} | {_etiquette(j)}{conf} | {_etiquette(c)} |"
+        )
+    return "\n".join(out)
+
+
+# --- Arbitrage à l'aveugle (données synthétiques) ---
+
+Source = Literal["tristan", "jev", "claude"]
+DIMENSIONS_ARBITRAGE = ("themes", "position", "tonalite", "hostilite")
+LETTRES = "ABC"
+AUCUNE = "aucune"
+COLONNES_ARBITRAGE = (
+    "id",
+    "ref",
+    "dimension",
+    "chaine",
+    "titre_video",
+    "nature_video",
+    "commentaire",
+    "A",
+    "B",
+    "C",
+    "choix",
+    "note",
+)
+
+
+def _valeur(c: Reference, dimension: str) -> str | None:
+    if dimension == "themes":
+        return "+".join(c.themes) or AUCUN_THEME
+    if dimension == "position":
+        return c.position or SANS_POSITION
+    if dimension == "tonalite":
+        return c.tonalite
+    if c.hostilite is None:
+        return None
+    return "hostile" if c.hostilite else "non hostile"
+
+
+def fichier_arbitrage(
+    lignes: list[Ligne],
+    jev: Mapping[str, Classement],
+    claude: Mapping[str, Classement],
+    etiquettes: Mapping[str, Etiquette],
+    rng: random.Random,
+) -> tuple[bytes, dict[str, dict[str, list[str]]]]:
+    """Une ligne par désaccord (commentaire et dimension), options anonymes A/B/C mélangées.
+
+    Renvoie le CSV à remplir et la clé {id: {lettre: [sources]}}, à garder à part.
+    """
+    tampon = io.StringIO()
+    w = csv.writer(tampon, delimiter=";")
+    w.writerow(COLONNES_ARBITRAGE)
+    cle: dict[str, dict[str, list[str]]] = {}
+    n = 0
+    for li in sorted(lignes, key=lambda li: li.ref):
+        sources: dict[Source, Reference | None] = {
+            "tristan": etiquettes.get(li.ref),
+            "jev": jev.get(li.ref),
+            "claude": claude.get(li.ref),
+        }
+        if any(v is None for v in sources.values()):
+            continue
+        for dim in DIMENSIONS_ARBITRAGE:
+            if dim == "position" and not position_applicable(li.nature):
+                continue
+            options: dict[str, list[str]] = {}
+            for nom, c in sources.items():
+                assert c is not None
+                valeur = _valeur(c, dim)
+                if valeur is not None:  # hostilité pas encore tranchée par Tristan
+                    options.setdefault(valeur, []).append(nom)
+            if len(options) < 2 or sum(len(v) for v in options.values()) < len(sources):
+                continue
+            valeurs = sorted(options)
+            rng.shuffle(valeurs)
+            n += 1
+            ident = f"R{n:03d}"
+            cle[ident] = {LETTRES[i]: options[v] for i, v in enumerate(valeurs)}
+            cellules = [*valeurs, *[""] * (len(LETTRES) - len(valeurs))]
+            w.writerow(
+                [ident, li.ref, dim, li.chaine, li.titre, li.nature, li.texte, *cellules, "", ""]
+            )
+    return ("﻿" + tampon.getvalue()).encode("utf-8"), cle
+
+
+def rapport_arbitrage(donnees: bytes, cle: Mapping[str, Mapping[str, list[str]]]) -> str:
+    """Taux de victoires de chaque source sur les désaccords arbitrés à l'aveugle."""
+    texte = donnees.decode("utf-8-sig")
+    separateur = ";" if texte.split("\n", 1)[0].count(";") else ","
+    en_lice: Counter[tuple[str, str]] = Counter()
+    gagne: Counter[tuple[str, str]] = Counter()
+    arbitres: Counter[str] = Counter()
+    plusieurs: Counter[str] = Counter()
+    aucune: Counter[str] = Counter()
+    erreurs: list[str] = []
+    for r in csv.DictReader(io.StringIO(texte), delimiter=separateur):
+        ident = (r.get("id") or "").strip()
+        choix = (r.get("choix") or "").strip().upper().replace(" ", "")
+        dim = (r.get("dimension") or "").strip()
+        if ident not in cle:
+            erreurs.append(f"{ident or '?'} : identifiant inconnu")
+            continue
+        if not choix:
+            continue
+        options = cle[ident]
+        if choix == AUCUNE.upper():
+            lettres: set[str] = set()
+            aucune[dim] += 1
+        else:
+            lettres = set(choix.split("+"))
+            if not lettres <= set(options):
+                erreurs.append(f"{ident} : choix « {choix} » hors des options {sorted(options)}")
+                continue
+            if len(lettres) > 1:
+                plusieurs[dim] += 1
+        arbitres[dim] += 1
+        for lettre, sources in options.items():
+            for s in sources:
+                en_lice[(s, dim)] += 1
+                gagne[(s, dim)] += int(lettre in lettres)
+    if erreurs:
+        raise ValueError("Arbitrage invalide :\n" + "\n".join(erreurs))
+    total = sum(arbitres.values())
+    out = [
+        "# Arbitrage à l'aveugle",
+        "",
+        f"{total} désaccords arbitrés sur {len(cle)} : plusieurs réponses acceptables pour "
+        f"{sum(plusieurs.values())}, aucune pour {sum(aucune.values())}.",
+        "",
+        "Part des désaccords où la réponse de chaque source a été retenue :",
+        "",
+        "| Dimension | Arbitrés | Tristan (1er jet) | Jev | Claude |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    sources_: tuple[Source, ...] = ("tristan", "jev", "claude")
+    for dim in (*DIMENSIONS_ARBITRAGE, "total"):
+        dims = DIMENSIONS_ARBITRAGE if dim == "total" else (dim,)
+        cellules = [
+            _pct(sum(gagne[(s, d)] for d in dims), sum(en_lice[(s, d)] for d in dims))
+            for s in sources_
+        ]
+        n = sum(arbitres[d] for d in dims)
+        out.append(f"| {dim} | {n} | " + " | ".join(cellules) + " |")
+    out += [
+        "",
+        "Lecture : seuls les désaccords comptent ; quand les trois sources sont d'accord, la "
+        "ligne n'est pas proposée. Plusieurs lettres = réponses également acceptables.",
+    ]
+    return "\n".join(out)

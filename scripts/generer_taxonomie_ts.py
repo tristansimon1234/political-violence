@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 
 from radar.schemas import (
-    EMOTIONS,
     FENETRE_ACTIVITE_JOURS,
     FORMATS_VIDEO,
     LIBELLES_TYPE,
@@ -64,7 +63,6 @@ def contenu() -> str:
             *_liste("THEMES", "Theme", THEMES),
             *_liste("NATURES_VIDEO", "NatureVideo", NATURES_VIDEO),
             *_liste("POSITIONS", "Position", POSITIONS),
-            *_liste("EMOTIONS", "Emotion", EMOTIONS),
             *_liste("TONALITES", "Tonalite", TONALITES),
         ]
     )

@@ -74,7 +74,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - Aucun pseudo ni identifiant d'auteur en clair ; hash stable avec le même sel.
 - "Où ça réagit" et les réactions du public n'incluent jamais les chaînes politiques.
 - Un commentaire multi-thèmes compte pour 1/n dans chacun : les totaux par thème égalent le total des commentaires.
-- La position n'est jamais calculée sur une vidéo `info_factuelle`.
+- La position n'est jamais calculée sur une vidéo `info_factuelle` ni `debat`.
 - Un run ne dépasse jamais le budget de quota configuré.
 
 **CI** : GitHub Actions lance lint, typage et tests à chaque push. Pas de merge si c'est rouge.
@@ -94,7 +94,8 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - `docs/roadmap.md` : étapes dans l'ordre, préalables hors code, points à décider.
 - `docs/decisions.md` : journal des décisions datées. Y ajouter toute nouvelle décision validée.
 - `docs/methodologie.md` : texte source de la page publique Méthodologie (panel, collecte).
-- `docs/etiquetage.md` : étiquetage manuel de la vérité terrain (étape 4).
+- `docs/etiquetage.md` : étiquetage manuel de la vérité terrain et arbitrage à l'aveugle (étape 4).
+- `docs/evaluation-resultats.md` : journal des tests de classification (agrégats).
 - `docs/sous-traitants.md` : sous-traitants (localisation, conservation, entraînement, transferts), prêt pour l'AIPD.
 
 Maquette de référence : artifact Claude Design "Radar 2027" (écrans Cette semaine, Vue d'ensemble, Méthodologie, Admin).

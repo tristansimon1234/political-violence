@@ -2,6 +2,7 @@
 
 import json
 import random
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any, cast
@@ -74,12 +75,16 @@ def test_position_nulle_sur_video_factuelle() -> None:
         est_politique=True,
         themes=["immigration"],
         position="accord_video",
-        emotion="colere",
+        tonalite="negative",
+        hostilite=True,
     )
     assert normaliser(c, "info_factuelle").position is None
-    assert normaliser(c, "opinion_debat").position == "accord_video"
+    assert normaliser(c, "debat").position is None  # débat contradictoire : pas de thèse
+    assert normaliser(c, "opinion").position == "accord_video"
     assert "position" not in questions_jev("info_factuelle")
-    assert "position" in questions_jev("opinion_debat")
+    assert "position" not in questions_jev("debat")
+    assert "position" in questions_jev("opinion")
+    assert classement_jev(_reps(0.9), "debat").position is None
 
 
 def _reps(p_politique: float, conf_theme: float = 0.9) -> dict[str, RepOuiNon | RepChoix]:
@@ -90,13 +95,14 @@ def _reps(p_politique: float, conf_theme: float = 0.9) -> dict[str, RepOuiNon | 
             {"retraites": 0.6, "economie_emploi": 0.35, "sante": 0.05},
             conf_theme,
         ),
-        "emotion": RepChoix("colere", {"colere": 0.8}, 0.8),
+        "tonalite": RepChoix("negative", {"negative": 0.8}, 0.8),
+        "hostilite": RepOuiNon(0.1, 0.9),
         "position": RepChoix("nuance", {"nuance": 0.7}, 0.7),
     }
 
 
 def test_classement_jev() -> None:
-    c = classement_jev(_reps(0.9), "opinion_debat")
+    c = classement_jev(_reps(0.9), "opinion")
     assert c.themes == ("retraites", "economie_emploi")  # principal d'abord, secondaire ≥ 0,3
     assert c.position == "nuance" and c.confiance == 0.7
     f = classement_jev(_reps(0.9), "info_factuelle")
@@ -111,11 +117,12 @@ def test_normaliser_limite_les_themes() -> None:
         est_politique=True,
         themes=["sante", "sante", "logement", "education", "securite"],
         position=None,
-        emotion="neutre",
+        tonalite="neutre",
+        hostilite=False,
     )
-    assert normaliser(c, "opinion_debat").themes == ("sante", "logement", "education")
+    assert normaliser(c, "opinion").themes == ("sante", "logement", "education")
     c2 = c.model_copy(update={"est_politique": False})
-    assert normaliser(c2, "opinion_debat").themes == ()
+    assert normaliser(c2, "opinion").themes == ()
 
 
 # --- Réponses Jev ---
@@ -184,11 +191,12 @@ class FauxJev:
 
     def __call__(self, url: str, entetes: dict[str, str], corps: dict[str, Any]) -> dict[str, Any]:
         self.envois.append(json.dumps(corps, ensure_ascii=False))
-        conf = 0.95 if "0" in corps["state"]["commentaire"][-3:] else 0.55
+        conf = 0.95 if "0" in corps["state"]["comment"][-3:] else 0.55
         answers: dict[str, Any] = {
             "politique": {"probability": conf},
             "theme": {"choice": "retraites", "confidence": conf},
-            "emotion": {"choice": "colere", "confidence": conf},
+            "tonalite": {"choice": "negative", "confidence": conf},
+            "hostilite": {"noul": 0.2},
         }
         if "position" in corps["questions"]:
             answers["position"] = {"choice": "nuance", "confidence": conf}
@@ -226,7 +234,8 @@ class FauxAnthropic:
                             "est_politique": True,
                             "themes": ["retraites"],
                             "position": "accord_video",
-                            "emotion": "colere",
+                            "tonalite": "negative",
+                            "hostilite": False,
                         }
                         for i in range(1, n + 1)
                     ]
@@ -243,7 +252,7 @@ def _lignes(n: int = 12) -> list[Ligne]:
             video_id=f"v{i % 3}",
             type_source=["media_traditionnel", "media_natif", "politique"][i % 3],
             format="long" if i % 2 else "short",
-            nature="opinion_debat" if i % 4 else "info_factuelle",
+            nature="opinion" if i % 4 else "info_factuelle",
             chaine=CHAINE,
             titre=TITRE,
             texte=masquer(f"{TEXTE} {i} @PseudoCite https://lien.fr"),
@@ -264,6 +273,7 @@ def test_minimisation_des_envois() -> None:
     for e in envois:
         assert "UgxCOMMENTID" not in e  # jamais l'identifiant du commentaire
         assert AUTEUR_HASH not in e and "auteur" not in e.lower()
+        assert not re.search(r"\bauthor", e.lower().replace("authorities", ""))
         assert "PseudoCite" not in e and "lien.fr" not in e  # mentions et URL masquées
     assert any(TEXTE in e and TITRE in e and CHAINE in e for e in envois)  # contexte vidéo
     zdr = [
@@ -308,8 +318,7 @@ def _corpus() -> tuple[list[Candidate], dict[str, list[dict[str, Any]]]]:
 def test_echantillon_stratifie() -> None:
     cands, comms = _corpus()
     natures = {
-        c.video_id: ("opinion_debat" if int(c.video_id[-1]) % 2 else "info_factuelle")
-        for c in cands
+        c.video_id: ("opinion" if int(c.video_id[-1]) % 2 else "info_factuelle") for c in cands
     }
     lignes = echantillonner(cast(Any, natures), cands, comms, random.Random(1), n=120, n_verite=24)
     assert len(lignes) == 120 and sum(li.verite for li in lignes) == 24
@@ -354,26 +363,34 @@ def test_etiquetage_aller_retour() -> None:
         ref = champs[0]
         nature = next(li.nature for li in lignes if li.ref == ref)
         champs[7] = "retraites+sante" if ref != "C002" else "aucun"
-        champs[8] = "desaccord_video" if nature == "opinion_debat" else "-"
-        champs[9] = "colere"
+        champs[8] = "desaccord_video" if nature == "opinion" else "-"
+        champs[9] = "negative"
+        champs[10] = "oui" if ref == "C001" else ("" if ref == "C003" else "non")
         remplies.append(";".join(champs))
-    remplies[-1] = ";".join([*remplies[-1].split(";")[:7], "", "", ""])  # ligne non remplie
+    remplies[-1] = ";".join([*remplies[-1].split(";")[:7], "", "", "", ""])  # non remplie
     etiquettes = lire_etiquettes(("\n".join(remplies) + "\n").encode(), lignes)
     assert len(etiquettes) == sum(li.verite for li in lignes) - 1
     assert etiquettes["C002"].est_politique is False and etiquettes["C002"].themes == ()
     assert etiquettes["C001"].themes == ("retraites", "sante")
+    assert etiquettes["C001"].hostilite is True and etiquettes["C003"].hostilite is None
+    assert etiquettes["C002"].hostilite is False and etiquettes["C002"].tonalite == "negative"
 
 
 def test_etiquetage_invalide_signale() -> None:
     lignes = _lignes()
     entete = (
-        "ref;categorie;format;nature_video;chaine;titre_video;commentaire;themes;position;emotion"
+        "ref;categorie;format;nature_video;chaine;titre_video;commentaire;themes;position;"
+        "tonalite;hostilite"
     )
-    mauvais = f"{entete}\nC001;x;x;x;x;x;x;inflation;;joie\nC999;x;x;x;x;x;x;sante;-;colere\n"
+    mauvais = (
+        f"{entete}\nC001;x;x;x;x;x;x;inflation;;joie;non\n"
+        "C002;x;x;x;x;x;x;sante;-;neutre;peut-etre\nC999;x;x;x;x;x;x;sante;-;neutre;non\n"
+    )
     with pytest.raises(ValueError) as e:
         lire_etiquettes(mauvais.encode(), lignes)
     message = str(e.value)
-    assert "C001 : thème inconnu" in message and "C001 : émotion" in message
+    assert "C001 : thème inconnu" in message and "C001 : tonalité" in message
+    assert "C002 : hostilité" in message
     assert "C001 : position" in message and "C999 : référence inconnue" in message
 
 
@@ -381,7 +398,7 @@ def test_etiquetage_invalide_signale() -> None:
 
 
 def _cl(conf: float | None, ok: bool = True) -> Classement:
-    return Classement(True, ("retraites",) if ok else ("sante",), None, "colere", conf)
+    return Classement(True, ("retraites",) if ok else ("sante",), None, "negative", False, conf)
 
 
 def test_cascade() -> None:
@@ -392,12 +409,14 @@ def test_cascade() -> None:
 
 
 def test_comparer_dimensions() -> None:
-    ref = Etiquette(True, ("retraites", "sante"), None, "colere")
-    d = comparer(Classement(True, ("sante", "retraites"), None, "colere"), ref)
+    ref = Etiquette(True, ("retraites", "sante"), None, "negative", True)
+    d = comparer(Classement(True, ("sante", "retraites"), None, "negative", True), ref)
     assert d["theme_principal"] is False and d["theme_commun"] is True
-    assert d["position"] is None and d["complet"] is False
-    non = comparer(Classement(False, (), None, "neutre"), Etiquette(False, (), None, "neutre"))
-    assert non["theme_principal"] is None and non["complet"] is True
+    assert d["position"] is None and d["hostilite"] is True and d["complet"] is False
+    non = comparer(
+        Classement(False, (), None, "neutre", True), Etiquette(False, (), None, "neutre", None)
+    )
+    assert non["theme_principal"] is None and non["hostilite"] is None and non["complet"] is True
 
 
 def test_rapport_sans_texte_ni_titre(tmp_path: Path) -> None:
@@ -409,8 +428,9 @@ def test_rapport_sans_texte_ni_titre(tmp_path: Path) -> None:
         li.ref: Etiquette(
             True,
             ("retraites",),
-            "accord_video" if li.nature == "opinion_debat" else None,
-            "colere",
+            "accord_video" if li.nature == "opinion" else None,
+            "negative",
+            False,
         )
         for li in lignes
         if li.verite
@@ -466,7 +486,7 @@ class FauxAnthropicNature(FauxAnthropic):
     def parse(self, **kwargs: Any) -> _Reponse:
         if kwargs["output_format"].__name__ == "ReponseNatureVideo":
             self.envois.append(kwargs["messages"][0]["content"])
-            return _Reponse(kwargs["output_format"](nature_video="opinion_debat"))
+            return _Reponse(kwargs["output_format"](nature_video="opinion"))
         return super().parse(**kwargs)
 
 
@@ -476,7 +496,6 @@ def test_script_preparer_evaluer(
     import sys
 
     import evaluation as script
-
     from radar.storage import enregistrer
 
     st = StockageLocal(tmp_path)
@@ -549,7 +568,8 @@ def test_script_preparer_evaluer(
     appels = len(faux_jev.envois)
     brut = st.lire(f"evaluation/{jour}-etiquetage.csv").decode("utf-8-sig").splitlines()
     rempli = [brut[0]] + [
-        ";".join([*x.split(";")[:7], "retraites", "accord_video", "colere"]) for x in brut[1:]
+        ";".join([*x.split(";")[:7], "retraites", "accord_video", "negative", "non"])
+        for x in brut[1:]
     ]
     st.ecrire(f"evaluation/{jour}-etiquetage-rempli.csv", "\n".join(rempli).encode())
     rapport_ = lancer("evaluer")
@@ -564,9 +584,142 @@ def test_script_preparer_evaluer(
 def test_corps_jev_protocole_typesafe() -> None:
     """Schéma de requête du paquet officiel typesafe-sdk 0.7.2 (POST /v1/systemone)."""
     jev = ClientJev(1.0, cle="x", transport=FauxJev())
-    corps = jev.corps("état", questions_jev("opinion_debat"))
+    corps = jev.corps("état", questions_jev("opinion"))
     assert corps["model"] == "typesafe-ai/jev" and corps["state"] == "état"
     q = corps["questions"]
     assert q["politique"]["type"] == "noul" and set(q["politique"]["criteria"]) == {"true", "false"}
     assert q["theme"]["type"] == "choice" and "retraites" in q["theme"]["criteria"]
-    assert set(q) == {"politique", "theme", "emotion", "position"}
+    assert set(q) == {"politique", "theme", "tonalite", "hostilite", "position"}
+    assert q["hostilite"]["type"] == "noul" and set(q["hostilite"]["criteria"]) == {"true", "false"}
+
+
+def test_cout_jev_reel_de_la_gateway() -> None:
+    """Réponse réelle de la sonde du 01/10/2026 (texte fictif) : coût lu, pas estimé."""
+    from radar.llm import cout_jev
+
+    brut = {
+        "model": "typesafe-ai/jev",
+        "answers": {"politique": {"type": "noul", "noul": 0.95}},
+        "usage": {"input_tokens": 1178, "output_tokens": 290},
+        "provider_metadata": {"gateway": {"cost": "0.000049476", "surchargeCost": "0"}},
+    }
+    assert cout_jev(brut) == (1178, pytest.approx(0.000049476))
+
+
+def test_fichier_synthetique_et_commande(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import sys
+
+    import evaluation as script
+    from radar.evaluation import charger_synthetique
+
+    source = Path(__file__).parents[1] / "evaluation" / "synthetique_v1.csv"
+    donnees = source.read_bytes()
+    lignes = charger_synthetique(donnees, date(2026, 10, 2))
+    assert len(lignes) == 100 and len({li.ref for li in lignes}) == 100
+    assert {li.nature for li in lignes} == {"info_factuelle", "opinion", "debat"}
+    assert len(lire_etiquettes(donnees, lignes)) == 100  # étiqueté par Tristan le 01/10
+
+    texte = donnees.decode("utf-8-sig").splitlines()
+    rempli = [texte[0]]
+    for x in texte[1:]:
+        champs = x.split(";")
+        position = "nuance" if champs[3] == "opinion" else "-"
+        rempli.append(";".join([*champs[:7], "retraites", position, "negative", "oui"]))
+    fichier = tmp_path / "rempli.csv"
+    fichier.write_text("\n".join(rempli), encoding="utf-8")
+
+    faux_claude, faux_jev = FauxAnthropic(), FauxJev()
+
+    def claude(budget_usd: float) -> ClientClaude:
+        return ClientClaude(budget_usd, client=cast(Any, faux_claude))
+
+    def jev(budget_usd: float) -> ClientJev:
+        return ClientJev(budget_usd, cle="x", transport=faux_jev)
+
+    monkeypatch.setattr(script, "ClientClaude", claude)
+    monkeypatch.setattr(script, "ClientJev", jev)
+    sortie_dir = tmp_path / "arbitrage"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["evaluation", "synthetique", "--fichier", str(fichier), "--sortie", str(sortie_dir)],
+    )
+    assert script.main() == 0
+    sortie = capsys.readouterr().out
+    assert "Coût / million" in sortie and "Désaccords avec tes étiquettes" in sortie
+    assert len(faux_jev.envois) == 100
+    assert (sortie_dir / "arbitrage_rempli.csv").exists() and (
+        sortie_dir / "cle_rempli.json"
+    ).exists()
+
+
+def test_position_obligatoire_sur_video_d_opinion() -> None:
+    """Claude sans position sous une vidéo d'opinion : repli sur hors_sujet, jamais None."""
+    c = ClassementCommentaire(
+        numero=1,
+        est_politique=False,
+        themes=[],
+        position=None,
+        tonalite="positive",
+        hostilite=False,
+    )
+    assert normaliser(c, "opinion").position == "hors_sujet"
+    assert normaliser(c, "info_factuelle").position is None
+
+
+def test_arbitrage_a_l_aveugle() -> None:
+    from radar.evaluation import fichier_arbitrage, rapport_arbitrage
+
+    lignes = _lignes(4)  # C001..C004 ; C004 factuelle (pas de position)
+    tristan = {li.ref: Etiquette(True, ("retraites",), None, "negative", False) for li in lignes}
+    for ref in ("C001", "C002", "C003"):
+        tristan[ref] = Etiquette(True, ("retraites",), "accord_video", "negative", False)
+    tristan["C003"] = Etiquette(True, ("retraites",), "accord_video", "negative", None)
+    jev = {
+        li.ref: Classement(True, ("retraites",), tristan[li.ref].position, "negative", False, 0.9)
+        for li in lignes
+    }
+    claude = dict(jev)
+    jev["C001"] = Classement(True, ("retraites",), "accord_video", "neutre", False, 0.4)
+    claude["C002"] = Classement(True, ("sante",), "accord_video", "negative", False)
+    # Hostilité non tranchée par Tristan (C003) : jamais proposée à l'arbitrage.
+    claude["C003"] = Classement(True, ("retraites",), "accord_video", "negative", True)
+    donnees, cle = fichier_arbitrage(lignes, jev, claude, tristan, random.Random(0))
+    texte = donnees.decode("utf-8-sig")
+    assert len(cle) == 2  # C001 tonalité, C002 thèmes ; le reste fait l'unanimité
+    assert "jev" not in texte and "claude" not in texte and "tristan" not in texte  # anonyme
+    # L'arbitre retient la réponse de Jev pour C001, et les deux pour C002.
+    lignes_csv = texte.splitlines()
+    remplies = [lignes_csv[0]]
+    for x in lignes_csv[1:]:
+        champs = x.split(";")
+        options = cle[champs[0]]
+        if champs[1] == "C001":
+            champs[10] = next(lettre for lettre, src in options.items() if "jev" in src)
+        else:
+            champs[10] = "A+B"
+        remplies.append(";".join(champs))
+    r = rapport_arbitrage("\n".join(remplies).encode(), cle)
+    assert "| tonalite | 1 | 0 % (0/1) | 100 % (1/1) | 0 % (0/1) |" in r
+    assert "| themes | 1 | 100 % (1/1) | 100 % (1/1) | 100 % (1/1) |" in r
+    with pytest.raises(ValueError):
+        rapport_arbitrage(("\n".join(remplies) + "\nR999;x;tonalite;;;;;;;;A;").encode(), cle)
+
+
+def test_recommandation_cascade_meilleure_que_chaque_modele() -> None:
+    """Cas du test synthétique v1 (taxonomie v6) : la cascade à 0,7 bat Jev seul et Claude seul."""
+    from radar.evaluation import recommandation
+
+    lignes = [
+        ("Jev seul", 0.0, (66, 100)),
+        ("0,5", 0.17, (69, 100)),
+        ("0,6", 0.29, (71, 100)),
+        ("0,7", 0.46, (75, 100)),
+        ("0,8", 0.61, (73, 100)),
+        ("0,9", 0.84, (67, 100)),
+        ("Claude seul", 1.0, (66, 100)),
+    ]
+    r = recommandation(lignes, 0.00006, 0.00069, 1_000_000)
+    assert r.startswith("**0,7**") and "0,7, 75 %" in r

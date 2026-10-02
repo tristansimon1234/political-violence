@@ -451,3 +451,8 @@ def test_transport_reessaie_et_masque_la_cle(monkeypatch: pytest.MonkeyPatch) ->
 )
 def test_prefiltre_mots_entiers_sans_accents(titre: str, attendu: bool) -> None:
     assert charger().correspond(titre) is attendu
+
+
+def test_dry_run_mesure_le_cout_de_tout_prendre(tmp_path: Path) -> None:
+    bilan, _, _ = _run(tmp_path, FauxYouTube(J1), FausseBase(SOURCES), _quotidien(dry_run=True))
+    assert bilan.commentaires_annonces == 3 * 3  # m1, m3, p1 : commentCount = 3 chacune

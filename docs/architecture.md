@@ -9,7 +9,7 @@ YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶
 1. **Collecte** (`radar/collecte.py`, `scripts/collecte.py`, workflow `collecte.yml`) : playlist des uploads de chaque source active (1 unité / 50) → `videos.list` pour toutes les nouvelles vidéos (1 unité / 50 ; format `short` / `long`) → **pré-filtre mots-clés** (`config/mots_cles.txt`, `radar/prefiltre.py`) → `commentThreads.list` (ordre pertinence, pages de 100, commentaires de premier niveau seulement) **uniquement pour les vidéos qui passent le pré-filtre et pour toutes celles des chaînes politiques** : 2 pages par vidéo longue, 1 page par Short. Quotidien : vidéos publiées dans les 3 derniers jours, commentaires re-récupérés chaque jour (une fois par jour au plus). Backfill : `--depuis` / `--jusqua`, une récupération par vidéo, reprise là où le run s'est arrêté (`collecte_etat`, `videos.derniere_collecte`). Arrêt propre avant le budget de quota (ou sur `quotaExceeded`). Écriture par lots de 250 vidéos commentées, et de ce qui a été collecté en cas d'erreur imprévue : un plantage perd au plus un lot. Vidéo devenue indisponible (404, 403 hors quota, 400) : sautée et marquée. Erreurs passagères (5xx, 429, réseau) : jusqu'à 4 essais.
 2. **Filtre politique (entonnoir)** : mots-clés sur titre/description/tags (fait à la collecte, voir 1) → Jev (`politique_directe` / `enjeu_public` / `hors_sujet`) → Claude si confiance < seuil. Les chaînes politiques ne sont pas filtrées.
 3. **Classification (cascade)** :
-   - **Jev** (TypeSafe, via Vercel AI Gateway) : classification fermée des commentaires à volume (est_politique, thèmes, position vis-à-vis de la vidéo, émotion, candidat visé dans une liste fermée). Renvoie des probabilités et une confiance.
+   - **Jev** (TypeSafe, via Vercel AI Gateway) : classification fermée des commentaires à volume (est_politique, thèmes, position vis-à-vis de la vidéo, tonalité, hostilité, candidat visé dans une liste fermée). Renvoie des probabilités et une confiance.
    - **Claude** (`claude-haiku-4-5`, `client.messages.parse` + Pydantic) : analyse des vidéos (sujets pondérés, `nature_video`), `sous_sujet` libre, `theme_propose`, regroupement hebdomadaire des sous-sujets, et reprise des commentaires où Jev a une confiance faible.
    - **Sujets d'actualité** : regroupement quotidien des vidéos par événement (Claude, sortie typée), voir `docs/donnees.md`.
 4. **Stockage** :
@@ -17,7 +17,7 @@ YouTube API ─▶ collecte ─▶ filtre politique ─▶ classification ─▶
    - Unicité : un commentaire n'existe qu'une fois, daté de sa dernière récupération (re-récupéré → écrit dans la partition du jour, ancienne copie supprimée). Auteur remplacé par `auteur_hash` (HMAC-SHA256 avec `RADAR_SEL`) avant toute écriture ; le pseudo n'est jamais lu.
    - Sauvegardes et versions : Supabase Storage ne versionne pas les objets et une suppression est définitive ; les sauvegardes de la base ne contiennent que les métadonnées des objets (nom = une date, taille), pas leur contenu. La purge à 30 jours s'applique donc aussi aux sauvegardes. Aucune autre copie du brut n'est faite (pas d'artefact GitHub, pas de cache).
    - État de collecte (Supabase, **sans texte**) : tables `videos` (format, durée, vues, pré-filtre et sa version, dates de collecte), `collecte_etat` (reprise du backfill), `collecte_runs` (quota consommé et volumes de chaque run).
-   - Classé (une ligne par commentaire, **sans texte**) : DuckDB. Thème, position, émotion, confiance, auteur hashé, date, vidéo. C'est ce qui est conservé sur toute la campagne.
+   - Classé (une ligne par commentaire, **sans texte**) : DuckDB. Thème, position, tonalité, hostilité, confiance, auteur hashé, date, vidéo. C'est ce qui est conservé sur toute la campagne.
    - Identifiant du commentaire : remplacé par un identifiant interne hashé (même sel que les auteurs) dans la table classée. À vérifier dans les règles YouTube avant de conserver l'ID d'origine au-delà de 30 jours.
    - Agrégats (sujet d'actu × jour × type de source, thème × jour × type de source, récupération politique) : recalculés chaque nuit, poussés dans Supabase (région UE) quand l'interface passe en ligne.
 5. **Interface** : lit uniquement les agrégats, plus un drilldown verbatims limité aux 30 derniers jours.
@@ -79,6 +79,6 @@ Existant à reprendre : `radar_youtube.py` (collecte + extraction Claude, à dé
 ## Budget indicatif (jusqu'au second tour)
 
 - YouTube : gratuit
-- Jev : ~17 $ par million de commentaires
+- Jev : ~50 $ par million de commentaires mesuré le 01/10 (≈ 1 200 tokens d'entrée par commentaire, surtout les définitions des catégories ; 0,042 $ par million de tokens, sortie gratuite)
 - Claude : l'essentiel du coût, piloté par le seuil de confiance de reprise
 - Total : ~200 $ (scénario moyen, ~2,5 M commentaires) à ~1 100 $ (large, ~16 M)
