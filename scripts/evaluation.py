@@ -51,6 +51,7 @@ from radar.evaluation import (
     classer_jev,
     classer_videos,
     comparaison_contexte,
+    controle_resumes,
     dernier_echantillon,
     desaccords,
     echantillonner,
@@ -181,14 +182,21 @@ def preparer(args: argparse.Namespace) -> int:
     return 0
 
 
-def _resumes(st: Stockage, jour: date, lignes: list[Ligne], claude: ClientClaude) -> list[Ligne]:
+def _resumes(
+    st: Stockage, jour: date, lignes: list[Ligne], claude: ClientClaude, refaire: bool
+) -> list[Ligne]:
     """Résumé de chaque vidéo de l'échantillon (calculé une fois, gardé dans le bucket).
 
     La nature déjà attribuée est conservée : seul le résumé est repris de la réponse.
+    Recalculé avec --reclasser, ou si les résumés gardés sont vides.
     """
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
-    if f"{jour.isoformat()}-resumes.json" in deja:
-        return avec_resumes(lignes, lire_json(st, jour, "resumes.json"))
+    if f"{jour.isoformat()}-resumes.json" in deja and not refaire:
+        gardes: dict[str, str] = lire_json(st, jour, "resumes.json")
+        if any(r.strip() for r in gardes.values()):
+            print(controle_resumes(gardes) + "\n")
+            return avec_resumes(lignes, gardes)
+        print("Résumés gardés tous vides : recalcul.")
     descriptions: dict[str, str] = {}
     for c in partitions(st, "videos").values():
         for v in lire_partition(st, c):
@@ -202,7 +210,7 @@ def _resumes(st: Stockage, jour: date, lignes: list[Ligne], claude: ClientClaude
     ecrire_json(st, jour, "resumes.json", resumes)
     sans_description = sum(1 for c in cands if not c.description.strip())
     print(
-        f"Résumés : {len(resumes)}/{len(cands)} vidéos, {sans_description} sans description, "
+        f"{controle_resumes(resumes)} {sans_description} vidéos sans description ; "
         f"coût Claude {claude.compteur.cout_usd:.4f} $.\n"
     )
     return avec_resumes(lignes, resumes)
@@ -220,7 +228,7 @@ def evaluer(args: argparse.Namespace) -> int:
     fichier_res, fichier_couts = f"resultats{suffixe}.parquet", f"couts{suffixe}.json"
     claude_client = ClientClaude(budget_usd=args.budget_claude)
     if args.contexte:
-        lignes = _resumes(st, jour, lignes, claude_client)
+        lignes = _resumes(st, jour, lignes, claude_client, args.reclasser)
     deja = {c.rsplit("/", 1)[-1] for c in st.lister("evaluation")}
     if f"{jour.isoformat()}-{fichier_res}" in deja and not args.reclasser:
         res = lire_resultats(st, jour, fichier_res)

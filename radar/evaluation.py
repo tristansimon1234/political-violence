@@ -261,6 +261,20 @@ def echantillonner(
     ]
 
 
+PEU_PRECIS = "Sujet peu précis"
+
+
+def controle_resumes(resumes: Mapping[str, str]) -> str:
+    """Contrôle des résumés en agrégats : jamais de texte."""
+    pleins = [r for r in resumes.values() if r.strip()]
+    mots = sum(len(r.split()) for r in pleins) / len(pleins) if pleins else 0.0
+    vagues = sum(1 for r in pleins if r.strip().startswith(PEU_PRECIS))
+    return (
+        f"Résumés : {len(pleins)} non vides sur {len(resumes)} vidéos, {mots:.0f} mots en "
+        f"moyenne, {vagues} « {PEU_PRECIS} »."
+    )
+
+
 def avec_resumes(lignes: Iterable[Ligne], resumes: Mapping[str, str]) -> list[Ligne]:
     return [replace(li, resume=resumes.get(li.video_id, li.resume)) for li in lignes]
 

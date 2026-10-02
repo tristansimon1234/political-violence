@@ -597,6 +597,7 @@ def test_script_preparer_evaluer(
     rapport_ = lancer("evaluer", "--contexte")
     assert faux_jev.envois and all(RESUME in e for e in faux_jev.envois)
     assert "Effet du résumé de la vidéo" in rapport_
+    assert "Résumés : 4 non vides sur 4 vidéos" in rapport_
     for interdit in (TEXTE, TITRE, CHAINE, AUTEUR_HASH, RESUME):
         assert interdit not in rapport_
     assert {
@@ -816,3 +817,18 @@ def test_jev_reprise_sur_coupure_reseau(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(llm.requests, "post", post_toujours_coupe)
     with pytest.raises(ReponseInvalide, match="réseau"):
         llm._post("u", {}, {})  # pyright: ignore[reportPrivateUsage]
+
+
+def test_resume_obligatoire_dans_la_reponse_de_claude() -> None:
+    """Un champ facultatif peut être omis par le modèle : le résumé doit être exigé."""
+    from radar.classification import ReponseNatureVideo
+    from radar.evaluation import controle_resumes
+
+    assert "resume" in ReponseNatureVideo.model_json_schema()["required"]
+    texte = controle_resumes(
+        {"v1": "La vidéo soutient que X.", "v2": "", "v3": "Sujet peu précis : Y"}
+    )
+    assert (
+        texte.startswith("Résumés : 2 non vides sur 3 vidéos") and "1 « Sujet peu précis »" in texte
+    )
+    assert "X" not in texte and "Y" not in texte

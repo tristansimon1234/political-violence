@@ -151,7 +151,7 @@ class ReponseCommentaires(BaseModel):
 
 class ReponseNatureVideo(BaseModel):
     nature_video: NatureVideo
-    resume: str = ""
+    resume: str  # obligatoire : un champ facultatif peut être omis par le modèle
 
 
 @dataclass(frozen=True)

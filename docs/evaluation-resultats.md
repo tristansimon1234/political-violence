@@ -125,7 +125,7 @@ Même échantillon et mêmes étiquettes ; résumé d'une phrase par vidéo ajou
 | Hostilité | 69 % | 70 % | 80 % | 81 % |
 | Tout juste | 23 % | 22 % | 26 % | 28 % |
 
-**Le résumé n'apporte rien de mesurable** (écarts dans la marge, plutôt en baisse sur politique et thème). Le manque de contexte n'est pas le facteur limitant, ou les descriptions sont trop pauvres pour le combler.
+~~Le résumé n'apporte rien de mesurable.~~ **Mesure non valable** : le champ `resume` était facultatif dans le format de réponse imposé à Claude, qui a pu l'omettre ; un résumé vide n'est pas transmis. Le compteur « 180/180 » comptait les vidéos traitées, pas les résumés remplis, et la position est restée identique au commentaire près (16/36 et 21/36). Corrigé (champ obligatoire, contrôle des résumés non vides dans le rapport) ; test à refaire avec `--contexte --reclasser`. Les parts agrégées ci-dessous restent valables comme mesure sans contexte effectif.
 
 Parts agrégées (100 commentaires étiquetés, avec résumé) :
 
