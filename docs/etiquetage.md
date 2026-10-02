@@ -34,6 +34,8 @@ Tirées du premier étiquetage, et données telles quelles aux modèles :
 4. **Tonalité** : une opinion exprimée calmement est `neutre`, même en désaccord.
 5. **Hostilité** : attaque, mépris ou accusation de mauvaise foi. La moquerie n'est hostile que si elle vise une personne, un groupe ou les autorités avec mépris (« les boomers… », 🤡) ; pas si c'est une ironie sur une situation (« Génial, merci pour ce cadeau »). Accuser un média, une personne ou une institution de mentir, manipuler ou truquer est hostile (« les chiffres sont truqués ») ; critiquer une mesure ne l'est pas (v6).
 
+Quand le titre ne suffit pas pour trancher, mettre `x` dans `doute` et `contexte insuffisant` dans `note` : le rapport mesurera l'effet du manque de contexte.
+
 Définitions complètes : celles des prompts (`radar/classification.py`, en anglais), publiées avec la méthodologie. Une ligne laissée vide est ignorée. Une valeur inconnue fait échouer `evaluer`, qui liste les lignes à corriger.
 
 ## Test synthétique (avant les vraies données)
