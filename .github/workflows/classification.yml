@@ -24,9 +24,14 @@ on:
       limite:
         description: "Facultatif : au plus N commentaires (essai)"
         default: ""
+      etape:
+        description: "tout : vidéos puis commentaires ; videos : décrire les vidéos seulement (peut tourner en même temps qu'un run « tout »)"
+        type: choice
+        options: [tout, videos]
+        default: tout
 
 concurrency:
-  group: classification
+  group: classification-${{ inputs.etape }}
   cancel-in-progress: false
 
 jobs:
@@ -54,6 +59,7 @@ jobs:
           [[ "$PARALLELES" =~ ^[0-9]+$ ]] || { echo "paralleles invalide"; exit 1; }
           ARGS=(--budget-jev "${{ inputs.budget_jev }}" --budget-claude "${{ inputs.budget_claude }}" --paralleles "$PARALLELES")
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          if [ "${{ inputs.etape }}" = "videos" ]; then ARGS+=(--videos-seulement); fi
           if [ -n "$LIMITE" ]; then
             [[ "$LIMITE" =~ ^[0-9]+$ ]] || { echo "limite invalide"; exit 1; }
             ARGS+=(--limite "$LIMITE")

@@ -277,6 +277,14 @@ def test_script_dry_run_puis_classement(
         assert script.main() == 0
         return capsys.readouterr().out
 
+    # Vidéos seulement : description sans aucun appel à Jev.
+    base_videos = FausseBase()
+    monkeypatch.setattr(script, "Supabase", lambda url, cle: base_videos)  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
+    sortie = lancer("--videos-seulement")
+    assert "Vidéos décrites (nature, sujets, thèses) : 2 / 2" in sortie and not faux_jev.envois
+    assert faux_claude.envois == 2 and {x["video_id"] for x in base_videos.sujets} == {"v1", "v2"}
+    faux_claude.envois = 0
+    monkeypatch.setattr(script, "Supabase", lambda url, cle: base)  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
     sortie = lancer("--dry-run")
     assert "à classer : 5" in sortie and "à décrire (nature et sujets) : 2, dont 1 sans" in sortie
     assert not faux_jev.envois and faux_claude.envois == 0 and not base.modifs

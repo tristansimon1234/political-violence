@@ -108,6 +108,14 @@ def main() -> int:
     p.add_argument("--budget-claude", type=float, default=5.0, help="dollars max pour Claude")
     p.add_argument("--paralleles", type=int, default=PARALLELES, help="appels Jev simultanés")
     p.add_argument("--limite", type=int, default=0, help="au plus N commentaires (essai)")
+    p.add_argument(
+        "--videos-seulement",
+        action="store_true",
+        help="décrire les vidéos (nature, sujets, thèses) sans classer les commentaires",
+    )
+    p.add_argument(
+        "--paralleles-claude", type=int, default=8, help="descriptions de vidéos simultanées"
+    )
     p.add_argument("--stockage-local", type=Path, help="dossier local au lieu des buckets")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
@@ -202,7 +210,7 @@ def main() -> int:
                 )
                 for v in a_decrire[i : i + LOT_NATURES]
             ]
-            reponses = classer_videos(claude, cands)
+            reponses = classer_videos(claude, cands, args.paralleles_claude)
             nouvelles: dict[str, NatureVideo] = {
                 v: r.nature_video for v, r in reponses.items() if not lignes_videos[v].get("nature")
             }
@@ -227,6 +235,14 @@ def main() -> int:
             decrites += len(reponses)
     except BudgetDepasse as e:
         print(f"\nDescription des vidéos : arrêt au budget Claude ({e}).")
+
+    if args.videos_seulement:
+        print(
+            f"\n## Bilan (vidéos seulement)\n\n- Vidéos décrites (nature, sujets, thèses) : "
+            f"{decrites} / {len(a_decrire)}, coût Claude {claude.compteur.cout_usd:.2f} USD\n"
+            f"- Durée : {(datetime.now(UTC) - debut).total_seconds() / 60:.0f} min"
+        )
+        return 0
 
     # 2. Commentaires (Jev) des vidéos dont la nature est connue.
     videos: dict[str, Video] = {}
