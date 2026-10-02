@@ -167,24 +167,59 @@ class FauxAnthropic:
 
     def parse(self, **kwargs: Any) -> _Reponse:
         self.envois += 1
-        return _Reponse(kwargs["output_format"](nature_video="opinion", resume="r"))
+        return _Reponse(
+            kwargs["output_format"](
+                nature_video="opinion",
+                resume="r",
+                sujets=[
+                    {"theme": "retraites", "sous_sujet": "réforme des retraites", "poids": 0.7},
+                    {"theme": "economie_emploi", "sous_sujet": "budget", "poids": 0.3},
+                ],
+            )
+        )
 
 
 class FausseBase:
     def __init__(self) -> None:
         self.videos = [
-            {"video_id": "v1", "source_id": "s1", "format": "long", "nature": None},
-            {"video_id": "v2", "source_id": "s1", "format": "short", "nature": "info_factuelle"},
+            {
+                "video_id": "v1",
+                "source_id": "s1",
+                "format": "long",
+                "nature": None,
+                "prefiltre": True,
+            },
+            {
+                "video_id": "v2",
+                "source_id": "s1",
+                "format": "short",
+                "nature": "info_factuelle",
+                "prefiltre": True,
+            },
         ]
         self.modifs: list[tuple[dict[str, str], dict[str, Any]]] = []
+        self.sujets: list[dict[str, Any]] = []
 
     def select(self, table: str, filtres: dict[str, str]) -> list[dict[str, Any]]:
         if table == "sources":
             return [{"id": "s1", "type": "media_natif", "nom": CHAINE}]
+        if table == "videos_sujets":
+            return [x for x in self.sujets if x["principal"]]
         return self.videos
 
     def modifier(self, table: str, filtres: dict[str, str], valeurs: dict[str, Any]) -> None:
         self.modifs.append((filtres, valeurs))
+        ids = filtres["video_id"].removeprefix("in.(").removesuffix(")").split(",")
+        for v in self.videos:
+            if v["video_id"] in ids:
+                v.update(valeurs)
+
+    def supprimer(self, table: str, filtres: dict[str, str]) -> None:
+        ids = filtres["video_id"].removeprefix("in.(").removesuffix(")").split(",")
+        self.sujets = [x for x in self.sujets if x["video_id"] not in ids]
+
+    def upsert(self, table: str, lignes: list[dict[str, Any]], conflit: str) -> None:
+        self.sujets.extend(lignes)
 
 
 def test_script_dry_run_puis_classement(
@@ -229,11 +264,19 @@ def test_script_dry_run_puis_classement(
         return capsys.readouterr().out
 
     sortie = lancer("--dry-run")
-    assert "à classer : 5" in sortie and "Vidéos sans nature : 1" in sortie
+    assert "à classer : 5" in sortie and "à décrire (nature et sujets) : 2, dont 1 sans" in sortie
     assert not faux_jev.envois and faux_claude.envois == 0 and not base.modifs
     sortie = lancer()
     assert "Commentaires classés : 5 / 5" in sortie and TEXTE not in sortie
-    assert faux_claude.envois == 1  # seule v1 n'avait pas de nature
+    assert faux_claude.envois == 2  # v1 et v2 décrites (sujets), nature écrite pour v1 seulement
+    assert {(x["video_id"], x["theme"], x["principal"]) for x in base.sujets} == {
+        ("v1", "retraites", True),
+        ("v1", "economie_emploi", False),
+        ("v2", "retraites", True),
+        ("v2", "economie_emploi", False),
+    }
+    assert sum(x["poids"] for x in base.sujets if x["video_id"] == "v1") == pytest.approx(1)
+    assert all(TITRE not in x["sous_sujet"] for x in base.sujets)
     assert base.modifs == [
         (
             {"video_id": "in.(v1)"},
@@ -241,4 +284,5 @@ def test_script_dry_run_puis_classement(
         )
     ]
     sortie = lancer()
-    assert "à classer : 0" in sortie
+    assert "à classer : 0" in sortie and "à décrire (nature et sujets) : 0" in sortie
+    assert faux_claude.envois == 2  # rien de redécrit

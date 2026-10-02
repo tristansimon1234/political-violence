@@ -312,7 +312,7 @@ def classer_videos(
                 SYSTEME_NATURE_VIDEO,
                 message_nature_video(c.titre, c.description, c.chaine),
                 ReponseNatureVideo,
-                max_tokens=200,
+                max_tokens=400,
             )
         except ReponseInvalide as e:
             log.warning("vidéo ignorée : %s", e)

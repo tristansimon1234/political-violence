@@ -152,9 +152,36 @@ class ReponseCommentaires(BaseModel):
     commentaires: list[ClassementCommentaire]
 
 
+class SujetVideo(BaseModel):
+    theme: Theme
+    sous_sujet: str
+    poids: float
+
+
 class ReponseNatureVideo(BaseModel):
     nature_video: NatureVideo
     resume: str  # obligatoire : un champ facultatif peut être omis par le modèle
+    sujets: list[SujetVideo]  # 1 à 3 thèmes de la vidéo (agenda), décision du 02/10/2026
+
+
+MAX_SUJETS_VIDEO = 3
+MAX_CARACTERES_SOUS_SUJET = 60
+
+
+def normaliser_sujets(sujets: Iterable[SujetVideo]) -> list[tuple[Theme, str, float]]:
+    """1 à 3 thèmes distincts, poids positifs ramenés à une somme de 1, le principal d'abord."""
+    vus: dict[Theme, tuple[str, float]] = {}
+    for s in sujets:
+        if s.theme not in vus and len(vus) < MAX_SUJETS_VIDEO:
+            vus[s.theme] = (
+                " ".join(s.sous_sujet.split())[:MAX_CARACTERES_SOUS_SUJET],
+                max(0.0, s.poids),
+            )
+    total = sum(p for _, p in vus.values())
+    resultat: list[tuple[Theme, str, float]] = [
+        (t, ss, p / total if total > 0 else 1 / len(vus)) for t, (ss, p) in vus.items()
+    ]
+    return sorted(resultat, key=lambda x: -x[2])
 
 
 @dataclass(frozen=True)
@@ -230,7 +257,8 @@ def message_commentaires(contexte: ContexteVideo, textes: list[str]) -> str:
     return "\n".join(lignes)
 
 
-SYSTEME_NATURE_VIDEO = """You describe a French YouTube video from its title, description and
+SYSTEME_NATURE_VIDEO = (
+    """You describe a French YouTube video from its title, description and
 channel, without judging its content.
 
 nature_video, the type of the video:
@@ -247,7 +275,19 @@ for a debate, the question debated ("Débat sur ...");
 for a factual video, the fact reported.
 Use only the title and the description; never add facts, never judge. Ignore links, sponsors
 and calls to subscribe. When the title and description are too vague, start with
-"Sujet peu précis :" and say what can be inferred."""
+"Sujet peu précis :" and say what can be inferred.
+
+sujets: 1 to 3 themes the video is about, most important first, with a weight (poids, from 0
+to 1, summing to 1) and a sous_sujet: a short neutral label in French, 2 to 6 words, naming
+the issue or event covered ("réforme des retraites", "dissolution de l'Assemblée", "prix de
+l'électricité"). No judgement, no adjective of opinion, no person's name unless the issue
+cannot be named otherwise. Themes:
+"""
+    + "\n".join(f"  - {cle}: {d}" for cle, d in DEFINITIONS_THEMES.items())
+    + """
+Use autre only when no other theme fits; a video with no political or public-interest
+content gets autre with the label "hors politique"."""
+)
 
 
 def message_nature_video(titre: str, description: str, chaine: str) -> str:

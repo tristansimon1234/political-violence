@@ -39,6 +39,12 @@ export type Filtres = {
 };
 
 const JOUR_MS = 86_400_000;
+
+// Début de la collecte (backfill à partir des vidéos publiées le 01/09/2026) : les rares
+// commentaires datés d'avant (anciennes vidéos) étireraient la période et fausseraient la
+// vélocité. Ils sont ignorés à l'affichage.
+export const DEBUT_COLLECTE = "2026-09-01";
+export const depuisCollecte = (lignes: Agregat[]) => lignes.filter((l) => l.jour >= DEBUT_COLLECTE);
 export const decaler = (jour: string, n: number) =>
   new Date(Date.parse(`${jour}T00:00:00Z`) + n * JOUR_MS).toISOString().slice(0, 10);
 
@@ -96,6 +102,7 @@ export function velocite(
   fin: string,
   premier: string,
 ): number | null {
+  if (!fin || !premier) return null;
   const debutBase = decaler(fin, -34);
   if (premier > debutBase) return null;
   const somme = (a: string, b: string) =>

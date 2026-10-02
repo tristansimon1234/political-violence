@@ -140,6 +140,7 @@ select {
   --r-orange: #c8621e;
   --r-orange-texte: #8a3c0f;
   --r-nuance: #c9c4b7;
+  --r-couverture: #9c978b;
   min-height: 100vh;
   background: var(--r-fond);
   color: var(--r-texte);
@@ -192,8 +193,9 @@ select {
 }
 
 .radar-bandeau {
-  margin: 0;
-  padding: 8px 24px;
+  margin: 8px 24px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
   background: var(--r-piste);
   font-size: 13px;
 }
@@ -251,17 +253,152 @@ select {
   min-height: 36px;
 }
 
-.radar-grille {
+.radar-trois {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 340px minmax(0, 1fr) 420px;
+  gap: 20px;
+  align-items: start;
   padding: 16px 24px 48px;
 }
 
-@media (max-width: 900px) {
-  .radar-grille {
+@media (max-width: 1240px) {
+  .radar-trois {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .radar-trois > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .radar-trois {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.radar-colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.radar-carte h3 {
+  margin: 20px 0 8px;
+  font-size: 15px;
+}
+
+.radar-badge,
+.radar-badge-gris {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.radar-badge {
+  background: #eef6ef;
+  color: #2c5e36;
+  border: 1px solid #9fc9a8;
+  margin-right: 6px;
+}
+
+.radar-badge-gris {
+  background: var(--r-piste);
+  color: var(--r-discret);
+  font-weight: 500;
+}
+
+.radar-mono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.radar-grand {
+  font-size: 22px;
+}
+
+.radar-hausse {
+  color: var(--r-orange-texte);
+}
+
+.radar-pastille {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--r-piste);
+  text-align: center;
+}
+
+.radar-pastille.forte {
+  background: #f6e3d5;
+  color: var(--r-orange-texte);
+  font-weight: 600;
+}
+
+.radar-definition {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--r-piste);
+  font-size: 12px;
+  color: var(--r-discret);
+}
+
+.radar-preparation {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px dashed var(--r-bord);
+  border-radius: 10px;
+}
+
+.radar-preparation-titre {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.radar-quadrants {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin-top: 12px;
+  aspect-ratio: 16 / 9;
+  background: var(--r-bord);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.radar-quadrants div {
+  background: var(--r-surface);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.radar-quadrants span {
+  color: var(--r-discret);
+  font-size: 12px;
+}
+
+.radar-rangee {
+  margin: 10px 0;
+}
+
+.radar-rangee.a-part {
+  border-top: 2px dashed var(--r-bord);
+  padding-top: 10px;
+}
+
+.radar-rangee-titre {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 13px;
 }
 
 .radar-carte {
@@ -291,7 +428,7 @@ select {
   width: 100%;
   min-height: 44px;
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) 84px 48px 56px 48px;
+  grid-template-columns: 20px minmax(0, 1fr) 52px 60px;
   gap: 8px;
   align-items: center;
   font: inherit;
@@ -327,9 +464,7 @@ select {
 }
 
 .radar-nom {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .radar-courbe {
@@ -387,11 +522,143 @@ select {
 
 @media (max-width: 600px) {
   .radar-theme {
-    grid-template-columns: 20px minmax(0, 1fr) 48px 56px;
+    grid-template-columns: 20px minmax(0, 1fr) 64px;
   }
 
-  .radar-courbe,
-  .radar-velocite {
+  .radar-courbe {
     display: none;
   }
 }
+
+.radar-agenda,
+.radar-sous-sujets,
+.radar-videos {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.radar-agenda-ligne {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 84px;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 4px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid var(--r-piste);
+  background: none;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.radar-agenda-ligne:hover {
+  background: var(--r-piste);
+}
+
+.radar-agenda-nom {
+  display: flex;
+  flex-direction: column;
+}
+
+.radar-ecart {
+  font-size: 12px;
+}
+
+.radar-ecart.plus {
+  color: var(--r-orange-texte);
+}
+
+.radar-ecart.moins {
+  color: var(--r-discret);
+}
+
+.radar-agenda-barres {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.radar-agenda-barres span {
+  display: block;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.radar-agenda-barres .couverture {
+  background: var(--r-couverture);
+}
+
+.radar-agenda-barres .reactions {
+  background: var(--r-orange);
+}
+
+.radar-agenda-chiffres {
+  font-size: 12px;
+  text-align: right;
+}
+
+.radar-nuage {
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  background: var(--r-fond);
+  border-radius: 10px;
+}
+
+.radar-nuage .axe {
+  stroke: var(--r-bord);
+  stroke-dasharray: 4 4;
+}
+
+.radar-nuage .quadrant {
+  fill: var(--r-discret);
+  font-size: 11px;
+}
+
+.radar-nuage .point {
+  cursor: pointer;
+}
+
+.radar-nuage .point circle {
+  fill: var(--r-bleu);
+  fill-opacity: 0.25;
+  stroke: var(--r-bleu);
+}
+
+.radar-nuage .point.actif circle {
+  fill: var(--r-orange);
+  fill-opacity: 0.45;
+  stroke: var(--r-orange-texte);
+}
+
+.radar-nuage .point text {
+  fill: var(--r-texte);
+  font-size: 11px;
+}
+
+.radar-sous-sujets li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--r-piste);
+  font-size: 13px;
+}
+
+.radar-videos li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--r-piste);
+  font-size: 13px;
+}
+
+.radar-videos a {
+  color: var(--r-bleu);
+}
+

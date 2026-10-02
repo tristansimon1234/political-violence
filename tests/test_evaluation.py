@@ -496,7 +496,13 @@ class FauxAnthropicNature(FauxAnthropic):
     def parse(self, **kwargs: Any) -> _Reponse:
         if kwargs["output_format"].__name__ == "ReponseNatureVideo":
             self.envois.append(kwargs["messages"][0]["content"])
-            return _Reponse(kwargs["output_format"](nature_video="opinion", resume=RESUME))
+            return _Reponse(
+                kwargs["output_format"](
+                    nature_video="opinion",
+                    resume=RESUME,
+                    sujets=[{"theme": "retraites", "sous_sujet": "réforme", "poids": 1.0}],
+                )
+            )
         return super().parse(**kwargs)
 
 
@@ -985,3 +991,19 @@ def test_series_d_echantillons_separees(tmp_path: Path) -> None:
     assert commentaires_deja_tires(st) == {li.comment_id for li in lignes + autres}
     # Purge à 30 jours : toutes les séries partent avec la date.
     assert len(purger(st, date(2026, 11, 2))) >= 2 and dernier_echantillon(st, 2) is None
+
+
+def test_sujets_video_normalises() -> None:
+    from radar.classification import SujetVideo, normaliser_sujets
+
+    r = normaliser_sujets(
+        [
+            SujetVideo(theme="retraites", sous_sujet="  réforme   des retraites ", poids=2),
+            SujetVideo(theme="retraites", sous_sujet="doublon", poids=5),
+            SujetVideo(theme="sante", sous_sujet="hôpital", poids=1),
+            SujetVideo(theme="logement", sous_sujet="loyers", poids=1),
+            SujetVideo(theme="education", sous_sujet="en trop", poids=1),
+        ]
+    )
+    assert [t for t, _, _ in r] == ["retraites", "sante", "logement"]  # 3 au plus, sans doublon
+    assert r[0][1] == "réforme des retraites" and sum(p for _, _, p in r) == pytest.approx(1)

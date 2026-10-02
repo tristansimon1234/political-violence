@@ -28,10 +28,10 @@ from radar.classement import (
     deja_classes,
     id_commentaire,
 )
-from radar.classification import en_nature
+from radar.classification import en_nature, normaliser_sujets
 from radar.evaluation import Candidate, classer_videos
 from radar.llm import BudgetDepasse, ClientClaude, ClientJev
-from radar.schemas import NatureVideo
+from radar.schemas import VERSION_TAXONOMIE, NatureVideo, Theme
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.supabase_rest import Supabase
 
@@ -65,6 +65,33 @@ def _ecrire_natures(base: Supabase, natures: dict[str, NatureVideo], jour: date)
                 {"video_id": f"in.({lot})"},
                 {"nature": n, "nature_classee_le": jour.isoformat()},
             )
+
+
+def _ecrire_sujets(
+    base: Supabase, sujets: dict[str, list[tuple[Theme, str, float]]], jour: date
+) -> None:
+    """Remplace les sujets des vidéos décrites (une ligne par vidéo et par thème)."""
+    vids = sorted(sujets)
+    for i in range(0, len(vids), LOT_NATURES):
+        lot = vids[i : i + LOT_NATURES]
+        base.supprimer("videos_sujets", {"video_id": f"in.({','.join(lot)})"})
+        base.upsert(
+            "videos_sujets",
+            [
+                {
+                    "video_id": v,
+                    "theme": theme,
+                    "sous_sujet": sous_sujet,
+                    "poids": round(poids, 4),
+                    "principal": rang == 0,
+                    "version_taxonomie": VERSION_TAXONOMIE,
+                    "classe_le": jour.isoformat(),
+                }
+                for v in lot
+                for rang, (theme, sous_sujet, poids) in enumerate(sujets[v])
+            ],
+            "video_id,theme",
+        )
 
 
 def main() -> int:
@@ -102,11 +129,22 @@ def main() -> int:
     if args.limite:
         a_classer = a_classer[: args.limite]
     vids = {str(x["video_id"]) for x in a_classer}
-    sans_nature = sorted(
-        v
-        for v in vids
-        if v in lignes_videos and not lignes_videos[v].get("nature") and v in bruts_videos
+    # Vidéos à décrire (nature et sujets) : toutes les vidéos politiques du brut, commentées ou
+    # non (l'agenda compte aussi les vidéos sans réaction), sans nature ou sans sujets.
+    avec_sujets = {
+        str(v["video_id"]) for v in base.select("videos_sujets", {"principal": "eq.true"})
+    }
+    candidates_videos = (
+        vids if args.limite else {v for v, ligne in lignes_videos.items() if ligne.get("prefiltre")}
     )
+    a_decrire = sorted(
+        v
+        for v in candidates_videos
+        if v in lignes_videos
+        and v in bruts_videos
+        and (not lignes_videos[v].get("nature") or v not in avec_sujets)
+    )
+    sans_nature = [v for v in a_decrire if not lignes_videos[v].get("nature")]
     inconnues = sorted(v for v in vids if v not in lignes_videos or v not in bruts_videos)
 
     print("# Classification en masse" + (" (dry-run)" if args.dry_run else ""))
@@ -115,26 +153,28 @@ def main() -> int:
         f"à classer : {len(a_classer)} sous {len(vids)} vidéos."
     )
     print(
-        f"Vidéos sans nature : {len(sans_nature)} ; "
-        f"vidéos introuvables (ignorées) : {len(inconnues)}."
+        f"Vidéos à décrire (nature et sujets) : {len(a_decrire)}, dont {len(sans_nature)} sans "
+        f"nature ; vidéos introuvables (ignorées) : {len(inconnues)}."
     )
     if args.dry_run:
         print(
             f"\nCoût estimé : Jev ~{len(a_classer) * JEV_USD_PAR_1000 / 1000:.2f} USD, "
-            f"Claude (nature) ~{len(sans_nature) * CLAUDE_USD_PAR_VIDEO:.2f} USD. "
+            f"Claude (vidéos) ~{len(a_decrire) * CLAUDE_USD_PAR_VIDEO:.2f} USD. "
             "Rien n'a été envoyé."
         )
         return 0
 
-    # 1. Nature des vidéos (Claude), écrite dans Supabase au fur et à mesure.
+    # 1. Nature et sujets des vidéos (Claude), écrits dans Supabase au fur et à mesure. Une
+    # nature déjà attribuée n'est jamais changée (les commentaires classés en dépendent).
     claude = ClientClaude(budget_usd=args.budget_claude)
     natures: dict[str, NatureVideo] = {
         v: en_nature(str(lignes_videos[v]["nature"]))
         for v in vids
         if v in lignes_videos and lignes_videos[v].get("nature")
     }
+    decrites = 0
     try:
-        for i in range(0, len(sans_nature), LOT_NATURES):
+        for i in range(0, len(a_decrire), LOT_NATURES):
             cands = [
                 Candidate(
                     v,
@@ -144,15 +184,19 @@ def main() -> int:
                     str(bruts_videos[v].get("titre") or ""),
                     str(bruts_videos[v].get("description") or ""),
                 )
-                for v in sans_nature[i : i + LOT_NATURES]
+                for v in a_decrire[i : i + LOT_NATURES]
             ]
+            reponses = classer_videos(claude, cands)
             nouvelles: dict[str, NatureVideo] = {
-                v: r.nature_video for v, r in classer_videos(claude, cands).items()
+                v: r.nature_video for v, r in reponses.items() if not lignes_videos[v].get("nature")
             }
             _ecrire_natures(base, nouvelles, aujourdhui)
             natures.update(nouvelles)
+            sujets = {v: normaliser_sujets(r.sujets) for v, r in reponses.items() if r.sujets}
+            _ecrire_sujets(base, sujets, aujourdhui)
+            decrites += len(reponses)
     except BudgetDepasse as e:
-        print(f"\nNature des vidéos : arrêt au budget Claude ({e}).")
+        print(f"\nDescription des vidéos : arrêt au budget Claude ({e}).")
 
     # 2. Commentaires (Jev) des vidéos dont la nature est connue.
     videos: dict[str, Video] = {}
@@ -191,7 +235,7 @@ def main() -> int:
     )
     duree = (datetime.now(UTC) - debut).total_seconds() / 60
     print(
-        f"\n## Bilan\n\n- Natures classées : {len(natures)} vidéos, coût Claude "
+        f"\n## Bilan\n\n- Vidéos décrites (nature et sujets) : {decrites}, coût Claude "
         f"{claude.compteur.cout_usd:.2f} USD\n- Commentaires classés : {bilan.classes} / "
         f"{bilan.a_classer} (vidéos de nature connue), erreurs {bilan.erreurs}\n- Coût Jev : "
         f"{bilan.cout_usd:.2f} USD "
