@@ -16,7 +16,7 @@
 **À décider** :
 - Page publique "Le panel" listant les chaînes avec type et critère d'inclusion.
 - ~~Couverture des commentaires~~ : tranché le 02/10/2026, tout prendre (lecture chronologique incrémentale).
-- Classification : Jev seul, cascade Jev → Claude (quel seuil) ou Claude seul, après le test de la semaine 1 et l'arbitrage (`docs/evaluation-resultats.md`).
+- ~~Classification~~ : tranché le 02/10/2026, Jev seul pour toutes les dimensions (à confirmer sur le second échantillon, série 2).
 - ~~Émotion~~ : tranché le 01/10/2026, tonalité + hostilité (taxonomie v5).
 - Taxonomie des thèmes (remarques de Tristan, 01/10) : justice rangée dans `securite`, Europe dans `international_defense`, pas de thème « finances publiques » (dette rangée dans `economie_emploi`). À trancher avant le test de la semaine 1 : changer la liste casse la comparaison avec les tests déjà faits.
 - Contexte vidéo (soulevé par Tristan le 02/10) : résumé neutre d'une phrase par vidéo, rédigé par Claude, testé le 02/10 (180 résumés non vides) : **aucun gain mesurable**. À trancher : le retirer des appels aux modèles, le garder éventuellement dans le fichier d'étiquetage. Sous-titres inaccessibles par l'API pour une chaîne tierce.
