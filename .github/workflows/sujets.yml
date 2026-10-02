@@ -1,0 +1,53 @@
+name: Sujets
+
+# Sujets d'actualité (étape 6) : regroupe les vidéos politiques par événement (Claude), tables
+# `sujets` et `sujets_videos`. Lancement manuel, après l'étape `videos` de la classification.
+# Relancer ne renvoie que les vidéos non rattachées. Arrêt propre au budget.
+# Secrets : SUPABASE_SECRET_KEY, ANTHROPIC_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run : vidéos à rattacher et coût estimé, aucun appel"
+        type: boolean
+        default: true
+      budget_claude:
+        description: "Dollars max pour Claude"
+        default: "3"
+      depuis:
+        description: "Premier jour traité (AAAA-MM-JJ)"
+        default: "2026-09-01"
+
+concurrency:
+  group: sujets
+  cancel-in-progress: false
+
+jobs:
+  sujets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Sujets
+        env:
+          DEPUIS: ${{ inputs.depuis }}
+          BUDGET: ${{ inputs.budget_claude }}
+        run: |
+          set -o pipefail
+          [[ "$DEPUIS" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "depuis invalide"; exit 1; }
+          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "budget invalide"; exit 1; }
+          ARGS=(--budget-claude "$BUDGET" --depuis "$DEPUIS")
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          python scripts/sujets.py "${ARGS[@]}" | tee rapport.md
+      - name: Résumé
+        if: always()
+        run: cat rapport.md >> "$GITHUB_STEP_SUMMARY" || true

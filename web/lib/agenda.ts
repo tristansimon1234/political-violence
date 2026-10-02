@@ -21,7 +21,11 @@ const PARIS = new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris" });
 export const jourParis = (iso: string) => PARIS.format(new Date(iso)); // AAAA-MM-JJ
 
 /** Sujets des vidéos publiées dans la fenêtre, sous les types et le format choisis. */
-export function sujetsFiltres(sujets: SujetVideo[], f: Filtres, w: Fenetre): SujetVideo[] {
+export function sujetsFiltres(
+  sujets: SujetVideo[],
+  f: Filtres,
+  w: Fenetre,
+): SujetVideo[] {
   return sujets.filter((s) => {
     const v = s.videos;
     if (!v || !v.sources) return false;
@@ -49,15 +53,27 @@ export function agendaParTheme(sujets: SujetVideo[]): Map<Theme, Agenda> {
   return m;
 }
 
-export type SousSujet = { libelle: string; commentaires: number; videos: number };
+export type SousSujet = {
+  libelle: string;
+  commentaires: number;
+  videos: number;
+};
 
 /** Sous-sujets d'un thème, classés par commentaires annoncés par YouTube (pondérés). */
-export function sousSujets(sujets: SujetVideo[], theme: Theme, n = 5): SousSujet[] {
+export function sousSujets(
+  sujets: SujetVideo[],
+  theme: Theme,
+  n = 5,
+): SousSujet[] {
   const m = new Map<string, SousSujet>();
   for (const s of sujets) {
     if (s.theme !== theme) continue;
     const cle = s.sous_sujet.toLowerCase();
-    const x = m.get(cle) ?? { libelle: s.sous_sujet, commentaires: 0, videos: 0 };
+    const x = m.get(cle) ?? {
+      libelle: s.sous_sujet,
+      commentaires: 0,
+      videos: 0,
+    };
     x.commentaires += (s.videos?.nb_commentaires ?? 0) * s.poids;
     x.videos += 1;
     m.set(cle, x);
@@ -69,12 +85,17 @@ export function sousSujets(sujets: SujetVideo[], theme: Theme, n = 5): SousSujet
 }
 
 /** Vidéos du thème qui font le plus réagir (commentaires annoncés × poids du thème). */
-export function videosQuiReagissent(sujets: SujetVideo[], theme: Theme, n = 5): SujetVideo[] {
+export function videosQuiReagissent(
+  sujets: SujetVideo[],
+  theme: Theme,
+  n = 5,
+): SujetVideo[] {
   return sujets
     .filter((s) => s.theme === theme)
     .sort(
       (a, b) =>
-        (b.videos?.nb_commentaires ?? 0) * b.poids - (a.videos?.nb_commentaires ?? 0) * a.poids,
+        (b.videos?.nb_commentaires ?? 0) * b.poids -
+        (a.videos?.nb_commentaires ?? 0) * a.poids,
     )
     .slice(0, n);
 }
@@ -130,4 +151,73 @@ export function videosDebattues(
     });
   }
   return resultat;
+}
+
+// --- Sujets d'actualité (étape 6) : vidéos regroupées par événement ---
+
+export type Rattachement = {
+  video_id: string;
+  sujet_id: string | null;
+  sujets: { titre: string } | null;
+};
+
+export type SujetActu = {
+  id: string;
+  titre: string;
+  videos: SujetVideo[]; // vidéos du thème, les plus commentées d'abord
+  chaines: number;
+  commentaires: number; // commentaires annoncés × poids du thème
+};
+
+export const MIN_VIDEOS_SUJET = 3;
+export const MIN_CHAINES_SUJET = 2;
+
+/**
+ * Sujets d'actualité d'un thème, classés par commentaires annoncés. Un sujet n'apparaît qu'à
+ * partir de 3 vidéos de 2 chaînes parmi les vidéos affichées (période, types, format).
+ */
+export function sujetsActu(
+  sujets: SujetVideo[],
+  theme: Theme,
+  rattachements: Map<string, Rattachement>,
+  n = 5,
+): SujetActu[] {
+  const videos = new Map<string, Set<string>>();
+  const chaines = new Map<string, Set<string>>();
+  for (const s of sujets) {
+    const id = rattachements.get(s.video_id)?.sujet_id;
+    if (!id) continue;
+    videos.set(id, (videos.get(id) ?? new Set()).add(s.video_id));
+    chaines.set(
+      id,
+      (chaines.get(id) ?? new Set()).add(s.videos?.sources?.nom ?? ""),
+    );
+  }
+  const m = new Map<string, SujetActu>();
+  for (const s of sujets) {
+    if (s.theme !== theme) continue;
+    const r = rattachements.get(s.video_id);
+    const id = r?.sujet_id;
+    if (!id || !r.sujets) continue;
+    if ((videos.get(id)?.size ?? 0) < MIN_VIDEOS_SUJET) continue;
+    if ((chaines.get(id)?.size ?? 0) < MIN_CHAINES_SUJET) continue;
+    const x = m.get(id) ?? {
+      id,
+      titre: r.sujets.titre,
+      videos: [],
+      chaines: chaines.get(id)?.size ?? 0,
+      commentaires: 0,
+    };
+    x.videos.push(s);
+    x.commentaires += (s.videos?.nb_commentaires ?? 0) * s.poids;
+    m.set(id, x);
+  }
+  for (const x of m.values())
+    x.videos.sort(
+      (a, b) =>
+        (b.videos?.nb_commentaires ?? 0) - (a.videos?.nb_commentaires ?? 0),
+    );
+  return [...m.values()]
+    .sort((a, b) => b.commentaires - a.commentaires)
+    .slice(0, n);
 }
