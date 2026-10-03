@@ -47,7 +47,7 @@ BUCKET_BRUT = "radar-brut"
 BUCKET_CLASSE = "radar-classe"
 # Coûts mesurés le 02/10/2026 (docs/evaluation-resultats.md), pour l'estimation du dry-run.
 JEV_USD_PAR_1000 = 0.065
-CLAUDE_USD_PAR_VIDEO = 0.001
+CLAUDE_USD_PAR_VIDEO = 0.0025  # mesuré le 02/10 avec sujets et thèse : 5,02 USD pour 2 100 vidéos
 LOT_NATURES = 100
 
 
