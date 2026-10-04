@@ -2,6 +2,8 @@
 
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
+import Link from "next/link";
+
 import { AccesAdmin } from "@/lib/AccesAdmin";
 import {
   type Agenda,
@@ -38,7 +40,6 @@ import {
   fois,
   pc,
 } from "@/lib/ui";
-import { supabase } from "@/lib/supabase";
 import {
   DEFINITIONS_THEMES,
   LIBELLES_THEMES,
@@ -71,18 +72,8 @@ export default function Radar() {
   );
 }
 
-async function chargerAgregats(): Promise<Agregat[]> {
-  const lignes: Agregat[] = [];
-  for (let i = 0; ; i += 1000) {
-    const { data, error } = await supabase()
-      .from("agregats_themes")
-      .select("*")
-      .order("jour")
-      .range(i, i + 999);
-    if (error) throw new Error(error.message);
-    lignes.push(...(data as Agregat[]));
-    if (!data || data.length < 1000) return lignes;
-  }
+function chargerAgregats(): Promise<Agregat[]> {
+  return chargerTout<Agregat>("agregats_themes", "*");
 }
 
 function VueEnsemble() {
@@ -211,7 +202,7 @@ function VueEnsemble() {
           </p>
         </div>
         <nav aria-label="Écrans">
-          <a href="/radar/semaine">Cette semaine</a>
+          <Link href="/radar/semaine">Cette semaine</Link>
           <span className="radar-nav-actif">Vue d'ensemble</span>
           <a href="/admin">Admin</a>
         </nav>

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import Link from "next/link";
+
 import { AccesAdmin } from "@/lib/AccesAdmin";
 import {
   type ReactionVideo,
@@ -119,7 +121,7 @@ function Ecran() {
         </div>
         <nav aria-label="Écrans">
           <span className="radar-nav-actif">Cette semaine</span>
-          <a href="/radar">Vue d'ensemble</a>
+          <Link href="/radar">Vue d'ensemble</Link>
           <a href="/admin">Admin</a>
         </nav>
       </header>
