@@ -36,7 +36,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 - Jamais `search.list` (100 unités). Passer par la playlist des uploads (1 unité).
 - Quota : 10 000 unités/jour, remise à zéro à 9 h (Paris), non achetable (extension seulement après audit YouTube). Cible : ~3 000/jour en régime normal (collecte quotidienne, budget de run 4 000), jusqu'à ~9 000/jour pendant un backfill, jamais plus de 10 000. Logger la consommation à chaque run.
 - Un seul projet Google Cloud. Multiplier les projets pour cumuler du quota est interdit.
-- Données brutes de l'API (texte des commentaires, titres, descriptions) : 30 jours maximum, puis suppression ou rafraîchissement. Les commentaires supprimés sur YouTube disparaissent chez nous.
+- Données brutes de l'API (texte des commentaires, titres, descriptions) : la purge n'est plus automatique ; elle est lancée à la main par Tristan (workflow « Purge du brut », décision du 04/10/2026, gestion RGPD et AIPD sous sa responsabilité). La règle YouTube reste 30 jours maximum : écart à traiter avant la demande d'audit. Les commentaires supprimés sur YouTube disparaissent chez nous.
 - Métriques dérivées (thèmes, sentiment, vélocité) : rien de public ni de commercial avant l'acceptation du cas d'usage par YouTube.
 - Pas de scraping hors API.
 
@@ -70,7 +70,7 @@ accepté le cas d'usage "métriques dérivées" (voir Règles).
 
 **Invariants testés** (tests automatiques qui doivent échouer si la règle est cassée)
 - Aucun texte de commentaire dans la table classée, les agrégats ou les exports.
-- Aucune partition brute de plus de 30 jours après la purge.
+- Aucune partition brute de plus de N jours après une purge à N jours ; la collecte ne purge jamais.
 - Aucun pseudo ni identifiant d'auteur en clair ; hash stable avec le même sel.
 - "Où ça réagit" et les réactions du public n'incluent jamais les chaînes politiques.
 - Un commentaire multi-thèmes compte pour 1/n dans chacun : les totaux par thème égalent le total des commentaires.

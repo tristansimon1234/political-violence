@@ -20,7 +20,7 @@ from typing import Any, Literal, Protocol
 
 from radar.anonymisation import hash_auteur
 from radar.prefiltre import MotsCles
-from radar.storage import Stockage, enregistrer, purger
+from radar.storage import Stockage, enregistrer
 from radar.youtube import QuotaDepasse, VideoDetail, VideoIndisponible, YouTube, format_video
 
 log = logging.getLogger(__name__)
@@ -316,9 +316,6 @@ def collecter(
             ecrire()
         raise
 
+    # Pas de purge ici : elle est lancée à la main (scripts/purge.py, décision du 04/10/2026).
     ecrire()
-    assert stockage is not None
-    supprimees = purger(stockage, aujourdhui)
-    if supprimees:
-        log.info("purge 30 jours : %s", ", ".join(supprimees))
     return bilan
