@@ -1040,6 +1040,8 @@ select {
 }
 
 .radar-choix-chaines-liste input[type="search"] {
+  background: var(--r-fond);
+  color: var(--r-texte);
   width: 100%;
   margin-bottom: 6px;
   padding: 6px 8px;

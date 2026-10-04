@@ -245,7 +245,9 @@ function VueEnsemble() {
             ? "Chargement des agrégats par chaîne…"
             : erreurChaines
               ? `Agrégats par chaîne indisponibles (migration 14 et workflow « Agrégats ») : ${erreurChaines}`
-              : "Aucun commentaire classé pour ces chaînes."}
+              : parChaine && parChaine.length === 0
+                ? "Les agrégats par chaîne ne sont pas encore calculés : lancer le workflow « Agrégats » (version avec le filtre par chaîne)."
+                : "Aucun commentaire classé pour ces chaînes sur la période."}
         </p>
       )}
 
