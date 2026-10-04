@@ -2,7 +2,7 @@
 
 // Drill-down : les commentaires classés d'une vidéo (30 derniers jours), lus dans le bucket
 // privé `radar-drilldown` (admin seulement). Texte non modifié, sans pseudo ni auteur.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 import {
@@ -35,22 +35,39 @@ async function charger(videoId: string): Promise<Commentaire[]> {
 }
 
 export function CommentairesVideo({ videoId }: { videoId: string }) {
-  const [etat, setEtat] = useState<
-    "ferme" | "chargement" | "ouvert" | "absent"
-  >("ferme");
+  const [etat, setEtat] = useState<"chargement" | "ouvert" | "absent">(
+    "chargement",
+  );
   const [liste, setListe] = useState<Commentaire[]>([]);
   const [filtre, setFiltre] = useState<"tous" | "hostiles" | Position>("tous");
 
-  const basculer = () => {
-    if (etat === "ouvert" || etat === "absent") return setEtat("ferme");
-    setEtat("chargement");
+  useEffect(() => {
+    let actif = true;
     charger(videoId)
       .then((l) => {
+        if (!actif) return;
         setListe(l);
         setEtat("ouvert");
       })
-      .catch(() => setEtat("absent"));
-  };
+      .catch(() => actif && setEtat("absent"));
+    return () => {
+      actif = false;
+    };
+  }, [videoId]);
+
+  if (etat === "chargement")
+    return <p className="discret petit-texte">Chargement des commentaires…</p>;
+  if (etat === "absent")
+    return (
+      <p className="discret petit-texte">
+        Pas de commentaires classés des 30 derniers jours pour cette vidéo (ou
+        drill-down pas encore calculé : lancer « Agrégats »).
+      </p>
+    );
+  const compte = (f: "tous" | "hostiles" | Position) =>
+    liste.filter((c) =>
+      f === "tous" ? true : f === "hostiles" ? c.hostile : c.position === f,
+    ).length;
   const visibles = liste.filter((c) =>
     filtre === "tous"
       ? true
@@ -60,88 +77,75 @@ export function CommentairesVideo({ videoId }: { videoId: string }) {
   );
   return (
     <div className="radar-drilldown">
-      <button
-        className="radar-lien petit-texte"
-        onClick={basculer}
-        aria-expanded={etat === "ouvert"}
+      <div
+        className="ve-classement"
+        role="group"
+        aria-label="Filtrer les commentaires"
       >
-        {etat === "ouvert"
-          ? "Masquer les commentaires"
-          : etat === "chargement"
-            ? "Chargement…"
-            : "Voir les commentaires classés"}
-      </button>
-      {etat === "absent" && (
-        <p className="discret petit-texte">
-          Pas de commentaires classés des 30 derniers jours pour cette vidéo (ou
-          drill-down pas encore calculé : lancer « Agrégats »).
-        </p>
+        {(
+          [
+            "tous",
+            "accord_video",
+            "nuance",
+            "desaccord_video",
+            "hors_sujet",
+            "hostiles",
+          ] as const
+        ).map((f) => (
+          <button
+            key={f}
+            className={filtre === f ? "actif" : ""}
+            aria-pressed={filtre === f}
+            onClick={() => setFiltre(f)}
+          >
+            {f === "tous"
+              ? "Tous"
+              : f === "hostiles"
+                ? "Hostiles"
+                : f === "accord_video"
+                  ? "Accord"
+                  : f === "desaccord_video"
+                    ? "Désaccord"
+                    : LIBELLES_POSITIONS[f]}{" "}
+            <span className="ve-compte">{compte(f)}</span>
+          </button>
+        ))}
+      </div>
+      {visibles.length === 0 && (
+        <p className="discret petit-texte">Aucun commentaire pour ce filtre.</p>
       )}
-      {etat === "ouvert" && (
-        <>
-          <p className="radar-drilldown-filtres">
-            {(
-              [
-                "tous",
-                "accord_video",
-                "nuance",
-                "desaccord_video",
-                "hors_sujet",
-                "hostiles",
-              ] as const
-            ).map((f) => (
-              <button
-                key={f}
-                className={filtre === f ? "segment actif" : "segment"}
-                aria-pressed={filtre === f}
-                onClick={() => setFiltre(f)}
-              >
-                {f === "tous"
-                  ? `Tous (${liste.length})`
-                  : f === "hostiles"
-                    ? "Hostiles"
-                    : LIBELLES_POSITIONS[f]}
-              </button>
-            ))}
-          </p>
-          <ol className="radar-commentaires">
-            {visibles.map((c, i) => (
-              <li key={i}>
-                <p className="radar-commentaire-texte">{c.texte}</p>
-                <p className="radar-commentaire-etiquettes">
-                  <span>{dateCourte(c.publie_at.slice(0, 10))}</span>
-                  {!c.politique && (
-                    <span className="radar-puce">Non politique</span>
-                  )}
-                  {c.themes.map((t) => (
-                    <span key={t} className="radar-puce">
-                      {LIBELLES_THEMES[t]}
-                    </span>
-                  ))}
-                  {c.position && (
-                    <span className="radar-puce">
-                      {LIBELLES_POSITIONS[c.position]}
-                    </span>
-                  )}
-                  <span className="radar-puce">
-                    {LIBELLES_TONALITES[c.tonalite]}
-                  </span>
-                  {c.hostile && (
-                    <span className="radar-puce radar-puce-hostile">
-                      Hostile
-                    </span>
-                  )}
-                </p>
-              </li>
-            ))}
-          </ol>
-          <p className="discret petit-texte">
-            Texte non modifié, sans pseudo. Étiquettes attribuées par le modèle
-            (Jev) : à vérifier, pas une vérité. Au plus 150 commentaires classés
-            par vidéo.
-          </p>
-        </>
-      )}
+      <ol className="radar-commentaires">
+        {visibles.map((c, i) => (
+          <li key={i}>
+            <p className="radar-commentaire-texte">{c.texte}</p>
+            <p className="radar-commentaire-etiquettes">
+              <span>{dateCourte(c.publie_at.slice(0, 10))}</span>
+              {!c.politique && <span className="radar-puce">Non politique</span>}
+              {c.themes.map((t) => (
+                <span key={t} className="radar-puce">
+                  {LIBELLES_THEMES[t]}
+                </span>
+              ))}
+              {c.position && (
+                <span className="radar-puce">
+                  {LIBELLES_POSITIONS[c.position]}
+                </span>
+              )}
+              <span className="radar-puce">
+                {LIBELLES_TONALITES[c.tonalite]}
+              </span>
+              {c.hostile && (
+                <span className="radar-puce radar-puce-hostile">Hostile</span>
+              )}
+            </p>
+          </li>
+        ))}
+      </ol>
+      <p className="discret petit-texte">
+        Texte non modifié, sans pseudo. Étiquettes attribuées par le modèle
+        (Jev) : à vérifier, pas une vérité. Au plus 150 commentaires classés par
+        vidéo.
+      </p>
     </div>
   );
 }
