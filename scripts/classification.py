@@ -47,7 +47,7 @@ BUCKET_BRUT = "radar-brut"
 BUCKET_CLASSE = "radar-classe"
 # Coûts mesurés le 02/10/2026 (docs/evaluation-resultats.md), pour l'estimation du dry-run.
 JEV_USD_PAR_1000 = 0.065
-CLAUDE_USD_PAR_VIDEO = 0.001
+CLAUDE_USD_PAR_VIDEO = 0.0025  # mesuré le 02/10 avec sujets et thèse : 5,02 USD pour 2 100 vidéos
 LOT_NATURES = 100
 
 
@@ -128,12 +128,10 @@ def main() -> int:
     sources = {str(s["id"]): s for s in base.select("sources", {})}
     lignes_videos = {str(v["video_id"]): v for v in base.select("videos", {})}
     bruts_videos: dict[str, dict[str, Any]] = {}
-    for c in partitions(brut, "videos").values():
+    for _, c in partitions(brut, "videos"):
         for v in lire_partition(brut, c):
             bruts_videos[str(v["video_id"])] = v
-    commentaires = [
-        x for c in partitions(brut, "commentaires").values() for x in lire_partition(brut, c)
-    ]
+    commentaires = [x for _, c in partitions(brut, "commentaires") for x in lire_partition(brut, c)]
     deja = deja_classes(classe)
     a_classer = [
         x

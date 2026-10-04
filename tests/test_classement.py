@@ -14,7 +14,6 @@ from radar.classement import (
     DOSSIER_CLASSE,
     SCHEMA_CLASSE,
     Video,
-    chemin_partition,
     classer,
     deja_classes,
     id_commentaire,
@@ -77,8 +76,11 @@ def _videos() -> dict[str, Video]:
 
 
 def _lire(st: StockageLocal) -> list[dict[str, Any]]:
-    table = pq.read_table(io.BytesIO(st.lire(chemin_partition(JOUR))))  # pyright: ignore[reportUnknownMemberType]
-    return table.to_pylist()
+    lignes: list[dict[str, Any]] = []
+    for chemin in st.lister(DOSSIER_CLASSE):
+        table = pq.read_table(io.BytesIO(st.lire(chemin)))  # pyright: ignore[reportUnknownMemberType]
+        lignes.extend(table.to_pylist())
+    return lignes
 
 
 def test_aucun_texte_identifiants_hashes_et_position(tmp_path: Path) -> None:
@@ -311,3 +313,18 @@ def test_script_dry_run_puis_classement(
     sortie = lancer()
     assert "à classer : 0" in sortie and "à décrire (nature et sujets) : 0" in sortie
     assert faux_claude.envois == 2  # rien de redécrit
+
+
+def test_classe_ecrit_par_morceaux(tmp_path: Path) -> None:
+    """Aucun fichier ne grossit sans fin : un morceau tous les `ecriture` commentaires."""
+    st = StockageLocal(tmp_path)
+    jev = ClientJev(1.0, cle="x", transport=FauxJev())
+    comms = _commentaires(5, "v1") + _commentaires(5, "v2")
+    classer(st, jev, comms, _videos(), SEL, JOUR, paralleles=2, lot=3, ecriture=4)
+    fichiers = st.lister(DOSSIER_CLASSE)
+    # Lots de 3 : écriture à 6 puis à 10 commentaires en attente.
+    assert fichiers == [f"classe/2026-10-02-00{k}.parquet" for k in (1, 2)]
+    assert len(_lire(st)) == 10
+    # Relancer ne reclasse rien et n'ajoute aucun fichier.
+    classer(st, jev, comms, _videos(), SEL, JOUR, paralleles=2, lot=3, ecriture=4)
+    assert st.lister(DOSSIER_CLASSE) == fichiers
