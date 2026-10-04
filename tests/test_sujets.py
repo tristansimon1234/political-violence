@@ -111,11 +111,12 @@ def test_jetons_sans_accents_ni_mots_vides() -> None:
     from radar.sujets import jetons
 
     assert jetons("Accusations d'antisémitisme contre Paul Martin") == {
-        "accusa",
-        "antise",
+        "accus",
+        "antis",
         "paul",
-        "martin",
+        "marti",
     }
+    assert jetons("Blocages dans les lycées en septembre 2026") == {"bloca", "lycee"}
 
 
 def test_groupes_candidats_titres_proches_et_voisins_dans_le_temps() -> None:
@@ -125,11 +126,13 @@ def test_groupes_candidats_titres_proches_et_voisins_dans_le_temps() -> None:
         Sujet("a", "Accusations d'antisémitisme contre Paul Martin", J, J, 161),
         Sujet("b", "Accusations antisémites contre Paul Martin", J, J, 8),
         Sujet("c", "Accusations contre Paul Martin de propos antisémites", J, J, 4),
-        Sujet("d", "Blocages et heurts dans les lycées", J, J, 63),
+        Sujet("d", "Grève des contrôleurs aériens", J, J, 63),
         Sujet("e", "Paul Martin en meeting à Lyon", J, J, 5),
         Sujet(
             "f", "Accusations antisémites contre Paul Martin", date(2026, 6, 1), date(2026, 6, 2), 9
         ),
         Sujet("g", "Accusations antisémites contre Paul Martin", J, J, 1),  # 1 vidéo
+        Sujet("h", "Blocages et heurts dans les lycées français en septembre 2026", J, J, 181),
+        Sujet("i", "Blocages et mobilisations de lycéens en septembre 2026", J, J, 3),
     ]
-    assert [[x.id for x in g] for g in groupes_candidats(s)] == [["a", "b", "c"]]
+    assert [[x.id for x in g] for g in groupes_candidats(s)] == [["a", "b", "c"], ["h", "i"]]
