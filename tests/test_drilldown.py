@@ -57,8 +57,25 @@ def test_fiches_classes_30_jours_sans_auteur_ni_identifiant() -> None:
 def test_publier_ecrit_les_changements_et_supprime_les_sortis(tmp_path: Path) -> None:
     st = StockageLocal(tmp_path)
     xs = [{"texte": "t"}]
-    assert publier(st, {"v1": xs, "v2": xs}) == (2, 0)
-    assert publier(st, {"v1": xs, "v2": xs}) == (0, 0)  # inchangé : rien de réécrit
-    assert publier(st, {"v1": xs + xs}) == (1, 1)  # v1 modifié, v2 sorti de la fenêtre
+    assert publier(st, {"v1": xs, "v2": xs}) == (2, 0, 0)
+    assert publier(st, {"v1": xs, "v2": xs}) == (0, 0, 0)  # inchangé : rien de réécrit
+    assert publier(st, {"v1": xs + xs}) == (1, 0, 1)  # v1 modifié, v2 sorti de la fenêtre
     assert st.lister("videos") == [chemin("v1")]
     assert json.loads(gzip.decompress(st.lire(chemin("v1")))) == xs + xs
+
+
+class _Capricieux(StockageLocal):
+    """Refuse d'écrire un fichier donné (comme un 504 persistant)."""
+
+    def ecrire(self, chemin: str, donnees: bytes) -> None:
+        if "v2" in chemin:
+            raise RuntimeError("504")
+        super().ecrire(chemin, donnees)
+
+
+def test_publier_continue_apres_erreur_et_reprend(tmp_path: Path) -> None:
+    xs = [{"texte": "a"}]
+    st = _Capricieux(tmp_path)
+    assert publier(st, {"v1": xs, "v2": xs, "v3": xs}) == (2, 1, 0)
+    # v2 n'est pas dans l'index : retenté au run suivant, v1 et v3 ne sont pas réécrits.
+    assert publier(StockageLocal(tmp_path), {"v1": xs, "v2": xs, "v3": xs}) == (1, 0, 0)

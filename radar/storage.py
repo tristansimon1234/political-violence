@@ -12,6 +12,7 @@ jour et son ancienne copie est supprimée du fichier où elle se trouvait.
 
 import io
 import logging
+import time
 from collections.abc import Iterable
 from datetime import date, timedelta
 from pathlib import Path
@@ -126,18 +127,30 @@ class StockageSupabase:
         return r.content
 
     def ecrire(self, chemin: str, donnees: bytes) -> None:
-        r = requests.post(
-            f"{self._base}/object/{self._bucket}/{chemin}",
-            headers={
-                **self._headers,
-                "Content-Type": "application/octet-stream",
-                "x-upsert": "true",
-            },
-            data=donnees,
-            timeout=300,
-        )
-        r.raise_for_status()
-        log.info("storage écrit %s (%d octets)", chemin, len(donnees))
+        # Erreurs passagères (5xx, 429, réseau) : jusqu'à 4 essais, avec une pause croissante.
+        for essai in range(4):
+            try:
+                r = requests.post(
+                    f"{self._base}/object/{self._bucket}/{chemin}",
+                    headers={
+                        **self._headers,
+                        "Content-Type": "application/octet-stream",
+                        "x-upsert": "true",
+                    },
+                    data=donnees,
+                    timeout=300,
+                )
+            except (requests.ConnectionError, requests.Timeout):
+                if essai == 3:
+                    raise
+                time.sleep(2**essai)
+                continue
+            if (r.status_code >= 500 or r.status_code == 429) and essai < 3:
+                time.sleep(2**essai)
+                continue
+            r.raise_for_status()
+            log.debug("storage écrit %s (%d octets)", chemin, len(donnees))
+            return
 
     def supprimer(self, chemins: list[str]) -> None:
         if not chemins:
