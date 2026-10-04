@@ -245,7 +245,9 @@ function VueEnsemble() {
             ? "Chargement des agrégats par chaîne…"
             : erreurChaines
               ? `Agrégats par chaîne indisponibles (migration 14 et workflow « Agrégats ») : ${erreurChaines}`
-              : "Aucun commentaire classé pour ces chaînes."}
+              : parChaine && parChaine.length === 0
+                ? "Les agrégats par chaîne ne sont pas encore calculés : lancer le workflow « Agrégats » (version avec le filtre par chaîne)."
+                : "Aucun commentaire classé pour ces chaînes sur la période."}
         </p>
       )}
 
@@ -276,7 +278,16 @@ function VueEnsemble() {
                 actif={actif.theme}
                 choisir={setChoisi}
               />
-              <SignalEmergent lignes={donnees} filtres={filtresEff} />
+              <SignalEmergent
+                lignes={donnees}
+                filtres={filtresEff}
+                horsGrille={sujetsActu(
+                  sujetsPeriode,
+                  "autre",
+                  rattachements,
+                  5,
+                )}
+              />
               {sansSujets && (
                 <p className="discret petit-texte">
                   Thèmes des vidéos indisponibles : {sansSujets}
@@ -682,9 +693,11 @@ function CarteSujets({
 function SignalEmergent({
   lignes,
   filtres,
+  horsGrille,
 }: {
   lignes: Agregat[];
   filtres: Filtres;
+  horsGrille: SujetActu[];
 }) {
   const [courante, precedente] = fenetres(lignes, filtres.periode);
   const part = (w: typeof courante) => {
@@ -719,6 +732,20 @@ function SignalEmergent({
         Des commentaires que la taxonomie ne sait pas encore ranger. Quand ça
         monte, un sujet nouveau arrive.
       </p>
+      {horsGrille.length > 0 ? (
+        <>
+          <h3>Les sujets hors grille</h3>
+          <p className="discret petit-texte">
+            Sujets d'actualité de la période rangés dans « Autre » : ce qui fait
+            réagir sans entrer dans les 13 thèmes.
+          </p>
+          <SujetsDuTheme actu={horsGrille} />
+        </>
+      ) : (
+        <p className="discret petit-texte">
+          Aucun sujet d'actualité hors grille sur la période.
+        </p>
+      )}
     </section>
   );
 }
