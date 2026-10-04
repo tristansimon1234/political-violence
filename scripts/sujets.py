@@ -25,19 +25,19 @@ from radar.llm import BudgetDepasse, ClientClaude, ReponseInvalide
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.sujets import (
     LOT_SUJETS,
-    SYSTEME_FUSIONS,
+    SYSTEME_DOUBLON,
     SYSTEME_SUJETS,
-    ReponseFusions,
+    ReponseDoublon,
     ReponseSujets,
     Sujet,
     VideoASituer,
     actifs,
     appliquer,
-    groupes_candidats,
-    message_fusions,
+    cible_doublon,
+    comparables,
+    message_doublon,
     message_sujets,
     mettre_a_jour,
-    valider_fusions,
 )
 from radar.supabase_rest import Supabase
 
@@ -76,6 +76,11 @@ def main() -> int:
     p.add_argument("--budget-claude", type=float, default=3.0, help="dollars max pour Claude")
     p.add_argument(
         "--depuis", type=date.fromisoformat, default=DEBUT_COLLECTE, help="premier jour traité"
+    )
+    p.add_argument(
+        "--verifier-tous",
+        action="store_true",
+        help="chercher les doublons de tous les sujets (sinon seulement ceux créés pendant le run)",
     )
     p.add_argument("--stockage-local", type=Path, help="dossier local du brut au lieu du bucket")
     args = p.parse_args()
@@ -139,8 +144,8 @@ def main() -> int:
     if args.dry_run:
         print(
             f"\nCoût estimé : ~{appels * CLAUDE_USD_PAR_APPEL:.2f} USD, plus la recherche de "
-            f"doublons ({len(groupes_candidats(list(sujets.values())))} groupes de titres "
-            "proches). "
+            "doublons (un appel par sujet créé ; "
+            f"{len(sujets)} appels avec --verifier-tous). "
             "Rien n'a été envoyé."
         )
         return 0
@@ -149,6 +154,7 @@ def main() -> int:
     rattachees_run = 0
     sans_sujet = 0
     crees = 0
+    crees_ids: set[str] = set()
     try:
         for jour in sorted(par_jour):
             liste = par_jour[jour]
@@ -181,6 +187,7 @@ def main() -> int:
                     "video_id",
                 )
                 crees += sum(1 for s in nouveaux if s.id in modifies)
+                crees_ids.update(s.id for s in nouveaux if s.id in modifies)
                 rattachees_run += len(liens)
                 sans_sujet += sum(1 for sid in liens.values() if sid is None)
             log.info(
@@ -193,33 +200,47 @@ def main() -> int:
     except BudgetDepasse as e:
         print(f"\nArrêt au budget Claude ({e}) : relancer pour continuer.")
 
-    # Fusion des doublons (même événement décrit deux fois), à chaque run : groupes de sujets
-    # aux titres proches repérés par le code, tranchés un par un par Claude.
+    # Fusion des doublons : chaque sujet créé pendant ce run (ou tous, --verifier-tous) est
+    # comparé par Claude aux sujets actifs autour de ses dates ; le plus petit est fondu dans
+    # le plus gros.
     fusionnes = 0
+    a_verifier = sorted(
+        (sujets[i] for i in (set(sujets) if args.verifier_tous else crees_ids) if i in sujets),
+        key=lambda x: (x.premier_jour, x.id),
+    )
     try:
-        for groupe in groupes_candidats(list(sujets.values())):
-            rep_f = claude.classer(SYSTEME_FUSIONS, message_fusions(groupe), ReponseFusions, 1000)
-            cible = valider_fusions(rep_f, {s.id for s in groupe if s.id in sujets})
-            par_garde: defaultdict[str, list[str]] = defaultdict(list)
-            for d, g in cible.items():
-                par_garde[g].append(d)
-            for g, ds in sorted(par_garde.items()):
-                lot_ids = ",".join(sorted(ds))
-                base.modifier("sujets_videos", {"sujet_id": f"in.({lot_ids})"}, {"sujet_id": g})
-                garde = sujets[g]
-                for d in ds:
-                    absorbe = sujets.pop(d)
-                    garde.videos += absorbe.videos
-                    garde.premier_jour = min(garde.premier_jour, absorbe.premier_jour)
-                    garde.dernier_jour = max(garde.dernier_jour, absorbe.dernier_jour)
-                base.upsert("sujets", [_ligne_sujet(garde, aujourdhui)], "id")
-                base.supprimer("sujets", {"id": f"in.({lot_ids})"})
-                fusionnes += len(ds)
-                log.info("fusion : %s <- %s", g, lot_ids)
+        for nouveau in a_verifier:
+            if nouveau.id not in sujets:
+                continue  # déjà fondu dans un autre
+            liste = comparables(nouveau, sujets.values())
+            if not liste:
+                continue
+            rep_d = claude.classer(
+                SYSTEME_DOUBLON, message_doublon(nouveau, liste), ReponseDoublon, 200
+            )
+            cible = cible_doublon(rep_d, nouveau, liste)
+            if cible is None or cible not in sujets:
+                continue
+            garde, absorbe = (
+                (sujets[cible], nouveau)
+                if sujets[cible].videos >= nouveau.videos
+                else (nouveau, sujets[cible])
+            )
+            base.modifier("sujets_videos", {"sujet_id": f"eq.{absorbe.id}"}, {"sujet_id": garde.id})
+            garde.videos += absorbe.videos
+            garde.premier_jour = min(garde.premier_jour, absorbe.premier_jour)
+            garde.dernier_jour = max(garde.dernier_jour, absorbe.dernier_jour)
+            del sujets[absorbe.id]
+            base.upsert("sujets", [_ligne_sujet(garde, aujourdhui)], "id")
+            base.supprimer("sujets", {"id": f"eq.{absorbe.id}"})
+            fusionnes += 1
+            log.info(
+                "fusion : %s (%s) <- %s (%s)", garde.id, garde.titre, absorbe.id, absorbe.titre
+            )
     except BudgetDepasse as e:
-        print(f"\nFusion des doublons interrompue ({e}) : relancer.")
+        print(f"\nRecherche des doublons interrompue ({e}) : relancer.")
     except ReponseInvalide as e:
-        print(f"\nFusion des doublons interrompue ({e}) : relancer.")
+        print(f"\nRecherche des doublons interrompue ({e}) : relancer.")
 
     affiches = [s for s in sujets.values() if s.videos >= 3]
     print(

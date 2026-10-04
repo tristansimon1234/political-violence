@@ -94,45 +94,25 @@ def test_message_sans_titre_disponible() -> None:
     assert "(none)" in m and "(title unavailable)" in m and "v |" not in m
 
 
-def test_valider_fusions_sans_chaine_ni_inconnu() -> None:
-    from radar.sujets import Fusion, ReponseFusions, valider_fusions
+def test_comparables_fenetre_et_exclusion() -> None:
+    from radar.sujets import comparables
 
-    rep = ReponseFusions(
-        fusions=[
-            Fusion(garder="a", doublons=["b", "inconnu", "a"]),
-            Fusion(garder="c", doublons=["a", "b", "d"]),  # a est gardé, b déjà absorbé
-            Fusion(garder="b", doublons=["e"]),  # b déjà absorbé : ignoré
-        ]
-    )
-    assert valider_fusions(rep, {"a", "b", "c", "d", "e"}) == {"b": "a", "d": "c"}
-
-
-def test_jetons_sans_accents_ni_mots_vides() -> None:
-    from radar.sujets import jetons
-
-    assert jetons("Accusations d'antisémitisme contre Paul Martin") == {
-        "accus",
-        "antis",
-        "paul",
-        "marti",
-    }
-    assert jetons("Blocages dans les lycées en septembre 2026") == {"bloca", "lycee"}
-
-
-def test_groupes_candidats_titres_proches_et_voisins_dans_le_temps() -> None:
-    from radar.sujets import groupes_candidats
-
-    s = [
-        Sujet("a", "Accusations d'antisémitisme contre Paul Martin", J, J, 161),
-        Sujet("b", "Accusations antisémites contre Paul Martin", J, J, 8),
-        Sujet("c", "Accusations contre Paul Martin de propos antisémites", J, J, 4),
-        Sujet("d", "Grève des contrôleurs aériens", J, J, 63),
-        Sujet("e", "Paul Martin en meeting à Lyon", J, J, 5),
-        Sujet(
-            "f", "Accusations antisémites contre Paul Martin", date(2026, 6, 1), date(2026, 6, 2), 9
-        ),
-        Sujet("g", "Accusations antisémites contre Paul Martin", J, J, 1),  # 1 vidéo
-        Sujet("h", "Blocages et heurts dans les lycées français en septembre 2026", J, J, 181),
-        Sujet("i", "Blocages et mobilisations de lycéens en septembre 2026", J, J, 3),
+    nouveau = Sujet("n", "[nouveau]", J, J, 2)
+    autres = [
+        nouveau,
+        Sujet("proche", "[p]", date(2026, 9, 1), date(2026, 9, 5), 10),
+        Sujet("loin", "[l]", date(2026, 6, 1), date(2026, 6, 3), 50),  # plus de 30 jours avant
+        Sujet("gros", "[g]", date(2026, 9, 12), date(2026, 9, 20), 80),
     ]
-    assert [[x.id for x in g] for g in groupes_candidats(s)] == [["a", "b", "c"], ["h", "i"]]
+    assert [s.id for s in comparables(nouveau, autres)] == ["gros", "proche"]
+
+
+def test_cible_doublon_seulement_dans_la_liste() -> None:
+    from radar.sujets import AUCUN_DOUBLON, ReponseDoublon, cible_doublon
+
+    nouveau = Sujet("n", "[nouveau]", J, J, 2)
+    liste = [Sujet("a", "[a]", J, J, 5)]
+    assert cible_doublon(ReponseDoublon(meme_evenement=" a "), nouveau, liste) == "a"
+    assert cible_doublon(ReponseDoublon(meme_evenement=AUCUN_DOUBLON), nouveau, liste) is None
+    assert cible_doublon(ReponseDoublon(meme_evenement="z"), nouveau, liste) is None
+    assert cible_doublon(ReponseDoublon(meme_evenement="n"), nouveau, liste) is None

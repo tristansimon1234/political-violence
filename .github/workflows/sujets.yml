@@ -15,6 +15,10 @@ on:
       budget_claude:
         description: "Dollars max pour Claude"
         default: "3"
+      verifier_tous:
+        description: "Chercher les doublons parmi tous les sujets (sinon : ceux créés pendant le run)"
+        type: boolean
+        default: false
       depuis:
         description: "Premier jour traité (AAAA-MM-JJ)"
         default: "2026-09-01"
@@ -47,6 +51,7 @@ jobs:
           [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "budget invalide"; exit 1; }
           ARGS=(--budget-claude "$BUDGET" --depuis "$DEPUIS")
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          if [ "${{ inputs.verifier_tous }}" = "true" ]; then ARGS+=(--verifier-tous); fi
           python scripts/sujets.py "${ARGS[@]}" | tee rapport.md
       - name: Résumé
         if: always()
