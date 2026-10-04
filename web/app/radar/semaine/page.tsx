@@ -23,6 +23,7 @@ import {
   cartesSujets,
   decaler,
   dernierJour,
+  faitsMarquants,
   reprisePolitique,
   semaineDe,
   thesesDuSujet,
@@ -136,6 +137,10 @@ function Ecran() {
     return m;
   }, [sujets, periode, cartes, rattachements]);
   const decalage = useMemo(() => decalages(cartes), [cartes]);
+  const faits = useMemo(
+    () => faitsMarquants(cartes, reprises),
+    [cartes, reprises],
+  );
   const incomplete = periode && dernier ? periode.fin > dernier : false;
   const visibles = tous ? cartes : cartes.slice(0, 5);
 
@@ -224,6 +229,25 @@ function Ecran() {
               </div>
             </fieldset>
           </section>
+
+          {faits.length > 0 && (
+            <section className="cs-faits" aria-labelledby="cs-titre-faits">
+              <h2 id="cs-titre-faits" className="cs-cache">
+                Faits marquants
+              </h2>
+              {faits.map((f) => (
+                <button
+                  key={f.cle}
+                  className="cs-fait"
+                  onClick={() => setOuvert(f.sujet)}
+                >
+                  <span className="cs-fait-etiquette">{f.etiquette}</span>
+                  <span className="cs-fait-valeur">{f.valeur}</span>
+                  <span className="cs-fait-texte">{f.texte}</span>
+                </button>
+              ))}
+            </section>
+          )}
 
           <div className="cs-grille">
             <section aria-labelledby="cs-titre-sujets">

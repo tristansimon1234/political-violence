@@ -1723,3 +1723,99 @@ select {
 .ve-replie[open] > summary {
   margin-bottom: 8px;
 }
+
+.cs-faits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+  margin: 0 0 36px;
+}
+
+.cs-fait {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--r-bord);
+  border-radius: 12px;
+  background: var(--r-surface);
+  font: inherit;
+  text-align: left;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.cs-fait:hover {
+  border-color: var(--r-texte);
+}
+
+.cs-fait-etiquette {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--r-orange-texte);
+}
+
+.cs-fait-valeur {
+  font:
+    600 34px/1.1 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.cs-fait-texte {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--r-discret);
+}
+
+.cs-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.ve-classement {
+  display: flex;
+  gap: 2px;
+  margin: 8px 0 6px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--r-piste);
+}
+
+.ve-classement button {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.ve-classement button.actif {
+  background: var(--r-surface);
+  box-shadow: 0 1px 3px rgb(22 24 29 / 14%);
+}
+
+.ve-jauge {
+  display: block;
+  width: 52px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--r-piste);
+  overflow: hidden;
+}
+
+.ve-jauge span {
+  display: block;
+  height: 100%;
+  background: var(--r-orange);
+}

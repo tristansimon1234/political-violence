@@ -438,6 +438,26 @@ function BarreFiltres({
   );
 }
 
+type Classement = "volume" | "desaccord" | "hostilite";
+const CLASSEMENTS: [Classement, string][] = [
+  ["volume", "Volume"],
+  ["desaccord", "Désaccord"],
+  ["hostilite", "Hostilité"],
+];
+const MIN_PRONONCES_THEME = 50;
+
+/** Valeur du thème pour le classement choisi (null si l'échantillon est trop petit). */
+function valeurTheme(l: LigneTheme, c: Classement): number | null {
+  const m = l.courant;
+  if (c === "volume") return l.velocite ?? l.part * 100;
+  if (c === "hostilite")
+    return m.commentaires >= MIN_PRONONCES_THEME
+      ? pct(m.hostiles, m.commentaires)
+      : null;
+  const prononces = m.accord + m.nuance + m.desaccord;
+  return prononces >= MIN_PRONONCES_THEME ? pct(m.desaccord, prononces) : null;
+}
+
 function ThemesEnMouvement({
   lignes,
   actif,
@@ -447,49 +467,87 @@ function ThemesEnMouvement({
   actif: Theme;
   choisir: (t: Theme) => void;
 }) {
+  const [classement, setClassement] = useState<Classement>("volume");
   const parVelocite = lignes.some((l) => l.velocite !== null);
-  const tries = parVelocite
-    ? [...lignes].sort((a, b) => (b.velocite ?? -1) - (a.velocite ?? -1))
-    : lignes;
+  const tries = [...lignes]
+    .filter(
+      (l) => classement === "volume" || valeurTheme(l, classement) !== null,
+    )
+    .sort(
+      (a, b) =>
+        (valeurTheme(b, classement) ?? -1) - (valeurTheme(a, classement) ?? -1),
+    );
+  const max = Math.max(1, ...tries.map((l) => valeurTheme(l, classement) ?? 0));
+  const libelle = (l: LigneTheme) => {
+    const v = valeurTheme(l, classement);
+    if (v === null) return "–";
+    if (classement === "volume")
+      return l.velocite === null ? pc(v) : fois(l.velocite);
+    return pc(v);
+  };
   return (
     <section className="radar-carte" aria-labelledby="titre-themes">
       <h2 id="titre-themes">Thèmes en mouvement</h2>
+      <div
+        className="ve-classement"
+        role="group"
+        aria-label="Classer les thèmes par"
+      >
+        {CLASSEMENTS.map(([c, nom]) => (
+          <button
+            key={c}
+            className={classement === c ? "actif" : ""}
+            aria-pressed={classement === c}
+            onClick={() => setClassement(c)}
+          >
+            {nom}
+          </button>
+        ))}
+      </div>
       <p className="discret petit-texte">
-        {parVelocite
-          ? "Classés par vélocité"
-          : "Classés par volume (vélocité disponible après 5 semaines de données)"}
+        {classement === "volume"
+          ? parVelocite
+            ? "Classés par vélocité"
+            : "Classés par part des commentaires politiques (vélocité après 5 semaines de données)"
+          : classement === "desaccord"
+            ? "Part de désaccord avec les vidéos d'opinion, parmi les commentaires qui se prononcent (au moins 50)"
+            : "Part de commentaires hostiles"}
       </p>
       <ol className="radar-themes">
-        {tries.map((l, i) => (
-          <li key={l.theme}>
-            <button
-              className={
-                l.theme === actif ? "radar-theme actif" : "radar-theme"
-              }
-              onClick={() => choisir(l.theme)}
-              aria-pressed={l.theme === actif}
-              title={DEFINITIONS_THEMES[l.theme]}
-            >
-              <span className="radar-rang">{i + 1}</span>
-              <span className="radar-nom">{LIBELLES_THEMES[l.theme]}</span>
-              <Courbe serie={l.serie} />
-              <span
+        {tries.map((l, i) => {
+          const v = valeurTheme(l, classement) ?? 0;
+          const fort =
+            classement === "volume"
+              ? l.velocite !== null && l.velocite >= 1.5
+              : v >= 0.8 * max;
+          return (
+            <li key={l.theme}>
+              <button
                 className={
-                  l.velocite !== null && l.velocite >= 1.5
-                    ? "radar-pastille forte"
-                    : "radar-pastille"
+                  l.theme === actif ? "radar-theme actif" : "radar-theme"
                 }
-                title={
-                  l.velocite === null
-                    ? `Part des commentaires politiques : ${pc(l.part * 100)}`
-                    : "Vélocité provisoire, non pondérée par l'audience"
-                }
+                onClick={() => choisir(l.theme)}
+                aria-pressed={l.theme === actif}
+                title={DEFINITIONS_THEMES[l.theme]}
               >
-                {l.velocite === null ? pc(l.part * 100) : fois(l.velocite)}
-              </span>
-            </button>
-          </li>
-        ))}
+                <span className="radar-rang">{i + 1}</span>
+                <span className="radar-nom">{LIBELLES_THEMES[l.theme]}</span>
+                {classement === "volume" ? (
+                  <Courbe serie={l.serie} />
+                ) : (
+                  <span className="ve-jauge" aria-hidden="true">
+                    <span style={{ width: `${(100 * v) / max}%` }} />
+                  </span>
+                )}
+                <span
+                  className={fort ? "radar-pastille forte" : "radar-pastille"}
+                >
+                  {libelle(l)}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ol>
       <div className="radar-definition">
         <strong>Vélocité</strong> · commentaires sur 7 jours ÷ moyenne des 4

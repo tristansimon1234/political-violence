@@ -271,3 +271,153 @@ export function reprisePolitique(
     premierMedia,
   };
 }
+
+// --- Faits marquants : ce qui sort du lot cette semaine (pas des totaux) ---
+
+export type Fait = {
+  cle: string;
+  etiquette: string; // « Le plus contesté »…
+  valeur: string; // chiffre mis en avant
+  texte: string; // une phrase
+  sujet: CarteSujet;
+};
+
+const MIN_PRONONCES_FAIT = 50;
+const MIN_COMMENTAIRES_FAIT = 200;
+const pc0 = (x: number) => `${Math.round(x)} %`;
+const fois1 = (x: number) => `×${x.toFixed(1).replace(".", ",")}`;
+
+function partPos(
+  p: Positions | undefined,
+  cle: keyof Positions,
+): number | null {
+  if (!p) return null;
+  const n = p.accord + p.nuance + p.desaccord;
+  return n >= MIN_PRONONCES_FAIT ? (100 * p[cle]) / n : null;
+}
+
+/**
+ * Les constats de la semaine, chacun appuyé sur un sujet : le plus commenté, le plus
+ * contesté, le plus consensuel, le plus hostile, la plus forte hausse, le plus grand écart
+ * médias traditionnels / natifs, un sujet lancé par une chaîne politique, un sujet peu couvert
+ * mais très commenté. Seuils minimaux pour ne pas mettre en avant un petit échantillon.
+ */
+export function faitsMarquants(
+  cartes: CarteSujet[],
+  reprises: Map<string, Reprise>,
+): Fait[] {
+  const faits: Fait[] = [];
+  const max = <T>(xs: T[], f: (x: T) => number | null): [T, number] | null => {
+    let best: [T, number] | null = null;
+    for (const x of xs) {
+      const v = f(x);
+      if (v !== null && (best === null || v > best[1])) best = [x, v];
+    }
+    return best;
+  };
+  const top = cartes[0];
+  if (top)
+    faits.push({
+      cle: "commente",
+      etiquette: "Le plus commenté",
+      valeur: Math.round(top.classes).toLocaleString("fr-FR"),
+      texte: `commentaires sous « ${top.titre} » (${top.videos.length} vidéos).`,
+      sujet: top,
+    });
+  const tous = (c: CarteSujet) => ({
+    accord: c.accord,
+    nuance: c.nuance,
+    desaccord: c.desaccord,
+  });
+  const conteste = max(cartes, (c) => partPos(tous(c), "desaccord"));
+  if (conteste && conteste[1] >= 50)
+    faits.push({
+      cle: "conteste",
+      etiquette: "Le plus contesté",
+      valeur: pc0(conteste[1]),
+      texte: `de désaccord avec les vidéos sur « ${conteste[0].titre} ».`,
+      sujet: conteste[0],
+    });
+  const consensuel = max(cartes, (c) => partPos(tous(c), "accord"));
+  if (consensuel && consensuel[1] >= 50 && consensuel[0] !== conteste?.[0])
+    faits.push({
+      cle: "consensuel",
+      etiquette: "Le plus approuvé",
+      valeur: pc0(consensuel[1]),
+      texte: `d'accord avec les vidéos sur « ${consensuel[0].titre} ».`,
+      sujet: consensuel[0],
+    });
+  const hostile = max(
+    cartes.filter((c) => c.classes >= MIN_COMMENTAIRES_FAIT),
+    (c) => (100 * c.hostiles) / c.classes,
+  );
+  if (hostile)
+    faits.push({
+      cle: "hostile",
+      etiquette: "Le plus hostile",
+      valeur: pc0(hostile[1]),
+      texte: `de commentaires hostiles sur « ${hostile[0].titre} ».`,
+      sujet: hostile[0],
+    });
+  const hausse = max(
+    cartes.filter((c) => c.precedent >= MIN_COMMENTAIRES_FAIT && !c.nouveau),
+    (c) => c.classes / c.precedent,
+  );
+  if (hausse && hausse[1] >= 1.5)
+    faits.push({
+      cle: "hausse",
+      etiquette: "La plus forte hausse",
+      valeur: fois1(hausse[1]),
+      texte: `de commentaires sur « ${hausse[0].titre} » face à la semaine précédente.`,
+      sujet: hausse[0],
+    });
+  const clivage = max(cartes, (c) => {
+    const a = partPos(c.positionsParType.media_traditionnel, "desaccord");
+    const b = partPos(c.positionsParType.media_natif, "desaccord");
+    return a === null || b === null ? null : Math.abs(a - b);
+  });
+  if (clivage && clivage[1] >= 15) {
+    const c = clivage[0];
+    const a = partPos(c.positionsParType.media_traditionnel, "desaccord") ?? 0;
+    const b = partPos(c.positionsParType.media_natif, "desaccord") ?? 0;
+    faits.push({
+      cle: "clivage",
+      etiquette: "Médias trad. ou natifs ?",
+      valeur: `${Math.round(Math.abs(a - b))} pts`,
+      texte: `d'écart de désaccord sur « ${c.titre} » : ${pc0(a)} sous les médias traditionnels, ${pc0(b)} sous les natifs du web.`,
+      sujet: c,
+    });
+  }
+  const lance = cartes.find((c) => {
+    const r = reprises.get(c.id);
+    return (
+      r?.premierPolitique &&
+      r.premierMedia &&
+      r.premierPolitique < r.premierMedia
+    );
+  });
+  if (lance)
+    faits.push({
+      cle: "politique",
+      etiquette: "Lancé par les politiques",
+      valeur: "1er",
+      texte: `« ${lance.titre} » : une chaîne politique en a parlé avant les médias du panel.`,
+      sujet: lance,
+    });
+  const videos = cartes.reduce((a, c) => a + c.videos.length, 0);
+  const comm = cartes.reduce((a, c) => a + c.classes, 0);
+  const sous = max(
+    cartes.filter((c) => c !== top && c.classes >= MIN_COMMENTAIRES_FAIT),
+    (c) =>
+      videos && comm ? c.classes / comm / (c.videos.length / videos) : null,
+  );
+  if (sous && sous[1] >= 2)
+    faits.push({
+      cle: "sous_couvert",
+      etiquette: "Peu couvert, très commenté",
+      valeur: fois1(sous[1]),
+      texte: `plus de réactions que sa part de couverture pour « ${sous[0].titre} » (${sous[0].videos.length} vidéos).`,
+      sujet: sous[0],
+    });
+  return faits;
+}
