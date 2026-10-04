@@ -58,8 +58,11 @@ def poids_par_video(
 
 
 def agreger(
-    classes: Iterable[Mapping[str, Any]], poids: Mapping[str, float] | None = None
+    classes: Iterable[Mapping[str, Any]],
+    poids: Mapping[str, float] | None = None,
+    par_chaine: bool = False,
 ) -> list[dict[str, Any]]:
+    """Sommes par jour, thème, type de source et format (et chaîne si `par_chaine`)."""
     sommes: dict[Cle, dict[str, float]] = defaultdict(lambda: dict.fromkeys(MESURES, 0.0))
     for c in classes:
         w = (poids or {}).get(str(c.get("video_id")), 1.0)
@@ -67,7 +70,10 @@ def agreger(
         parts = [(t, w / len(themes)) for t in themes] or [(NON_POLITIQUE, w)]
         jour = jour_paris(c)
         for theme, part in parts:
-            s = sommes[(jour, theme, str(c["type_source"]), str(c["format"]))]
+            type_source = str(c["type_source"])
+            if par_chaine:
+                type_source += "|" + str(c["source_id"])
+            s = sommes[(jour, theme, type_source, str(c["format"]))]
             s["commentaires"] += part
             s[_TONALITES[str(c["tonalite"])]] += part
             if c["hostilite"]:
@@ -76,17 +82,21 @@ def agreger(
             if c["nature"] == "opinion" and c["position"] in _POSITIONS:
                 s["sous_opinion"] += part
                 s[_POSITIONS[str(c["position"])]] += part
-    return [
-        {
-            "jour": jour.isoformat(),
-            "theme": theme,
-            "type_source": type_source,
-            "format": fmt,
-            **{m: round(v, 4) for m, v in s.items()},
-            "version_taxonomie": VERSION_TAXONOMIE,
-        }
-        for (jour, theme, type_source, fmt), s in sorted(sommes.items())
-    ]
+    lignes: list[dict[str, Any]] = []
+    for (jour, theme, cle_source, fmt), s in sorted(sommes.items()):
+        type_source, _, source_id = cle_source.partition("|")
+        lignes.append(
+            {
+                "jour": jour.isoformat(),
+                "theme": theme,
+                "type_source": type_source,
+                **({"source_id": source_id} if par_chaine else {}),
+                "format": fmt,
+                **{m: round(v, 4) for m, v in s.items()},
+                "version_taxonomie": VERSION_TAXONOMIE,
+            }
+        )
+    return lignes
 
 
 def agreger_videos(

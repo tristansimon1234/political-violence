@@ -24,7 +24,7 @@ export async function chargerSujets(): Promise<SujetVideo[]> {
     const { data, error } = await supabase()
       .from("videos_sujets")
       .select(
-        "video_id,theme,sous_sujet,poids,videos(publiee_at,format,vues,nb_commentaires,sources(type,nom))",
+        "video_id,theme,sous_sujet,poids,videos(publiee_at,format,vues,nb_commentaires,sources(id,type,nom))",
       )
       .range(i, i + 999);
     if (error) throw new Error(error.message);

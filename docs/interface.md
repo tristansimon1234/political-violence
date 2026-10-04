@@ -35,7 +35,7 @@ L'interface lit uniquement les agrégats (Supabase). Maquette de référence : a
 
 **Drilldown verbatims** (plus tard)
 - 30 derniers jours uniquement, texte non modifié, lien vers la vidéo, pas de pseudo, quelques exemples par sujet.
-- **Lu dans les données stockées** (décision du 04/10/2026, Tristan), pas d'appel à l'API : quelques exemples par sujet préparés par le batch (la clé secrète Supabase ne va jamais sur Vercel).
+- **Lu dans les données stockées** (décision du 04/10/2026, Tristan), pas d'appel à l'API. Admin (privé) : pour chaque vidéo, tous ses commentaires classés des 30 derniers jours (150 au plus), avec leurs étiquettes, pour vérifier le classement ; fichiers par vidéo dans le bucket privé `radar-drilldown`, lisibles par l'admin seulement, écrits et purgés par le job d'agrégats. Version publique éventuelle : quelques exemples par sujet seulement.
 - Jamais dans les exports PDF.
 
 ## Espace admin (gestion des sources)

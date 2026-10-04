@@ -13,7 +13,7 @@ export type SujetVideo = {
     format: "short" | "long";
     vues: number | null;
     nb_commentaires: number | null;
-    sources: { type: TypeSource; nom: string } | null;
+    sources: { id?: string; type: TypeSource; nom: string } | null;
   } | null;
 };
 

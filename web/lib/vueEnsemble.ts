@@ -2,6 +2,7 @@
 import { NON_POLITIQUE, THEMES, type Theme, type TypeSource } from "@/lib/taxonomie";
 
 export type Agregat = {
+  source_id?: string; // agregats_chaines seulement
   jour: string;
   theme: Theme | typeof NON_POLITIQUE;
   type_source: TypeSource;
@@ -18,7 +19,7 @@ export type Agregat = {
   hors_sujet: number;
 };
 
-export type Mesures = Omit<Agregat, "jour" | "theme" | "type_source" | "format">;
+export type Mesures = Omit<Agregat, "jour" | "theme" | "type_source" | "format" | "source_id">;
 export const MESURES: (keyof Mesures)[] = [
   "commentaires",
   "positifs",
