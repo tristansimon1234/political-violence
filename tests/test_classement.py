@@ -5,6 +5,7 @@ import json
 import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pyarrow.parquet as pq
@@ -162,10 +163,59 @@ class _Reponse:
         self.usage = _Usage()
 
 
+_DESCRIPTION: dict[str, Any] = {
+    "nature_video": "opinion",
+    "resume": "La vidéo soutient que X.",
+    "these_explicite": True,
+    "sujets": [
+        {"theme": "retraites", "sous_sujet": "réforme des retraites", "poids": 0.7},
+        {"theme": "economie_emploi", "sous_sujet": "budget", "poids": 0.3},
+    ],
+}
+
+
+class _FauxBatches:
+    """API Message Batches simulée : chaque requête décrit toutes ses vidéos numérotées."""
+
+    def __init__(self, parent: "FauxAnthropic") -> None:
+        self.parent = parent
+        self.requetes: list[Any] = []
+
+    def create(self, requests: list[Any]) -> Any:
+        self.requetes = requests
+        return SimpleNamespace(id="b1", processing_status="ended")
+
+    def retrieve(self, batch_id: str) -> Any:
+        return SimpleNamespace(id=batch_id, processing_status="ended")
+
+    def cancel(self, batch_id: str) -> None:
+        pass
+
+    def results(self, batch_id: str) -> list[Any]:
+        sortie: list[Any] = []
+        for r in self.requetes:
+            n = r["params"]["messages"][0]["content"].count("Video ")
+            self.parent.envois += n
+            texte = json.dumps({"videos": [{**_DESCRIPTION, "numero": i} for i in range(1, n + 1)]})
+            message = SimpleNamespace(
+                usage=_Usage(),
+                stop_reason="end_turn",
+                content=[SimpleNamespace(type="text", text=texte)],
+            )
+            sortie.append(
+                SimpleNamespace(
+                    custom_id=r["custom_id"],
+                    result=SimpleNamespace(type="succeeded", message=message),
+                )
+            )
+        return sortie
+
+
 class FauxAnthropic:
     def __init__(self) -> None:
         self.messages = self
         self.envois = 0
+        self.batches = _FauxBatches(self)
 
     def parse(self, **kwargs: Any) -> _Reponse:
         self.envois += 1
@@ -350,3 +400,15 @@ def test_plafond_par_video_stable_et_cumule(tmp_path: Path) -> None:
     assert (b1.classes, b2.classes) == (3, 2)
     attendus = sorted(id_commentaire(str(x["comment_id"]), SEL) for x in comms[:5])[:3]
     assert sorted(x["id"] for x in lignes if x["video_id"] == "v1") == attendus
+
+
+def test_description_par_lots_numeros_invalides_ignores() -> None:
+    from radar.evaluation import Candidate, decrire_videos_batch
+
+    faux = FauxAnthropic()
+    claude = ClientClaude(1.0, client=cast(Any, faux))
+    cands = [Candidate(f"v{i}", "media_natif", "long", CHAINE, TITRE, "") for i in range(23)]
+    resultat = decrire_videos_batch(claude, cands, par_requete=10)
+    assert set(resultat) == {f"v{i}" for i in range(23)}
+    assert len(faux.batches.requetes) == 3  # 10 + 10 + 3 vidéos
+    assert claude.compteur.appels == 3

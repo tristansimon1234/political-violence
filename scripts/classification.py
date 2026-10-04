@@ -32,7 +32,7 @@ from radar.classement import (
     plafonner,
 )
 from radar.classification import en_nature, normaliser_sujets
-from radar.evaluation import Candidate, classer_videos
+from radar.evaluation import Candidate, classer_videos, decrire_videos_batch
 from radar.llm import BudgetDepasse, ClientClaude, ClientJev
 from radar.schemas import VERSION_TAXONOMIE, NatureVideo, Theme
 from radar.storage import (
@@ -50,7 +50,9 @@ BUCKET_BRUT = "radar-brut"
 BUCKET_CLASSE = "radar-classe"
 # Coûts mesurés le 02/10/2026 (docs/evaluation-resultats.md), pour l'estimation du dry-run.
 JEV_USD_PAR_1000 = 0.065
-CLAUDE_USD_PAR_VIDEO = 0.0025  # mesuré le 02/10 avec sujets et thèse : 5,02 USD pour 2 100 vidéos
+CLAUDE_USD_PAR_VIDEO_DIRECT = 0.0025  # mesuré le 02/10 : 5,02 USD pour 2 100 vidéos
+CLAUDE_USD_PAR_VIDEO = 0.0009  # estimé : batch (-50 %) et 10 vidéos par requête
+LOT_BATCH_VIDEOS = 5000  # vidéos par batch Claude (500 requêtes), écrites à chaque retour
 LOT_NATURES = 100
 
 
@@ -119,6 +121,11 @@ def main() -> int:
     p.add_argument(
         "--paralleles-claude", type=int, default=8, help="descriptions de vidéos simultanées"
     )
+    p.add_argument(
+        "--direct",
+        action="store_true",
+        help="un appel par vidéo (immédiat, 2 à 3 fois plus cher) au lieu du batch",
+    )
     p.add_argument("--stockage-local", type=Path, help="dossier local au lieu des buckets")
     args = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
@@ -184,7 +191,8 @@ def main() -> int:
     if args.dry_run:
         print(
             f"\nCoût estimé : Jev ~{len(a_classer) * JEV_USD_PAR_1000 / 1000:.2f} USD, "
-            f"Claude (vidéos) ~{len(a_decrire) * CLAUDE_USD_PAR_VIDEO:.2f} USD. "
+            f"Claude (vidéos) ~{len(a_decrire) * CLAUDE_USD_PAR_VIDEO:.2f} USD en batch "
+            f"(~{len(a_decrire) * CLAUDE_USD_PAR_VIDEO_DIRECT:.2f} USD avec --direct). "
             "Rien n'a été envoyé."
         )
         return 0
@@ -216,7 +224,10 @@ def main() -> int:
     }
     decrites = 0
     try:
-        for i in range(0, len(a_decrire), LOT_NATURES):
+        # Par défaut : API Batch, 10 vidéos par requête (décision du 04/10/2026) ; --direct :
+        # un appel par vidéo, résultat immédiat (essais).
+        taille = LOT_NATURES if args.direct else LOT_BATCH_VIDEOS
+        for i in range(0, len(a_decrire), taille):
             cands = [
                 Candidate(
                     v,
@@ -226,9 +237,13 @@ def main() -> int:
                     str(bruts_videos[v].get("titre") or ""),
                     str(bruts_videos[v].get("description") or ""),
                 )
-                for v in a_decrire[i : i + LOT_NATURES]
+                for v in a_decrire[i : i + taille]
             ]
-            reponses = classer_videos(claude, cands, args.paralleles_claude)
+            reponses = (
+                classer_videos(claude, cands, args.paralleles_claude)
+                if args.direct
+                else decrire_videos_batch(claude, cands)
+            )
             nouvelles: dict[str, NatureVideo] = {
                 v: r.nature_video for v, r in reponses.items() if not lignes_videos[v].get("nature")
             }

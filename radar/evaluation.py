@@ -40,10 +40,12 @@ from radar.classification import (
     REGLE_THEMES,
     SYSTEME_COMMENTAIRES,
     SYSTEME_NATURE_VIDEO,
+    SYSTEME_VIDEOS_LOT,
     Classement,
     ContexteVideo,
     ReponseCommentaires,
     ReponseNatureVideo,
+    ReponseVideosLot,
     classement_jev,
     en_nature,
     en_position,
@@ -53,6 +55,7 @@ from radar.classification import (
     masquer,
     message_commentaires,
     message_nature_video,
+    message_videos_lot,
     normaliser,
     questions_jev,
 )
@@ -321,6 +324,46 @@ def classer_videos(
 
     with ThreadPoolExecutor(max_workers=max(1, paralleles)) as pool:
         return {v: r for v, r in pool.map(une, list(cands)) if r is not None}
+
+
+VIDEOS_PAR_REQUETE = 10
+
+
+def decrire_videos_batch(
+    claude: ClientClaude, cands: Sequence[Candidate], par_requete: int = VIDEOS_PAR_REQUETE
+) -> dict[str, ReponseNatureVideo]:
+    """Même description que `classer_videos`, par lots de 10 vidéos et via l'API Batch (-50 %).
+
+    Une vidéo absente ou mal numérotée dans la réponse n'est pas décrite (reprise au run
+    suivant).
+    """
+    lots = {
+        f"lot-{i // par_requete}": list(cands[i : i + par_requete])
+        for i in range(0, len(cands), par_requete)
+    }
+    reponses = claude.lot(
+        {
+            cle: (
+                SYSTEME_VIDEOS_LOT,
+                message_videos_lot((c.titre, c.description, c.chaine) for c in lot),
+                400 * len(lot),
+            )
+            for cle, lot in lots.items()
+        },
+        ReponseVideosLot,
+    )
+    resultat: dict[str, ReponseNatureVideo] = {}
+    for cle, rep in reponses.items():
+        lot = lots[cle]
+        for d in rep.videos:
+            if 1 <= d.numero <= len(lot) and lot[d.numero - 1].video_id not in resultat:
+                resultat[lot[d.numero - 1].video_id] = ReponseNatureVideo(
+                    nature_video=d.nature_video,
+                    resume=d.resume,
+                    sujets=d.sujets,
+                    these_explicite=d.these_explicite,
+                )
+    return resultat
 
 
 def classer_claude(claude: ClientClaude, lignes: Iterable[Ligne]) -> dict[str, Classement]:

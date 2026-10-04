@@ -299,6 +299,33 @@ content gets autre with the label "hors politique"."""
 )
 
 
+class DescriptionVideoNumerotee(ReponseNatureVideo):
+    numero: int
+
+
+class ReponseVideosLot(BaseModel):
+    """Plusieurs vidéos décrites dans un même appel (une entrée par vidéo, par numéro)."""
+
+    videos: list[DescriptionVideoNumerotee]
+
+
+SYSTEME_VIDEOS_LOT = (
+    SYSTEME_NATURE_VIDEO
+    + """
+
+You receive several videos, numbered. Describe each one independently, exactly as if it were
+alone, and return one entry in `videos` per video with its `numero`."""
+)
+
+
+def message_videos_lot(videos: Iterable[tuple[str, str, str]]) -> str:
+    """Vidéos numérotées à partir de 1 : (titre, description, chaîne)."""
+    return "\n\n".join(
+        f"Video {i}:\n" + message_nature_video(titre, description, chaine)
+        for i, (titre, description, chaine) in enumerate(videos, start=1)
+    )
+
+
 def message_nature_video(titre: str, description: str, chaine: str) -> str:
     return "\n".join(
         [
