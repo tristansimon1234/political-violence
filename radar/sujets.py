@@ -209,14 +209,38 @@ _MOTS_VIDES = frozenset(
 )
 
 
+_MOIS = frozenset(
+    [
+        "janvier",
+        "fevrier",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "aout",
+        "septembre",
+        "octobre",
+        "novembre",
+        "decembre",
+    ]
+)
+LETTRES_JETON = 5
+
+
 def jetons(titre: str) -> frozenset[str]:
-    """Mots significatifs d'un titre : minuscules, sans accents ni mots vides, 6 lettres
-    (« antisémitisme » et « antisémites » se rejoignent)."""
+    """Mots significatifs d'un titre : minuscules, sans accents, sans mots vides ni dates
+    (mois, nombres), réduits à 5 lettres (« antisémitisme » et « antisémites », « lycées » et
+    « lycéens » se rejoignent)."""
     sans_accents = "".join(
         c for c in unicodedata.normalize("NFD", titre.lower()) if not unicodedata.combining(c)
     )
     mots = re.findall(r"[a-z0-9]+", sans_accents)
-    return frozenset(m[:6] for m in mots if m not in _MOTS_VIDES and len(m) > 1)
+    return frozenset(
+        m[:LETTRES_JETON]
+        for m in mots
+        if m not in _MOTS_VIDES and m not in _MOIS and not m.isdigit() and len(m) > 1
+    )
 
 
 def _proches(a: Sujet, b: Sujet) -> bool:

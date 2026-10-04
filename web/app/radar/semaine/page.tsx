@@ -336,21 +336,33 @@ type LigneDecalage = { c: CarteSujet; videos: number; ratio: number };
 type Decalages = { couverts: LigneDecalage[]; commentes: LigneDecalage[] };
 
 function decalages(cartes: CarteSujet[]): Decalages {
-  const videos = cartes.reduce((a, c) => a + c.videos.length, 0);
-  const comm = cartes.reduce((a, c) => a + c.classes, 0);
+  // Seulement des sujets dont les réactions sont mesurées : au moins la moitié des vidéos
+  // ont des commentaires classés (sinon « peu de réactions » voudrait dire « pas encore classé »).
+  const mesures = cartes.filter(
+    (c) =>
+      c.classes > 0 &&
+      c.videos.filter((v) => v.reaction).length >= c.videos.length / 2,
+  );
+  const videos = mesures.reduce((a, c) => a + c.videos.length, 0);
+  const comm = mesures.reduce((a, c) => a + c.classes, 0);
   if (!videos || !comm) return { couverts: [], commentes: [] };
-  const lignes = cartes.map((c) => ({
+  const tailles = mesures.map((c) => c.videos.length).sort((a, b) => a - b);
+  const quantile = (q: number) =>
+    tailles[Math.min(tailles.length - 1, Math.floor(q * tailles.length))] ?? 0;
+  const lignes = mesures.map((c) => ({
     c,
     videos: c.videos.length,
     ratio: c.classes / comm / (c.videos.length / videos),
   }));
   return {
+    // « Très couvert » : parmi le quart des sujets les plus couverts.
     couverts: lignes
-      .filter((x) => x.ratio < 0.8 && x.videos >= 5)
+      .filter((x) => x.ratio < 0.8 && x.videos >= Math.max(5, quantile(0.75)))
       .sort((a, b) => a.ratio - b.ratio)
       .slice(0, 2),
+    // « Peu couvert » : au plus la couverture médiane.
     commentes: lignes
-      .filter((x) => x.ratio > 1.25)
+      .filter((x) => x.ratio > 1.25 && x.videos <= quantile(0.5))
       .sort((a, b) => b.ratio - a.ratio)
       .slice(0, 2),
   };
