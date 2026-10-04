@@ -284,10 +284,13 @@ stated clearly in the title or the description; false when you had to guess it, 
 description is empty or uninformative, or when resume starts with "Sujet peu précis".
 
 sujets: 1 to 3 themes the video is about, most important first, with a weight (poids, from 0
-to 1, summing to 1) and a sous_sujet: a short neutral label in French, 2 to 6 words, naming
-the issue or event covered ("réforme des retraites", "dissolution de l'Assemblée", "prix de
-l'électricité"). No judgement, no adjective of opinion, no person's name unless the issue
-cannot be named otherwise. Themes:
+to 1, summing to 1) and a sous_sujet: a short neutral label in French, 3 to 8 words, naming
+the specific issue or event covered, precise enough to tell it apart from other videos on the
+same theme ("vote du budget 2027 à l'Assemblée", "candidature de X à la présidentielle",
+"hausse du prix de l'électricité en février"). Never a generic label such as "élections
+présidentielles 2027", "rassemblement politique" or "actualité politique": say which event.
+No judgement, no adjective of opinion; a person's name only when the event is about that
+person (candidacy, statement, trial, appointment). Themes:
 """
     + "\n".join(f"  - {cle}: {d}" for cle, d in DEFINITIONS_THEMES.items())
     + """
