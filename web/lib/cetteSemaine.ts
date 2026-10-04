@@ -278,7 +278,7 @@ export type Fait = {
   cle: string;
   etiquette: string; // « Le plus contesté »…
   valeur: string; // chiffre mis en avant
-  texte: string; // une phrase
+  texte: string; // une phrase courte, sans le titre du sujet (affiché à part)
   sujet: CarteSujet;
 };
 
@@ -321,7 +321,7 @@ export function faitsMarquants(
       cle: "commente",
       etiquette: "Le plus commenté",
       valeur: Math.round(top.classes).toLocaleString("fr-FR"),
-      texte: `commentaires sous « ${top.titre} » (${top.videos.length} vidéos).`,
+      texte: `commentaires sous ${top.videos.length} vidéos`,
       sujet: top,
     });
   const tous = (c: CarteSujet) => ({
@@ -335,7 +335,7 @@ export function faitsMarquants(
       cle: "conteste",
       etiquette: "Le plus contesté",
       valeur: pc0(conteste[1]),
-      texte: `de désaccord avec les vidéos sur « ${conteste[0].titre} ».`,
+      texte: "de désaccord avec les vidéos",
       sujet: conteste[0],
     });
   const consensuel = max(cartes, (c) => partPos(tous(c), "accord"));
@@ -344,7 +344,7 @@ export function faitsMarquants(
       cle: "consensuel",
       etiquette: "Le plus approuvé",
       valeur: pc0(consensuel[1]),
-      texte: `d'accord avec les vidéos sur « ${consensuel[0].titre} ».`,
+      texte: "d'accord avec les vidéos",
       sujet: consensuel[0],
     });
   const hostile = max(
@@ -356,7 +356,7 @@ export function faitsMarquants(
       cle: "hostile",
       etiquette: "Le plus hostile",
       valeur: pc0(hostile[1]),
-      texte: `de commentaires hostiles sur « ${hostile[0].titre} ».`,
+      texte: "de commentaires hostiles",
       sujet: hostile[0],
     });
   const hausse = max(
@@ -368,7 +368,7 @@ export function faitsMarquants(
       cle: "hausse",
       etiquette: "La plus forte hausse",
       valeur: fois1(hausse[1]),
-      texte: `de commentaires sur « ${hausse[0].titre} » face à la semaine précédente.`,
+      texte: "de commentaires face à la semaine précédente",
       sujet: hausse[0],
     });
   const clivage = max(cartes, (c) => {
@@ -384,7 +384,7 @@ export function faitsMarquants(
       cle: "clivage",
       etiquette: "Médias trad. ou natifs ?",
       valeur: `${Math.round(Math.abs(a - b))} pts`,
-      texte: `d'écart de désaccord sur « ${c.titre} » : ${pc0(a)} sous les médias traditionnels, ${pc0(b)} sous les natifs du web.`,
+      texte: `d'écart de désaccord : ${pc0(a)} sous les médias traditionnels, ${pc0(b)} sous les natifs du web`,
       sujet: c,
     });
   }
@@ -401,7 +401,7 @@ export function faitsMarquants(
       cle: "politique",
       etiquette: "Lancé par les politiques",
       valeur: "1er",
-      texte: `« ${lance.titre} » : une chaîne politique en a parlé avant les médias du panel.`,
+      texte: "une chaîne politique en a parlé avant les médias du panel",
       sujet: lance,
     });
   const videos = cartes.reduce((a, c) => a + c.videos.length, 0);
@@ -416,7 +416,7 @@ export function faitsMarquants(
       cle: "sous_couvert",
       etiquette: "Peu couvert, très commenté",
       valeur: fois1(sous[1]),
-      texte: `plus de réactions que sa part de couverture pour « ${sous[0].titre} » (${sous[0].videos.length} vidéos).`,
+      texte: `plus de réactions que sa part de couverture (${sous[0].videos.length} vidéos)`,
       sujet: sous[0],
     });
   return faits;

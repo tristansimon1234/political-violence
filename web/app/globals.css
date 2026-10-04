@@ -204,14 +204,6 @@ select {
   opacity: 0.7;
 }
 
-.radar-bandeau {
-  margin: 8px 24px 0;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--r-piste);
-  font-size: 13px;
-}
-
 .radar-marge {
   padding: 0 24px;
 }
@@ -263,36 +255,6 @@ select {
   align-items: center;
   font-size: 13px;
   min-height: 36px;
-}
-
-.radar-trois {
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr) 420px;
-  gap: 20px;
-  align-items: start;
-  padding: 16px 24px 48px;
-}
-
-@media (max-width: 1240px) {
-  .radar-trois {
-    grid-template-columns: 300px minmax(0, 1fr);
-  }
-
-  .radar-trois > :last-child {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 760px) {
-  .radar-trois {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.radar-colonne {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 
 .radar-carte h3 {
@@ -806,41 +768,6 @@ select {
   color: var(--r-discret);
 }
 
-.radar-sujets-actu {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-}
-
-.radar-sujets-actu > li {
-  border-bottom: 1px solid var(--r-piste);
-  font-size: 13px;
-}
-
-.radar-sujets-actu summary {
-  display: flex;
-  list-style: none;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 0;
-  min-height: 32px;
-  cursor: pointer;
-}
-
-.radar-sujets-actu .radar-videos {
-  margin: 0 0 8px 12px;
-}
-
-.radar-sujets-actu summary::before {
-  content: "▸";
-  margin-right: 6px;
-  color: var(--r-discret);
-}
-
-.radar-sujets-actu details[open] > summary::before {
-  content: "▾";
-}
-
 /* --- Cette semaine --- */
 
 .radar-semaine {
@@ -945,61 +872,6 @@ select {
   fill: var(--r-bleu);
 }
 
-.radar-modale {
-  width: min(1100px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
-  padding: 0;
-  border: 1px solid var(--r-bord, #ddd8cc);
-  border-radius: 12px;
-}
-
-.radar-modale::backdrop {
-  background: rgb(22 24 29 / 45%);
-}
-
-.radar-modale > .radar {
-  min-height: 0;
-  padding: 20px 24px 28px;
-}
-
-.radar-modale-entete {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.radar-modale-entete h2 {
-  margin: 0 0 4px;
-  font:
-    600 24px/1.25 "Newsreader",
-    Georgia,
-    serif;
-}
-
-.radar-modale-grille {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 28px;
-  margin-top: 12px;
-}
-
-.radar-modale-grille h3 {
-  margin: 20px 0 8px;
-  font-size: 15px;
-}
-
-@media (max-width: 800px) {
-  .radar-modale-grille {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.radar-carte-sujet .radar-rangee-titre,
-.radar-modale-grille .radar-rangee-titre {
-  margin-top: 10px;
-}
-
 .radar-sujet-video {
   display: block;
   font-size: 12px;
@@ -1060,13 +932,6 @@ select {
 
 .radar-drilldown {
   margin-top: 4px;
-}
-
-.radar-drilldown-filtres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 8px 0;
 }
 
 .radar-commentaires {
@@ -1526,12 +1391,6 @@ select {
   font-size: 13px;
 }
 
-.cs-nom-court {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 .cs-axe {
   position: relative;
   height: 12px;
@@ -1705,27 +1564,6 @@ select {
   color: var(--r-discret);
 }
 
-.ve-panneau h3 {
-  margin: 22px 0 8px;
-  font-size: 15px;
-}
-
-.ve-replie {
-  margin-top: 18px;
-  border-top: 1px solid var(--r-piste);
-  padding-top: 12px;
-}
-
-.ve-replie > summary {
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.ve-replie[open] > summary {
-  margin-bottom: 8px;
-}
-
 .cs-faits {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -1877,4 +1715,837 @@ select {
   margin: 6px 0 0;
   font-size: 11px;
   color: var(--r-discret);
+}
+
+/* --- Vue d'ensemble : maître / détail, onglets, panorama --- */
+
+.ve-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 16px 24px 64px;
+}
+
+.ve-resume-periode {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--r-discret);
+}
+
+.ve-maitre {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.ve-maitre > :first-child {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .ve-maitre {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ve-maitre > :first-child {
+    position: static;
+    max-height: none;
+  }
+}
+
+.ve-detail {
+  padding: 24px 28px;
+  scroll-margin-top: 12px;
+}
+
+.radar-carte h2.ve-titre-theme {
+  margin: 0 0 4px;
+  font-size: 30px;
+}
+
+.ve-onglets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 24px 0 0;
+  border-bottom: 1px solid var(--r-bord);
+}
+
+.ve-onglets button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--r-discret);
+  cursor: pointer;
+}
+
+.ve-onglets button:hover {
+  color: var(--r-texte);
+}
+
+.ve-onglets button.actif {
+  color: var(--r-texte);
+  border-bottom-color: var(--r-texte);
+}
+
+.ve-onglet-corps {
+  padding-top: 18px;
+}
+
+.ve-h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.ve-deux {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+
+@media (max-width: 1000px) {
+  .ve-deux {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ve-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 8px;
+}
+
+.ve-kpi-valeur {
+  font:
+    600 36px/1.1 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.ve-kpi-libelle {
+  font-size: 14px;
+}
+
+.ve-tableau {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr) minmax(0, 1fr) 72px;
+  column-gap: 20px;
+  font-size: 13px;
+}
+
+.ve-tableau-tete,
+.ve-tableau-ligne {
+  display: contents;
+}
+
+.ve-tableau-tete > span {
+  padding-bottom: 8px;
+  font-size: 12px;
+  color: var(--r-discret);
+  border-bottom: 1px solid var(--r-bord);
+}
+
+.ve-tableau-ligne > span {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--r-piste);
+}
+
+.ve-tableau-ligne > span .radar-barre {
+  margin: 0;
+}
+
+.ve-tableau-ligne.a-part > span {
+  margin-top: 8px;
+  border-top: 1px dashed var(--r-bord);
+}
+
+.ve-tableau-nom {
+  font-weight: 600;
+}
+
+.ve-tableau-chiffre {
+  font:
+    600 16px "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .ve-tableau {
+    grid-template-columns: minmax(0, 1fr) 60px;
+  }
+
+  .ve-tableau-tete {
+    display: none;
+  }
+
+  .ve-tableau-ligne > span:nth-child(2),
+  .ve-tableau-ligne > span:nth-child(3) {
+    grid-column: 1 / -1;
+    padding-top: 0;
+  }
+}
+
+.ve-panorama {
+  margin-top: 24px;
+  padding: 24px 28px;
+}
+
+.ve-panorama-tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--r-bord);
+}
+
+.ve-panorama-tete h2 {
+  margin: 0 0 10px;
+}
+
+.ve-panorama-tete .ve-onglets {
+  margin: 0;
+  border-bottom: none;
+}
+
+.ve-panorama .radar-nuage {
+  max-height: 520px;
+}
+
+.ve-panorama .radar-semaines {
+  padding: 0;
+}
+
+/* --- Lignes cliquables (sujets, vidéos, thèses) --- */
+
+.explo-liste {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.explo-liste > li + li {
+  border-top: 1px solid var(--r-piste);
+}
+
+.explo-ligne {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.explo-ligne:hover {
+  background: var(--r-piste);
+}
+
+.explo-ligne:focus-visible {
+  outline: 2px solid var(--r-bleu);
+  outline-offset: -2px;
+}
+
+.explo-ligne-corps {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.explo-ligne-corps .radar-barre {
+  margin: 2px 0;
+}
+
+.explo-ligne-titre {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.explo-ligne-meta {
+  font-size: 12px;
+  color: var(--r-discret);
+}
+
+.explo-ligne-chiffres {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font:
+    13px "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+  white-space: nowrap;
+}
+
+.explo-ligne-chiffres small {
+  color: var(--r-discret);
+  font-size: 11px;
+}
+
+.explo-chevron {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--r-discret);
+}
+
+.explo-ligne:hover .explo-chevron {
+  color: var(--r-texte);
+}
+
+/* --- Panneau latéral du drill-down --- */
+
+.explo {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(720px, 100vw);
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid #ddd8cc;
+  box-shadow: -12px 0 40px rgb(22 24 29 / 18%);
+}
+
+.explo::backdrop {
+  background: rgb(22 24 29 / 35%);
+}
+
+
+.explo-cadre {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.explo-barre {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--r-bord);
+  background: var(--r-surface);
+}
+
+.explo-retour,
+.explo-fermer {
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 1px solid var(--r-bord);
+  border-radius: 999px;
+  background: var(--r-fond);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.explo-ariane {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--r-discret);
+}
+
+.explo-ariane > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explo-ariane > * + *::before {
+  content: "›";
+  margin: 0 8px;
+}
+
+.explo-ariane button {
+  max-width: 260px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--r-bleu);
+  cursor: pointer;
+}
+
+.explo-ariane [aria-current] {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--r-texte);
+}
+
+.explo-corps {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px 48px;
+}
+
+.explo-surtitre {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--r-orange-texte);
+}
+
+.explo-titre {
+  margin: 0 0 10px;
+  font:
+    600 26px/1.2 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.explo-chiffres {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1px;
+  margin: 16px 0;
+  border: 1px solid var(--r-bord);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--r-bord);
+}
+
+.explo-chiffre {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--r-surface);
+}
+
+.explo-chiffre > :first-child {
+  font:
+    600 22px/1.15 "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+}
+
+.explo-chiffre > :last-child {
+  font-size: 12px;
+  color: var(--r-discret);
+}
+
+.explo-section {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--r-bord);
+}
+
+.explo-section h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.explo-these {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--r-bleu);
+  background: var(--r-piste);
+  font-size: 15px;
+  font-style: italic;
+}
+
+.explo-these .petit-texte {
+  font-style: normal;
+}
+
+.explo .radar-commentaires {
+  margin-top: 12px;
+}
+
+/* Cette semaine : carte entièrement cliquable, haltères lisibles */
+
+.cs-carte {
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.cs-carte:hover {
+  border-color: var(--r-texte);
+}
+
+.cs-carte-lien::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.cs-carte .pcb {
+  position: relative;
+  z-index: 1;
+  cursor: auto;
+}
+
+.cs-haltere li {
+  grid-template-columns: minmax(0, 1fr) 40px;
+  row-gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--r-piste);
+}
+
+.cs-haltere .cs-nom {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.cs-haltere .cs-nom:hover,
+.cs-decalage .cs-nom:hover {
+  text-decoration: underline;
+}
+
+.cs-faits {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.ve-panorama .radar-nuage {
+  display: block;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.radar-drilldown .ve-classement {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.radar-drilldown .ve-classement button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* --- Mouvement et fluidité --- */
+
+:root {
+  --r-courbe: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.radar h1,
+.radar h2,
+.radar h3 {
+  text-wrap: balance;
+}
+
+/* Contenu recalculé en arrière-plan : estompé, puis fondu à l'arrivée. */
+.radar-contenu {
+  transition: opacity 0.2s ease;
+  animation: fondu 0.3s var(--r-courbe);
+}
+
+.radar-contenu.en-calcul {
+  opacity: 0.55;
+  transition-delay: 0.08s; /* rien ne clignote si le calcul est instantané */
+}
+
+.ve-onglet-corps,
+.ve-detail {
+  animation: fondu 0.25s var(--r-courbe);
+}
+
+@keyframes fondu {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Barres et points : les valeurs glissent quand un filtre change. */
+.radar-barre span,
+.cs-barre span,
+.cs-piste span,
+.ve-jauge span {
+  transition: width 0.45s var(--r-courbe);
+}
+
+.cs-point,
+.cs-lien-haltere {
+  transition:
+    left 0.45s var(--r-courbe),
+    width 0.45s var(--r-courbe);
+}
+
+.radar-nuage .point circle {
+  transition:
+    cx 0.45s var(--r-courbe),
+    cy 0.45s var(--r-courbe),
+    r 0.45s var(--r-courbe),
+    fill 0.2s;
+}
+
+/* Panneau latéral : entrée et sortie glissées, voile en fondu. */
+.explo {
+  transform: translateX(100%);
+  transition:
+    transform 0.28s var(--r-courbe),
+    overlay 0.28s allow-discrete,
+    display 0.28s allow-discrete;
+}
+
+.explo[open] {
+  transform: none;
+}
+
+@starting-style {
+  .explo[open] {
+    transform: translateX(100%);
+  }
+}
+
+.explo::backdrop {
+  opacity: 0;
+  transition:
+    opacity 0.28s ease,
+    overlay 0.28s allow-discrete,
+    display 0.28s allow-discrete;
+}
+
+.explo[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .explo[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.explo-corps {
+  overflow-x: hidden;
+}
+
+.explo-niveau {
+  animation: niveau-avant 0.26s var(--r-courbe);
+}
+
+.explo-corps[data-sens="arriere"] .explo-niveau {
+  animation-name: niveau-arriere;
+}
+
+@keyframes niveau-avant {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@keyframes niveau-arriere {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+/* Surfaces cliquables : réponse au survol et à l'appui. */
+.cs-carte,
+.cs-fait {
+  transition:
+    border-color 0.15s,
+    box-shadow 0.2s,
+    transform 0.2s var(--r-courbe);
+}
+
+.cs-carte:hover,
+.cs-fait:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgb(22 24 29 / 8%);
+}
+
+.cs-carte:active,
+.cs-fait:active,
+.explo-ligne:active {
+  transform: scale(0.995);
+}
+
+.explo-ligne,
+.radar-theme,
+.ve-onglets button,
+.radar .segment,
+.ve-classement button {
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.explo-chevron {
+  transition:
+    transform 0.2s var(--r-courbe),
+    color 0.15s;
+}
+
+.explo-ligne:hover .explo-chevron {
+  transform: translateX(3px);
+}
+
+/* Faits marquants : chiffre, phrase courte, puis le sujet. */
+.cs-fait-sujet {
+  display: -webkit-box;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--r-piste);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.cs-fait-sujet::after {
+  content: " ›";
+  color: var(--r-discret);
+}
+
+/* Ce qui a changé : lignes cliquables. */
+.cs-changements li {
+  display: block;
+  padding: 0;
+}
+
+.cs-changement {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--r-texte);
+}
+
+button.cs-changement {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+button.cs-changement:hover {
+  background: var(--r-piste);
+}
+
+/* Navigation entre semaines : cibles plus grandes. */
+.cs-fleche {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.cs-fleche:not(:disabled):hover {
+  border-color: var(--r-texte);
+  background: var(--r-fond);
+}
+
+/* Chargement : silhouette de la page plutôt qu'un texte. */
+.squelette {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.squelette span {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(
+      90deg,
+      transparent 0,
+      rgb(255 255 255 / 55%) 50%,
+      transparent 100%
+    )
+    var(--r-piste);
+  background-size: 200% 100%;
+  animation: reflet 1.4s linear infinite;
+}
+
+.squelette-titre {
+  width: 55%;
+  height: 44px;
+  margin-bottom: 16px;
+}
+
+.squelette-ligne {
+  width: 75%;
+  height: 18px;
+  margin-bottom: 32px;
+}
+
+.squelette-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.squelette-bloc {
+  height: 150px;
+}
+
+@keyframes reflet {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar *,
+  .radar *::before,
+  .radar *::after,
+  .explo,
+  .explo::backdrop {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

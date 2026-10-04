@@ -4,6 +4,12 @@
 
 **État au 02/10/2026** : écran `/radar` (Vue d'ensemble des thèmes, v1), réservé à l'admin. Filtres période (7 j, 30 j, depuis le début), réactions sous (médias traditionnels, médias natifs du web), format (tous, vidéos longues, Shorts), chaînes politiques (lues à part). Liste des thèmes (part des commentaires politiques, évolution, courbe, vélocité provisoire) et détail du thème choisi (tonalité, part hostile, accord avec la vidéo sous les vidéos d'opinion, par type de source). Source : table `agregats_themes`.
 
+**Organisation de l'information (04/10/2026)**
+- **Un seul drill-down** pour les deux écrans : un panneau latéral à niveaux (sujet › vidéo › commentaires classés), avec fil d'Ariane, retour et fermeture (`web/lib/Explorateur.tsx`). Un seul niveau affiché à la fois : plus de blocs dépliables imbriqués dans les listes, plus de modale.
+- **Vue d'ensemble** en maître / détail : à gauche le classement des thèmes ; à droite le thème choisi (chiffres clés, résumé IA, onglets Réactions · Sujets · Vidéos · Thèses). Les sujets, vidéos et thèses sont des lignes cliquables qui ouvrent le panneau. Dessous, « Panorama des thèmes » en onglets : carte attention × intensité, semaine par semaine (ce qui a changé + part de chaque thème), signal émergent (sujets hors grille).
+- **Cette semaine** : carte de sujet entièrement cliquable ; faits marquants sur une rangée (chiffre, phrase courte, sujet à part) ; « Ce qui a changé » cliquable (sauf un sujet sorti du classement) ; noms des sujets en entier dans « Médias traditionnels ou natifs ».
+- **Fluidité** : filtres appliqués en arrière-plan (contenu estompé pendant le calcul), fondu au changement d'onglet, de thème ou de semaine, barres qui glissent vers leurs nouvelles valeurs, panneau qui glisse à l'ouverture et à la fermeture, position retrouvée au retour d'un niveau, silhouette de page au chargement. Animations coupées si le système demande de réduire les animations.
+
 L'interface lit uniquement les agrégats (Supabase). Maquette de référence : artifact "Radar 2027".
 
 **Structure**
