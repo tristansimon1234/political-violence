@@ -1,0 +1,47 @@
+name: Résumés IA
+
+# « Pourquoi ça bouge » : résumés IA des 5 premiers sujets et des thèmes de chaque semaine
+# (table `resumes_ia`). Lancement manuel, après Sujets et Agrégats. Un résumé n'est réécrit
+# que si ses chiffres ont changé. Secrets : SUPABASE_SECRET_KEY, ANTHROPIC_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run : résumés à écrire, aucun appel"
+        type: boolean
+        default: true
+      budget_claude:
+        description: "Dollars max pour Claude"
+        default: "1"
+
+concurrency:
+  group: resumes
+  cancel-in-progress: false
+
+jobs:
+  resumes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Résumés
+        env:
+          BUDGET: ${{ inputs.budget_claude }}
+        run: |
+          set -o pipefail
+          [[ "$BUDGET" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "budget invalide"; exit 1; }
+          ARGS=(--budget-claude "$BUDGET")
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          python scripts/resumes.py "${ARGS[@]}" | tee rapport.md
+      - name: Résumé
+        if: always()
+        run: cat rapport.md >> "$GITHUB_STEP_SUMMARY" || true

@@ -6,6 +6,8 @@ une donnée dérivée, neutre, écrite par le modèle (pas un titre de vidéo) :
 campagne. Un sujet n'est affiché qu'à partir de 3 vidéos de 2 chaînes (docs/donnees.md).
 """
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -160,11 +162,105 @@ def mettre_a_jour(
 
 # --- Fusion des doublons ---
 # Deux sujets peuvent décrire le même événement (créés dans deux lots, ou après une pause de
-# plus de 7 jours). À chaque run, Claude reçoit la liste des sujets récents et désigne les
-# doublons ; leurs vidéos passent au sujet gardé.
+# plus de 7 jours). À chaque run, le code repère les sujets aux titres proches et voisins dans
+# le temps ; Claude tranche groupe par groupe ; les vidéos des doublons passent au sujet gardé.
 
 FENETRE_FUSION_JOURS = 45
-MAX_SUJETS_FUSION = 400
+SEUIL_TITRES = 0.4  # part de mots communs (Jaccard) pour soupçonner un doublon
+ECART_MAX_JOURS = 30  # deux sujets plus éloignés dans le temps ne sont pas comparés
+MAX_GROUPE = 15
+
+_MOTS_VIDES = frozenset(
+    {
+        "a",
+        "au",
+        "aux",
+        "avec",
+        "ce",
+        "ces",
+        "contre",
+        "d",
+        "dans",
+        "de",
+        "des",
+        "du",
+        "en",
+        "entre",
+        "et",
+        "l",
+        "la",
+        "le",
+        "les",
+        "leur",
+        "lors",
+        "pour",
+        "par",
+        "sa",
+        "se",
+        "son",
+        "sur",
+        "un",
+        "une",
+        "apres",
+        "avant",
+        "face",
+        "fin",
+    }
+)
+
+
+def jetons(titre: str) -> frozenset[str]:
+    """Mots significatifs d'un titre : minuscules, sans accents ni mots vides, 6 lettres
+    (« antisémitisme » et « antisémites » se rejoignent)."""
+    sans_accents = "".join(
+        c for c in unicodedata.normalize("NFD", titre.lower()) if not unicodedata.combining(c)
+    )
+    mots = re.findall(r"[a-z0-9]+", sans_accents)
+    return frozenset(m[:6] for m in mots if m not in _MOTS_VIDES and len(m) > 1)
+
+
+def _proches(a: Sujet, b: Sujet) -> bool:
+    ecart = max(a.premier_jour, b.premier_jour) - min(a.dernier_jour, b.dernier_jour)
+    if ecart.days > ECART_MAX_JOURS:
+        return False
+    ja, jb = jetons(a.titre), jetons(b.titre)
+    return bool(ja and jb) and len(ja & jb) / len(ja | jb) >= SEUIL_TITRES
+
+
+def groupes_candidats(sujets: list[Sujet]) -> list[list[Sujet]]:
+    """Groupes de sujets aux titres proches et voisins dans le temps (composantes connexes),
+    à soumettre à Claude. Seuls les sujets d'au moins 2 vidéos actifs dans les 45 derniers
+    jours de données sont comparés ; un groupe trop grand est coupé (les plus gros d'abord)."""
+    if not sujets:
+        return []
+    fin = max(s.dernier_jour for s in sujets)
+    retenus = [
+        s
+        for s in sujets
+        if s.videos >= 2 and s.dernier_jour >= fin - timedelta(days=FENETRE_FUSION_JOURS)
+    ]
+    parent = {s.id: s.id for s in retenus}
+
+    def racine(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for i, a in enumerate(retenus):
+        for b in retenus[i + 1 :]:
+            if _proches(a, b):
+                parent[racine(a.id)] = racine(b.id)
+    groupes: dict[str, list[Sujet]] = {}
+    for s in retenus:
+        groupes.setdefault(racine(s.id), []).append(s)
+    resultat: list[list[Sujet]] = []
+    for g in groupes.values():
+        if len(g) < 2:
+            continue
+        g.sort(key=lambda s: (-s.videos, s.id))
+        resultat.append(g[:MAX_GROUPE])
+    return sorted(resultat, key=lambda g: g[0].id)
 
 
 class Fusion(BaseModel):
@@ -176,8 +272,8 @@ class ReponseFusions(BaseModel):
     fusions: list[Fusion]
 
 
-SYSTEME_FUSIONS = """You receive a list of news stories ("sujets") detected in French political
-YouTube videos: id, neutral title, number of videos, first and last day.
+SYSTEME_FUSIONS = """You receive a few news stories ("sujets") detected in French political
+YouTube videos, with similar titles: id, neutral title, number of videos, first and last day.
 
 Find the stories that are the SAME event described twice (same announcement, same
 controversy, same vote, same news item, possibly worded differently or continued later).
@@ -187,17 +283,6 @@ For each group, return `garder` (the id to keep: the one with the most videos) a
 Do not merge different events that merely share a theme, a place or a person (two different
 statements by the same politician, two different strikes, two different votes are different
 stories). When unsure, do not merge. Return an empty list if there is no duplicate."""
-
-
-def candidats_fusion(sujets: list[Sujet]) -> list[Sujet]:
-    """Sujets d'au moins 2 vidéos actifs dans les 45 derniers jours de données, au plus 400."""
-    if not sujets:
-        return []
-    fin = max(s.dernier_jour for s in sujets)
-    debut = fin - timedelta(days=FENETRE_FUSION_JOURS)
-    retenus = [s for s in sujets if s.videos >= 2 and s.dernier_jour >= debut]
-    retenus.sort(key=lambda s: (-s.videos, s.id))
-    return sorted(retenus[:MAX_SUJETS_FUSION], key=lambda s: (s.premier_jour, s.id))
 
 
 def message_fusions(sujets: list[Sujet]) -> str:

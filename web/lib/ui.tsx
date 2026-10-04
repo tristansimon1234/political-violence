@@ -27,10 +27,10 @@ export function EnPreparation({
   return (
     <div className="radar-preparation">
       <p className="radar-preparation-titre">
-        {titre} <span className="radar-badge-gris">En préparation</span>
+        {titre} <span className="radar-badge-gris">En attente de données</span>
       </p>
       {children}
-      <p className="discret petit-texte">Attend : {attend}</p>
+      <p className="discret petit-texte">Il faut : {attend}</p>
     </div>
   );
 }
