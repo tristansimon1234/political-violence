@@ -35,7 +35,7 @@ L'interface lit uniquement les agrégats (Supabase). Maquette de référence : a
 
 **Drilldown verbatims** (plus tard)
 - 30 derniers jours uniquement, texte non modifié, lien vers la vidéo, pas de pseudo, quelques exemples par sujet.
-- Récupéré **en direct via l'API** au moment de la consultation plutôt que lu dans le Parquet : les commentaires supprimés disparaissent d'eux-mêmes. Coût : 1 unité de quota par appel, mettre en cache côté serveur quelques heures au maximum.
+- **Lu dans les données stockées** (décision du 04/10/2026, Tristan), pas d'appel à l'API : quelques exemples par sujet préparés par le batch (la clé secrète Supabase ne va jamais sur Vercel).
 - Jamais dans les exports PDF.
 
 ## Espace admin (gestion des sources)

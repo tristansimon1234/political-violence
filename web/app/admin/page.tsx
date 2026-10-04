@@ -14,8 +14,10 @@ import {
 
 type Onglet = "panel" | "equilibre" | "journal";
 
-const nombre = (n: number | null) => (n === null ? "–" : n.toLocaleString("fr-FR"));
-const date = (d: string | null) => (d ? new Date(d).toLocaleDateString("fr-FR") : "–");
+const nombre = (n: number | null) =>
+  n === null ? "–" : n.toLocaleString("fr-FR");
+const date = (d: string | null) =>
+  d ? new Date(d).toLocaleDateString("fr-FR") : "–";
 
 export default function Admin() {
   return (
@@ -39,7 +41,12 @@ function Espace({ email }: { email: string }) {
     setAdmin(Boolean(estAdmin));
     if (!estAdmin) return;
     const [s, j] = await Promise.all([
-      client.from("sources").select("*").order("type").order("sous_type").order("nom"),
+      client
+        .from("sources")
+        .select("*")
+        .order("type")
+        .order("sous_type")
+        .order("nom"),
       client
         .from("sources_journal")
         .select("*")
@@ -72,13 +79,18 @@ function Espace({ email }: { email: string }) {
       <h1>Radar 2027 · Admin</h1>
       <p className="discret">
         {email} ·{" "}
-        <button className="petit" onClick={() => void supabase().auth.signOut()}>
+        <button
+          className="petit"
+          onClick={() => void supabase().auth.signOut()}
+        >
           Se déconnecter
         </button>
       </p>
       {erreur && <p className="erreur">{erreur}</p>}
       {admin === false && (
-        <p className="erreur">Ce compte n'est pas administrateur (table `admins`).</p>
+        <p className="erreur">
+          Ce compte n'est pas administrateur (table `admins`).
+        </p>
       )}
       {admin && (
         <>
@@ -99,7 +111,9 @@ function Espace({ email }: { email: string }) {
               </button>
             ))}
           </nav>
-          {onglet === "panel" && <Panel sources={sources} basculer={basculer} />}
+          {onglet === "panel" && (
+            <Panel sources={sources} basculer={basculer} />
+          )}
           {onglet === "equilibre" && <Equilibre sources={sources} />}
           {onglet === "journal" && <Journal journal={journal} />}
         </>
@@ -116,11 +130,16 @@ function Panel({
   basculer: (s: Source) => Promise<void>;
 }) {
   const [filtre, setFiltre] = useState<TypeSource | "tous">("tous");
-  const visibles = sources.filter((s) => filtre === "tous" || s.type === filtre);
+  const visibles = sources.filter(
+    (s) => filtre === "tous" || s.type === filtre,
+  );
   return (
     <>
       <p>
-        <select value={filtre} onChange={(e) => setFiltre(e.target.value as TypeSource | "tous")}>
+        <select
+          value={filtre}
+          onChange={(e) => setFiltre(e.target.value as TypeSource | "tous")}
+        >
           <option value="tous">Toutes les catégories</option>
           {TYPES_SOURCE.map((t) => (
             <option key={t} value={t}>
@@ -147,9 +166,14 @@ function Panel({
           <tbody>
             {visibles.map((s) => {
               const sousSeuil =
-                s.sous_type !== "parti" && (s.videos_fenetre ?? 0) < SEUIL_ACTIVITE_VIDEOS;
+                s.sous_type !== "parti" &&
+                (s.videos_fenetre ?? 0) < SEUIL_ACTIVITE_VIDEOS;
               return (
-                <tr key={s.id} className={s.active ? "" : "en-pause"} title={s.critere_inclusion}>
+                <tr
+                  key={s.id}
+                  className={s.active ? "" : "en-pause"}
+                  title={s.critere_inclusion}
+                >
                   <td>
                     {s.nom} <span className="discret">{s.handle}</span>
                   </td>
@@ -185,7 +209,9 @@ function Equilibre({ sources }: { sources: Source[] }) {
     () =>
       TYPES_SOURCE.flatMap((t) =>
         SOUS_TYPES_PAR_TYPE[t].map((st) => {
-          const groupe = sources.filter((s) => s.type === t && s.sous_type === st && s.active);
+          const groupe = sources.filter(
+            (s) => s.type === t && s.sous_type === st && s.active,
+          );
           return {
             t,
             st,

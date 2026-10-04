@@ -158,7 +158,7 @@ export function videosDebattues(
 export type Rattachement = {
   video_id: string;
   sujet_id: string | null;
-  sujets: { titre: string } | null;
+  sujets: { titre: string; premier_jour?: string } | null;
 };
 
 export type SujetActu = {

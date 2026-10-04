@@ -323,6 +323,14 @@ def test_gros_lot_decoupe_en_morceaux(tmp_path: Path, monkeypatch: pytest.Monkey
     ]
 
 
+def test_collecte_ne_purge_pas(tmp_path: Path) -> None:
+    """Purge manuelle seulement (décision du 04/10/2026) : la collecte ne supprime rien."""
+    vieux = chemin_partition("commentaires", J1.date() - timedelta(days=45))
+    StockageLocal(tmp_path).ecrire(vieux, b"x")
+    _, _, st = _run(tmp_path, FauxYouTube(J1), FausseBase(SOURCES), _quotidien())
+    assert vieux in st.lister("commentaires")
+
+
 def test_invariant_aucune_partition_de_plus_de_30_jours_apres_purge(tmp_path: Path) -> None:
     st = StockageLocal(tmp_path)
     aujourdhui = date(2026, 10, 31)
