@@ -38,10 +38,14 @@ export type CarteSujet = {
   accord: number;
   nuance: number;
   desaccord: number;
-  parType: Partial<Record<TypeSource, number>>; // commentaires classés par type de source
-  parJour: number[]; // vidéos publiées par jour de la période
-  precedent: number; // commentaires classés la période précédente (même durée)
+  parType: Partial<Record<TypeSource, number>>; // commentaires par type de source
+  positionsParType: Partial<Record<TypeSource, Positions>>; // accord par type de source
+  parJour: number[]; // commentaires par jour de publication des vidéos, sur la période
+  precedent: number; // commentaires la période précédente (même durée)
+  premierJour: string; // premier jour du sujet (toutes vidéos)
 };
+
+export type Positions = { accord: number; nuance: number; desaccord: number };
 
 const JOUR_MS = 86_400_000;
 export const decaler = (j: string, n: number) =>
@@ -102,6 +106,7 @@ function regrouper(
         id,
         titre: r.sujets.titre,
         nouveau: (r.sujets.premier_jour ?? "") >= p.debut,
+        premierJour: r.sujets.premier_jour ?? jour,
         videos: [],
         chaines: 0,
         themes: [],
@@ -111,6 +116,7 @@ function regrouper(
         nuance: 0,
         desaccord: 0,
         parType: {},
+        positionsParType: {},
         parJour: Array.from({ length: 7 }, () => 0),
         precedent: 0,
       },
@@ -135,8 +141,9 @@ function regrouper(
         these: theses.get(s.video_id) ?? null,
       });
       const i = Math.round((Date.parse(jour) - Date.parse(p.debut)) / JOUR_MS);
-      if (i >= 0 && i < c.parJour.length)
-        c.parJour[i] = (c.parJour[i] ?? 0) + 1;
+      if (i >= 0 && i < c.parJour.length && reaction)
+        c.parJour[i] =
+          (c.parJour[i] ?? 0) + (reaction.poids ?? 1) * reaction.commentaires;
       if (reaction) {
         // Plafond par vidéo : on additionne des estimations pondérées par vidéo.
         const w = reaction.poids ?? 1;
@@ -147,6 +154,15 @@ function regrouper(
         c.desaccord += w * reaction.desaccord;
         c.parType[v.sources.type] =
           (c.parType[v.sources.type] ?? 0) + w * reaction.commentaires;
+        const pt = c.positionsParType[v.sources.type] ?? {
+          accord: 0,
+          nuance: 0,
+          desaccord: 0,
+        };
+        pt.accord += w * reaction.accord;
+        pt.nuance += w * reaction.nuance;
+        pt.desaccord += w * reaction.desaccord;
+        c.positionsParType[v.sources.type] = pt;
       }
     }
     m.set(id, acc);
@@ -210,4 +226,48 @@ export function thesesDuSujet(
       return { ...v, prononces: r.accord + r.nuance + r.desaccord };
     })
     .filter((v) => v.prononces >= MIN_PRONONCES);
+}
+
+// --- Récupération politique : qui, parmi les chaînes politiques, publie sur le sujet ---
+
+export type Reprise = {
+  partis: number;
+  personnalites: number;
+  premierPolitique: string | null;
+  premierMedia: string | null;
+};
+
+/** Chaînes politiques ayant publié sur le sujet jusqu'à la fin de la période (lues à part). */
+export function reprisePolitique(
+  sujets: SujetVideo[],
+  rattachements: Map<string, Rattachement>,
+  sujetId: string,
+  fin: string,
+): Reprise {
+  const partis = new Set<string>();
+  const personnalites = new Set<string>();
+  let premierPolitique: string | null = null;
+  let premierMedia: string | null = null;
+  const vues = new Set<string>();
+  for (const s of sujets) {
+    if (vues.has(s.video_id)) continue;
+    if (rattachements.get(s.video_id)?.sujet_id !== sujetId) continue;
+    const v = s.videos;
+    if (!v?.sources) continue;
+    vues.add(s.video_id);
+    const jour = jourParis(v.publiee_at);
+    if (jour > fin) continue;
+    if (v.sources.type === "politique") {
+      (v.sources.sous_type === "parti" ? partis : personnalites).add(
+        v.sources.nom,
+      );
+      if (!premierPolitique || jour < premierPolitique) premierPolitique = jour;
+    } else if (!premierMedia || jour < premierMedia) premierMedia = jour;
+  }
+  return {
+    partis: partis.size,
+    personnalites: personnalites.size,
+    premierPolitique,
+    premierMedia,
+  };
 }

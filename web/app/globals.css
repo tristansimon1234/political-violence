@@ -1106,3 +1106,536 @@ select {
   background: #f3dccd;
   color: var(--r-orange-texte);
 }
+
+/* --- Cette semaine (maquette « Radar 2027 ») --- */
+
+.cs-bandeau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 24px;
+  font-size: 13px;
+  color: var(--r-discret);
+  border-bottom: 1px solid var(--r-bord);
+}
+
+.cs-badge {
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--r-texte);
+  color: var(--r-fond);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cs-page {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 32px 32px 64px;
+}
+
+.cs-tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 28px;
+}
+
+.cs-surtitre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--r-orange-texte);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cs-fleche {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--r-bord);
+  border-radius: 50%;
+  background: var(--r-surface);
+  color: var(--r-texte);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cs-fleche:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cs h1 {
+  margin: 0 0 14px;
+  font:
+    600 44px/1.1 "Newsreader",
+    Georgia,
+    serif;
+  letter-spacing: -0.01em;
+}
+
+.cs-chapo {
+  max-width: 860px;
+  margin: 0 0 8px;
+  font:
+    400 19px/1.55 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.cs-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--r-discret);
+}
+
+.cs-filtre {
+  border: none;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.cs-filtre legend {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--r-discret);
+}
+
+.cs-segments {
+  display: flex;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--r-piste);
+}
+
+.cs-segments button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.cs-segments button.actif {
+  background: var(--r-surface);
+  box-shadow: 0 1px 3px rgb(22 24 29 / 12%);
+}
+
+.cs-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 40px;
+  align-items: start;
+}
+
+.cs-titre-liste {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.cs h2 {
+  margin: 0 0 4px;
+  font:
+    600 24px/1.2 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.cs-cartes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cs-carte {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  padding: 22px 24px;
+  border: 1px solid var(--r-bord);
+  border-radius: 12px;
+  background: var(--r-surface);
+}
+
+.cs-carte.premiere {
+  border: 1.5px solid var(--r-texte);
+}
+
+.cs-rang {
+  padding-top: 4px;
+  font:
+    500 15px "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+  color: var(--r-discret);
+}
+
+.cs-carte-tete {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.cs-carte-tete > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.cs-carte h3 {
+  margin: 0 0 4px;
+  font:
+    600 22px/1.25 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.cs-carte h3 button {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cs-carte h3 button:hover {
+  text-decoration: underline;
+}
+
+.cs-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--r-discret);
+}
+
+.cs-courbe {
+  width: 100px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.cs-courbe polyline {
+  fill: none;
+  stroke: var(--r-orange);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.cs-pastille {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--r-piste);
+  font:
+    500 13px "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+}
+
+.cs-pastille.hausse {
+  background: #f6dfd0;
+  color: var(--r-orange-texte);
+}
+
+.cs-pastille.nouveau {
+  background: #dfe7f4;
+  color: #1f417a;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.cs-indicateurs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.cs-etiquette {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--r-discret);
+}
+
+.cs-barre {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--r-piste);
+}
+
+.cs-barre .bleu {
+  background: var(--r-bleu);
+}
+
+.cs-barre .orange {
+  background: var(--r-orange);
+}
+
+.cs-barre .noir {
+  background: var(--r-texte);
+}
+
+.cs-petit {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--r-discret);
+}
+
+.cs-alerte {
+  color: var(--r-orange-texte);
+  font-weight: 600;
+}
+
+.cs-valeur {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cs-lien-bas {
+  display: block;
+  margin: 18px 0 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--r-bleu);
+  cursor: pointer;
+}
+
+.cs-lien-bas a {
+  color: inherit;
+}
+
+.cs-colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cs-encart {
+  padding: 20px 22px;
+  border: 1px solid var(--r-bord);
+  border-radius: 12px;
+  background: var(--r-surface);
+}
+
+.cs-sous-titre {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cs-decalage {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 70px;
+  align-items: center;
+  gap: 4px 10px;
+  margin-bottom: 12px;
+}
+
+.cs-decalage .cs-petit {
+  margin: 0;
+}
+
+.cs-nom {
+  grid-column: 1 / -1;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--r-texte);
+  cursor: pointer;
+}
+
+.cs-piste {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--r-piste);
+  overflow: hidden;
+}
+
+.cs-piste span {
+  display: block;
+  height: 100%;
+}
+
+.cs-piste .gris {
+  background: var(--r-couverture);
+}
+
+.cs-piste .orange {
+  background: var(--r-orange);
+}
+
+.cs-chiffre {
+  font:
+    12px "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+  text-align: right;
+  color: var(--r-discret);
+}
+
+.cs-haltere {
+  list-style: none;
+  margin: 12px 0 8px;
+  padding: 0;
+}
+
+.cs-haltere li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.cs-nom-court {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cs-axe {
+  position: relative;
+  height: 12px;
+  border-top: 1px solid var(--r-piste);
+  margin-top: 6px;
+}
+
+.cs-point {
+  position: absolute;
+  top: -6px;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+}
+
+.cs-point.bleu {
+  background: var(--r-bleu);
+}
+
+.cs-point.orange {
+  background: var(--r-orange);
+}
+
+.cs-lien-haltere {
+  position: absolute;
+  top: -1.5px;
+  height: 2px;
+  background: var(--r-texte);
+}
+
+.cs-changements {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.cs-changements li {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 7px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.cs-etiq {
+  justify-self: start;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cs-etiq.nouveau {
+  background: #dfe7f4;
+  color: #1f417a;
+}
+
+.cs-etiq.hausse {
+  background: #f6dfd0;
+  color: var(--r-orange-texte);
+}
+
+.cs-etiq.baisse {
+  background: var(--r-piste);
+  color: var(--r-discret);
+}
+
+@media (max-width: 1100px) {
+  .cs-grille {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .cs-page {
+    padding: 20px 16px 48px;
+  }
+
+  .cs-tete {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cs h1 {
+    font-size: 32px;
+  }
+
+  .cs-carte {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 18px;
+  }
+
+  .cs-rang {
+    display: none;
+  }
+
+  .cs-carte-tete {
+    flex-wrap: wrap;
+  }
+
+  .cs-indicateurs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

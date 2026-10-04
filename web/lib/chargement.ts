@@ -85,6 +85,6 @@ export function chargerTout<T>(table: string, colonnes: string): Promise<T[]> {
 export function chargerSujets(): Promise<SujetVideo[]> {
   return chargerTout<SujetVideo>(
     "videos_sujets",
-    "video_id,theme,sous_sujet,poids,videos(publiee_at,format,vues,nb_commentaires,sources(id,type,nom))",
+    "video_id,theme,sous_sujet,poids,videos(publiee_at,format,vues,nb_commentaires,sources(id,type,sous_type,nom))",
   );
 }
