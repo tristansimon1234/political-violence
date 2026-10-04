@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { AccesAdmin } from "@/lib/AccesAdmin";
 import {
@@ -40,6 +40,7 @@ import {
   Barre,
   EnPreparation,
   Legende,
+  Squelette,
   dateCourte,
   entier,
   fois,
@@ -161,33 +162,41 @@ function VueEnsemble() {
       });
   }, [chaines, parChaine]);
 
+  // Filtres appliqués en arrière-plan : la barre répond tout de suite, les calculs suivent
+  // (contenu estompé entre-temps).
+  const filtresD = useDeferredValue(filtres);
+  const chainesD = useDeferredValue(chaines);
+  const politiquesD = useDeferredValue(politiques);
+  const enCalcul =
+    filtresD !== filtres || chainesD !== chaines || politiquesD !== politiques;
+
   const donnees = useMemo(
     () =>
-      chaines.length === 0
+      chainesD.length === 0
         ? lignes
         : parChaine === null
           ? null
-          : parChaine.filter((l) => chaines.includes(l.source_id ?? "")),
-    [lignes, chaines, parChaine],
+          : parChaine.filter((l) => chainesD.includes(l.source_id ?? "")),
+    [lignes, chainesD, parChaine],
   );
   const filtresEff = useMemo<Filtres>(
     () =>
-      chaines.length === 0
-        ? filtres
+      chainesD.length === 0
+        ? filtresD
         : {
-            ...filtres,
+            ...filtresD,
             types: PUBLICS.filter((t) =>
-              sources.some((x) => chaines.includes(x.id) && x.type === t),
+              sources.some((x) => chainesD.includes(x.id) && x.type === t),
             ),
           },
-    [filtres, chaines, sources],
+    [filtresD, chainesD, sources],
   );
   const sujetsBase = useMemo(
     () =>
-      chaines.length === 0
+      chainesD.length === 0
         ? sujets
-        : sujets.filter((x) => chaines.includes(x.videos?.sources?.id ?? "")),
-    [sujets, chaines],
+        : sujets.filter((x) => chainesD.includes(x.videos?.sources?.id ?? "")),
+    [sujets, chainesD],
   );
 
   // Table vide : aucun calcul (pas de dernier jour, donc pas de fenêtre).
@@ -243,7 +252,12 @@ function VueEnsemble() {
     setChoisi(t);
     document
       .getElementById("ve-detail")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      ?.scrollIntoView({
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
   };
 
   return (
@@ -252,7 +266,7 @@ function VueEnsemble() {
 
       {erreur && <p className="erreur radar-marge">{erreur}</p>}
       {!lignes && !erreur && (
-        <p className="discret radar-marge">Chargement des agrégats…</p>
+        <Squelette />
       )}
       {lignes && lignes.length === 0 && (
         <p className="discret radar-marge">
@@ -272,7 +286,7 @@ function VueEnsemble() {
           setChaines={setChaines}
         />
       )}
-      {chaines.length > 0 && !vue && (
+      {chainesD.length > 0 && !vue && (
         <p className="discret radar-marge">
           {donnees === null
             ? "Chargement des agrégats par chaîne…"
@@ -285,7 +299,10 @@ function VueEnsemble() {
       )}
 
       {vue && donnees && actif && (
-        <main className="ve-page">
+        <main
+          className={enCalcul ? "ve-page radar-contenu en-calcul" : "ve-page radar-contenu"}
+          aria-busy={enCalcul}
+        >
           <p className="ve-resume-periode">
             Du {dateCourte(vue.courante.debut)} au{" "}
             {dateCourte(vue.courante.fin)} (jour de publication des
@@ -305,7 +322,7 @@ function VueEnsemble() {
               ligne={actif}
               lignes={donnees}
               filtres={filtresEff}
-              politiques={politiques}
+              politiques={politiquesD}
               sujets={sujetsPeriode}
               reactions={reactions}
               theses={theses}
@@ -940,7 +957,7 @@ function ThemeSelectionne({
           ["theses", "Thèses", debattues.filter((v) => v.these?.explicite).length],
         ]}
       />
-      <div className="ve-onglet-corps" role="tabpanel">
+      <div className="ve-onglet-corps" role="tabpanel" key={onglet}>
         {onglet === "reactions" && <Reactions rangees={rangees} />}
         {onglet === "sujets" &&
           (rattachements.size > 0 ? (
@@ -1124,6 +1141,7 @@ function Panorama({
           ]}
         />
       </div>
+      <div className="ve-onglet-corps" key={vue}>
       {vue === "carte" && (
         <CarteSujets lignes={lignes} agenda={agenda} actif={actif} choisir={choisir} />
       )}
@@ -1143,6 +1161,7 @@ function Panorama({
           ouvrirSujet={ouvrirSujet}
         />
       )}
+      </div>
       {sansSujets && (
         <p className="discret petit-texte">
           Thèmes des vidéos indisponibles : {sansSujets}
@@ -1424,11 +1443,18 @@ function SurQuoiDaccord({
         </div>
         <div>
           <h3 className="ve-h3">Les plus contestées</h3>
-          <ul className="explo-liste">
-            {contestees.map((v) => (
-              <LigneThese key={v.sujet.video_id} v={v} ouvrir={ouvrir} />
-            ))}
-          </ul>
+          {contestees.length === 0 ? (
+            <p className="discret petit-texte">
+              Trop peu de thèses explicites pour en distinguer les plus
+              contestées : toutes figurent à gauche.
+            </p>
+          ) : (
+            <ul className="explo-liste">
+              {contestees.map((v) => (
+                <LigneThese key={v.sujet.video_id} v={v} ouvrir={ouvrir} />
+              ))}
+            </ul>
+          )}
         </div>
       </div>
       {autres.length > 0 && (

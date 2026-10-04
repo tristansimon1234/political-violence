@@ -3,7 +3,7 @@
 // Le drill-down du Radar : un panneau latéral à niveaux (sujet › vidéo › commentaires), avec
 // un fil d'Ariane et un retour. Un seul niveau affiché à la fois : rien ne s'imbrique dans
 // les listes des écrans. Commentaires (texte brut) : admin seulement, 30 derniers jours.
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import type { ReactionVideo, SujetVideo, These } from "@/lib/agenda";
 import { jourParis } from "@/lib/agenda";
@@ -68,7 +68,20 @@ export function Explorateur({
     if (ouvert && !d.open) d.showModal();
     if (!ouvert && d.open) d.close();
   }, [ouvert]);
-  useEffect(() => corps.current?.scrollTo(0, 0), [pile]);
+  // Descendre d'un niveau : haut de page, glissement vers la gauche. Remonter : on retrouve
+  // la position de défilement du niveau, glissement vers la droite.
+  const positions = useRef<number[]>([]);
+  const profondeur = useRef(0);
+  useLayoutEffect(() => {
+    const el = corps.current;
+    const avant = profondeur.current;
+    profondeur.current = pile.length;
+    if (!el) return;
+    el.dataset.sens = pile.length < avant ? "arriere" : "avant";
+    el.scrollTop =
+      pile.length < avant ? (positions.current[pile.length - 1] ?? 0) : 0;
+    positions.current.length = pile.length;
+  }, [pile]);
   const courant = pile[pile.length - 1];
   const empiler = (n: Niveau) => setPile([...pile, n]);
   const nom = (n: Niveau) => (n.type === "sujet" ? n.c.titre : n.v.sous_sujet);
@@ -114,12 +127,20 @@ export function Explorateur({
               ✕
             </button>
           </header>
-          <div className="explo-corps" ref={corps}>
-            {courant.type === "sujet" ? (
-              <Sujet n={courant} empiler={empiler} />
-            ) : (
-              <Video v={courant.v} sujet={courant.sujet} />
-            )}
+          <div
+            className="explo-corps"
+            ref={corps}
+            onScroll={(e) => {
+              positions.current[pile.length - 1] = e.currentTarget.scrollTop;
+            }}
+          >
+            <div className="explo-niveau" key={`${pile.length}|${nom(courant)}`}>
+              {courant.type === "sujet" ? (
+                <Sujet n={courant} empiler={empiler} />
+              ) : (
+                <Video v={courant.v} sujet={courant.sujet} />
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -2040,16 +2040,6 @@ select {
   background: rgb(22 24 29 / 35%);
 }
 
-.explo[open] {
-  animation: explo-entree 0.18s ease-out;
-}
-
-@keyframes explo-entree {
-  from {
-    transform: translateX(40px);
-    opacity: 0;
-  }
-}
 
 .explo-cadre {
   display: flex;
@@ -2262,4 +2252,300 @@ select {
 .radar-drilldown .ve-classement button {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+/* --- Mouvement et fluidité --- */
+
+:root {
+  --r-courbe: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.radar h1,
+.radar h2,
+.radar h3 {
+  text-wrap: balance;
+}
+
+/* Contenu recalculé en arrière-plan : estompé, puis fondu à l'arrivée. */
+.radar-contenu {
+  transition: opacity 0.2s ease;
+  animation: fondu 0.3s var(--r-courbe);
+}
+
+.radar-contenu.en-calcul {
+  opacity: 0.55;
+  transition-delay: 0.08s; /* rien ne clignote si le calcul est instantané */
+}
+
+.ve-onglet-corps,
+.ve-detail {
+  animation: fondu 0.25s var(--r-courbe);
+}
+
+@keyframes fondu {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Barres et points : les valeurs glissent quand un filtre change. */
+.radar-barre span,
+.cs-barre span,
+.cs-piste span,
+.ve-jauge span {
+  transition: width 0.45s var(--r-courbe);
+}
+
+.cs-point,
+.cs-lien-haltere {
+  transition:
+    left 0.45s var(--r-courbe),
+    width 0.45s var(--r-courbe);
+}
+
+.radar-nuage .point circle {
+  transition:
+    cx 0.45s var(--r-courbe),
+    cy 0.45s var(--r-courbe),
+    r 0.45s var(--r-courbe),
+    fill 0.2s;
+}
+
+/* Panneau latéral : entrée et sortie glissées, voile en fondu. */
+.explo {
+  transform: translateX(100%);
+  transition:
+    transform 0.28s var(--r-courbe),
+    overlay 0.28s allow-discrete,
+    display 0.28s allow-discrete;
+}
+
+.explo[open] {
+  transform: none;
+}
+
+@starting-style {
+  .explo[open] {
+    transform: translateX(100%);
+  }
+}
+
+.explo::backdrop {
+  opacity: 0;
+  transition:
+    opacity 0.28s ease,
+    overlay 0.28s allow-discrete,
+    display 0.28s allow-discrete;
+}
+
+.explo[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .explo[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.explo-corps {
+  overflow-x: hidden;
+}
+
+.explo-niveau {
+  animation: niveau-avant 0.26s var(--r-courbe);
+}
+
+.explo-corps[data-sens="arriere"] .explo-niveau {
+  animation-name: niveau-arriere;
+}
+
+@keyframes niveau-avant {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@keyframes niveau-arriere {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+/* Surfaces cliquables : réponse au survol et à l'appui. */
+.cs-carte,
+.cs-fait {
+  transition:
+    border-color 0.15s,
+    box-shadow 0.2s,
+    transform 0.2s var(--r-courbe);
+}
+
+.cs-carte:hover,
+.cs-fait:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgb(22 24 29 / 8%);
+}
+
+.cs-carte:active,
+.cs-fait:active,
+.explo-ligne:active {
+  transform: scale(0.995);
+}
+
+.explo-ligne,
+.radar-theme,
+.ve-onglets button,
+.radar .segment,
+.ve-classement button {
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.explo-chevron {
+  transition:
+    transform 0.2s var(--r-courbe),
+    color 0.15s;
+}
+
+.explo-ligne:hover .explo-chevron {
+  transform: translateX(3px);
+}
+
+/* Faits marquants : chiffre, phrase courte, puis le sujet. */
+.cs-fait-sujet {
+  display: -webkit-box;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--r-piste);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.cs-fait-sujet::after {
+  content: " ›";
+  color: var(--r-discret);
+}
+
+/* Ce qui a changé : lignes cliquables. */
+.cs-changements li {
+  display: block;
+  padding: 0;
+}
+
+.cs-changement {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--r-texte);
+}
+
+button.cs-changement {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+button.cs-changement:hover {
+  background: var(--r-piste);
+}
+
+/* Navigation entre semaines : cibles plus grandes. */
+.cs-fleche {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.cs-fleche:not(:disabled):hover {
+  border-color: var(--r-texte);
+  background: var(--r-fond);
+}
+
+/* Chargement : silhouette de la page plutôt qu'un texte. */
+.squelette {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.squelette span {
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(
+      90deg,
+      transparent 0,
+      rgb(255 255 255 / 55%) 50%,
+      transparent 100%
+    )
+    var(--r-piste);
+  background-size: 200% 100%;
+  animation: reflet 1.4s linear infinite;
+}
+
+.squelette-titre {
+  width: 55%;
+  height: 44px;
+  margin-bottom: 16px;
+}
+
+.squelette-ligne {
+  width: 75%;
+  height: 18px;
+  margin-bottom: 32px;
+}
+
+.squelette-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.squelette-bloc {
+  height: 150px;
+}
+
+@keyframes reflet {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar *,
+  .radar *::before,
+  .radar *::after,
+  .explo,
+  .explo::backdrop {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

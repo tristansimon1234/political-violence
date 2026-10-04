@@ -76,3 +76,18 @@ export function Legende({ items }: { items: [string, string][] }) {
     </p>
   );
 }
+
+/** Silhouette de la page pendant le chargement des tables. */
+export function Squelette() {
+  return (
+    <div className="squelette" aria-busy="true" aria-label="Chargement">
+      <span className="squelette-titre" />
+      <span className="squelette-ligne" />
+      <div className="squelette-grille">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} className="squelette-bloc" />
+        ))}
+      </div>
+    </div>
+  );
+}

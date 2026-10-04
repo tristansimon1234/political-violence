@@ -3,7 +3,7 @@
 // « Cette semaine » : l'accueil éditorial, d'après la maquette « Radar 2027 ». Les sujets
 // d'actualité de la semaine, ce qui les distingue (où ça réagit, désaccord, hostilité,
 // reprise par les chaînes politiques), le décalage couverture / réactions, et ce qui a changé.
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import Link from "next/link";
 
@@ -35,7 +35,7 @@ import {
   dernierResume,
 } from "@/lib/PourquoiCaBouge";
 import { LIBELLES_THEMES, type TypeSource } from "@/lib/taxonomie";
-import { Legende, dateCourte, entier, pc } from "@/lib/ui";
+import { Legende, Squelette, dateCourte, entier, pc } from "@/lib/ui";
 import { pct } from "@/lib/vueEnsemble";
 
 const PUBLICS: TypeSource[] = ["media_traditionnel", "media_natif"];
@@ -109,37 +109,42 @@ function Ecran() {
       ? enCours
       : semaineDe(decaler(enCours.debut, -1));
   }, [dernier, debut]);
+  // Calculs en arrière-plan : le filtre et les flèches répondent tout de suite, le contenu
+  // suit dès qu'il est prêt (estompé entre-temps).
+  const periodeD = useDeferredValue(periode);
+  const typesD = useDeferredValue(types);
+  const enCalcul = periodeD !== periode || typesD !== types;
   const cartes = useMemo(
     () =>
-      sujets && periode
-        ? cartesSujets(sujets, periode, types, rattachements, reactions, theses)
+      sujets && periodeD
+        ? cartesSujets(sujets, periodeD, typesD, rattachements, reactions, theses)
         : [],
-    [sujets, periode, types, rattachements, reactions, theses],
+    [sujets, periodeD, typesD, rattachements, reactions, theses],
   );
   const avant = useMemo(
     () =>
-      sujets && periode
+      sujets && periodeD
         ? cartesSujets(
             sujets,
             {
-              debut: decaler(periode.debut, -7),
-              fin: decaler(periode.fin, -7),
+              debut: decaler(periodeD.debut, -7),
+              fin: decaler(periodeD.fin, -7),
             },
-            types,
+            typesD,
             rattachements,
             reactions,
             theses,
           )
         : [],
-    [sujets, periode, types, rattachements, reactions, theses],
+    [sujets, periodeD, typesD, rattachements, reactions, theses],
   );
   const reprises = useMemo(() => {
     const m = new Map<string, Reprise>();
-    if (sujets && periode)
+    if (sujets && periodeD)
       for (const c of cartes)
-        m.set(c.id, reprisePolitique(sujets, rattachements, c.id, periode.fin));
+        m.set(c.id, reprisePolitique(sujets, rattachements, c.id, periodeD.fin));
     return m;
-  }, [sujets, periode, cartes, rattachements]);
+  }, [sujets, periodeD, cartes, rattachements]);
   const decalage = useMemo(() => decalages(cartes), [cartes]);
   const faits = useMemo(
     () => faitsMarquants(cartes, reprises),
@@ -151,8 +156,8 @@ function Ecran() {
         type: "sujet",
         c,
         evolution: true,
-        resume: periode
-          ? dernierResume(resumes, "sujet", c.id, periode.debut)
+        resume: periodeD
+          ? dernierResume(resumes, "sujet", c.id, periodeD.debut)
           : null,
       },
     ]);
@@ -164,7 +169,7 @@ function Ecran() {
       <Entete actif="semaine" />
 
       {erreur && <p className="erreur radar-marge">{erreur}</p>}
-      {!sujets && !erreur && <p className="discret radar-marge">Chargement…</p>}
+      {!sujets && !erreur && <Squelette />}
 
       {periode && (
         <main className="cs-page">
@@ -224,6 +229,11 @@ function Ecran() {
             </fieldset>
           </section>
 
+          <div
+            key={`${periodeD?.debut}|${typesD.join()}`}
+            className={enCalcul ? "radar-contenu en-calcul" : "radar-contenu"}
+            aria-busy={enCalcul}
+          >
           {faits.length > 0 && (
             <section className="cs-faits" aria-labelledby="cs-titre-faits">
               <h2 id="cs-titre-faits" className="cs-cache">
@@ -238,6 +248,7 @@ function Ecran() {
                   <span className="cs-fait-etiquette">{f.etiquette}</span>
                   <span className="cs-fait-valeur">{f.valeur}</span>
                   <span className="cs-fait-texte">{f.texte}</span>
+                  <span className="cs-fait-sujet">{f.sujet.titre}</span>
                 </button>
               ))}
             </section>
@@ -271,7 +282,7 @@ function Ecran() {
                                 resumes,
                                 "sujet",
                                 c.id,
-                                periode.debut,
+                                periodeD?.debut,
                               )
                             : null
                         }
@@ -296,8 +307,9 @@ function Ecran() {
             <aside className="cs-colonne">
               <Decalage d={decalage} ouvrir={ouvrir} />
               <MediasOuNatifs cartes={cartes.slice(0, 6)} ouvrir={ouvrir} />
-              <CeQuiAChange cartes={cartes} avant={avant} />
+              <CeQuiAChange cartes={cartes} avant={avant} ouvrir={ouvrir} />
             </aside>
+          </div>
           </div>
         </main>
       )}
@@ -683,17 +695,25 @@ function MediasOuNatifs({
 function CeQuiAChange({
   cartes,
   avant,
+  ouvrir,
 }: {
   cartes: CarteSujet[];
   avant: CarteSujet[];
+  ouvrir: (c: CarteSujet) => void;
 }) {
   const rangs = new Map(avant.map((c, i) => [c.id, i + 1]));
-  const items: { etiquette: string; classe: string; texte: string }[] = [];
+  const items: {
+    etiquette: string;
+    classe: string;
+    texte: string;
+    c?: CarteSujet; // sujet de cette semaine, s'il y est encore
+  }[] = [];
   cartes.slice(0, 5).forEach((c, i) => {
     if (!rangs.has(c.id))
       items.push({
         etiquette: "Nouveau",
         classe: "nouveau",
+        c,
         texte: `« ${c.titre} » entre directement en ${i + 1}${i === 0 ? "re" : "e"} position.`,
       });
   });
@@ -704,6 +724,7 @@ function CeQuiAChange({
     items.push({
       etiquette: "En hausse",
       classe: "hausse",
+      c: hausse,
       texte: `« ${hausse.titre} » : ${fois(hausse.classes / hausse.precedent)} de commentaires sur la semaine précédente.`,
     });
   const ici = new Set(cartes.slice(0, 10).map((c) => c.id));
@@ -712,6 +733,7 @@ function CeQuiAChange({
       items.push({
         etiquette: "En baisse",
         classe: "baisse",
+        c: cartes.find((x) => x.id === c.id),
         texte: `« ${c.titre} », ${rangs.get(c.id) === 1 ? "1er" : `${rangs.get(c.id)}e`} la semaine précédente, sort du classement.`,
       });
   return (
@@ -725,8 +747,20 @@ function CeQuiAChange({
         <ul className="cs-changements">
           {items.slice(0, 6).map((x, i) => (
             <li key={i}>
-              <span className={`cs-etiq ${x.classe}`}>{x.etiquette}</span>
-              <span>{x.texte}</span>
+              {x.c ? (
+                <button
+                  className="cs-changement"
+                  onClick={() => x.c && ouvrir(x.c)}
+                >
+                  <span className={`cs-etiq ${x.classe}`}>{x.etiquette}</span>
+                  <span>{x.texte}</span>
+                </button>
+              ) : (
+                <span className="cs-changement">
+                  <span className={`cs-etiq ${x.classe}`}>{x.etiquette}</span>
+                  <span>{x.texte}</span>
+                </span>
+              )}
             </li>
           ))}
         </ul>
