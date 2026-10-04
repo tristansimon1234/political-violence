@@ -98,5 +98,23 @@ def test_agregats_par_video() -> None:
         "nuance": 0,
         "desaccord": 1,
         "hors_sujet": 0,
+        "poids": 1.0,
     }
     assert par["v2"]["commentaires"] == 1 and par["v2"]["accord"] == 0  # pas de position
+
+
+def test_plafond_pondere_par_le_volume_reel() -> None:
+    """Invariant : avec le plafond, la somme des thèmes égale le nombre estimé de commentaires."""
+    from radar.agregats import poids_par_video
+
+    classes = [
+        {**_c(themes=["securite", "immigration"]), "video_id": "grosse"},
+        {**_c(), "video_id": "grosse"},
+        {**_c(est_politique=False, themes=[]), "video_id": "petite"},
+    ]
+    poids = poids_par_video(classes, {"grosse": 10, "petite": 1, "autre": 5})
+    assert poids == {"grosse": 5.0, "petite": 1.0}
+    lignes = agreger(classes, poids)
+    assert sum(float(x["commentaires"]) for x in lignes) == pytest.approx(11.0)
+    secu = sum(float(x["commentaires"]) for x in lignes if x["theme"] == "securite")
+    assert secu == pytest.approx(2.5)  # poids 5, réparti sur 2 thèmes

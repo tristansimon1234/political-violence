@@ -326,7 +326,7 @@ function CarteDuSujet({
       <div className="radar-chiffres-sujet">
         <span className="radar-mono">
           {c.videos.length} vidéos · {c.chaines} chaînes · {entier(c.classes)}{" "}
-          commentaires classés
+          commentaires
         </span>
         <span className="discret petit-texte">{evolution(c)}</span>
         <Courbe jours={c.parJour} />
@@ -398,7 +398,7 @@ function CeQuiAChange({
     <section className="radar-carte" aria-labelledby="titre-change">
       <h2 id="titre-change">Ce qui a changé</h2>
       <p className="discret petit-texte">
-        Face à la semaine précédente, en commentaires classés.
+        Face à la semaine précédente, en commentaires.
       </p>
       {nouveaux.length + hausses.length === 0 && (
         <p className="discret petit-texte">Rien de notable.</p>
@@ -529,7 +529,7 @@ function Modale({ c, fermer }: { c: CarteSujet | null; fermer: () => void }) {
               <h2 id="titre-modale">{c.titre}</h2>
               <p className="radar-mono petit-texte">
                 {c.videos.length} vidéos · {c.chaines} chaînes ·{" "}
-                {entier(c.classes)} commentaires classés · {evolution(c)}
+                {entier(c.classes)} commentaires · {evolution(c)}
               </p>
             </div>
             <button className="segment" onClick={fermer} aria-label="Fermer">

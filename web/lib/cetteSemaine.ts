@@ -33,7 +33,7 @@ export type CarteSujet = {
   videos: VideoDuSujet[]; // les plus commentées d'abord
   chaines: number;
   themes: { theme: Theme; part: number }[];
-  classes: number; // commentaires classés sous ses vidéos
+  classes: number; // commentaires sous ses vidéos (estimés : classés × poids de la vidéo)
   hostiles: number;
   accord: number;
   nuance: number;
@@ -138,13 +138,15 @@ function regrouper(
       if (i >= 0 && i < c.parJour.length)
         c.parJour[i] = (c.parJour[i] ?? 0) + 1;
       if (reaction) {
-        c.classes += reaction.commentaires;
-        c.hostiles += reaction.hostiles;
-        c.accord += reaction.accord;
-        c.nuance += reaction.nuance;
-        c.desaccord += reaction.desaccord;
+        // Plafond par vidéo : on additionne des estimations pondérées par vidéo.
+        const w = reaction.poids ?? 1;
+        c.classes += w * reaction.commentaires;
+        c.hostiles += w * reaction.hostiles;
+        c.accord += w * reaction.accord;
+        c.nuance += w * reaction.nuance;
+        c.desaccord += w * reaction.desaccord;
         c.parType[v.sources.type] =
-          (c.parType[v.sources.type] ?? 0) + reaction.commentaires;
+          (c.parType[v.sources.type] ?? 0) + w * reaction.commentaires;
       }
     }
     m.set(id, acc);

@@ -5,6 +5,9 @@ bucket privé `radar-classe`, conservé toute la campagne et **sans aucun texte*
 du commentaire hashé (même sel que les auteurs), auteur hashé, vidéo, source, étiquettes.
 
 - Idempotent : un commentaire déjà classé (même identifiant hashé) n'est jamais reclassé.
+- Plafond (décision du 04/10/2026) : au plus 150 commentaires classés par vidéo, tirés au
+  hasard (ordre de l'identifiant hashé, stable d'un run à l'autre) ; les agrégats pondèrent
+  chaque commentaire classé par (commentaires de la vidéo) / (commentaires classés).
 - Minimisation : Jev ne reçoit que le texte masqué et le contexte de la vidéo (titre, chaîne,
   nature), jamais l'auteur ni l'identifiant (radar/classification.py).
 - Position seulement sous une vidéo `opinion` ; None sinon.
@@ -15,6 +18,7 @@ import hashlib
 import io
 import json
 import logging
+from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -34,6 +38,7 @@ log = logging.getLogger(__name__)
 
 DOSSIER_CLASSE = "classe"
 MODELE = "jev"
+PLAFOND_PAR_VIDEO = 150
 LOT = 2000  # commentaires envoyés à Jev entre deux bilans
 ECRITURE = 20_000  # commentaires classés par fichier (~1,5 Mo ; un objet Supabase : 50 Mo max)
 PARALLELES = 10
@@ -96,13 +101,42 @@ def chemin_partition(jour: date) -> str:
     return f"{DOSSIER_CLASSE}/{jour.isoformat()}.parquet"
 
 
-def deja_classes(st: Stockage) -> set[str]:
+def classes_par_video(st: Stockage) -> tuple[set[str], Counter[str]]:
+    """Identifiants hashés déjà classés, et nombre de commentaires classés par vidéo."""
     ids: set[str] = set()
+    par_video: Counter[str] = Counter()
     for c in st.lister(DOSSIER_CLASSE):
         if c.endswith(".parquet"):
-            table = pq.read_table(io.BytesIO(st.lire(c)), columns=["id"])  # pyright: ignore[reportUnknownMemberType]
+            table = pq.read_table(io.BytesIO(st.lire(c)), columns=["id", "video_id"])  # pyright: ignore[reportUnknownMemberType]
             ids.update(str(x) for x in table.column("id").to_pylist())
-    return ids
+            par_video.update(str(x) for x in table.column("video_id").to_pylist())
+    return ids, par_video
+
+
+def deja_classes(st: Stockage) -> set[str]:
+    return classes_par_video(st)[0]
+
+
+def plafonner(
+    commentaires: Iterable[Mapping[str, Any]],
+    deja_par_video: Mapping[str, int],
+    sel: bytes,
+    plafond: int = PLAFOND_PAR_VIDEO,
+) -> list[Mapping[str, Any]]:
+    """Garde au plus `plafond` commentaires classés par vidéo, déjà classés compris.
+
+    Tirage stable : les plus petits identifiants hashés d'abord (pseudo-aléatoire, le même à
+    chaque run, donc idempotent).
+    """
+    par_video: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for x in commentaires:
+        par_video[str(x["video_id"])].append(x)
+    garde: list[Mapping[str, Any]] = []
+    for v, xs in par_video.items():
+        reste = max(0, plafond - deja_par_video.get(v, 0))
+        xs.sort(key=lambda x: id_commentaire(str(x["comment_id"]), sel))
+        garde.extend(xs[:reste])
+    return garde
 
 
 def ajouter_a_la_partition(st: Stockage, jour: date, lignes: Sequence[Mapping[str, Any]]) -> None:
@@ -168,21 +202,24 @@ def classer(
     lot: int = LOT,
     rapporter: Callable[[Bilan], None] | None = None,
     ecriture: int = ECRITURE,
+    plafond: int | None = PLAFOND_PAR_VIDEO,
 ) -> Bilan:
     """Classe les commentaires non encore classés des vidéos connues ; écrit par morceaux.
 
     Un morceau est écrit tous les `ecriture` commentaires classés, à l'arrêt au budget et en
     cas d'erreur imprévue : un plantage perd au plus le classement en attente d'écriture.
     """
-    deja = deja_classes(st)
+    deja, par_video = classes_par_video(st)
     consignes = version_consignes()
-    a_faire = [
+    a_faire: list[Mapping[str, Any]] = [
         x
         for x in commentaires
         if str(x["video_id"]) in videos
         and id_commentaire(str(x["comment_id"]), sel) not in deja
         and str(x.get("texte") or "").strip()
     ]
+    if plafond is not None:
+        a_faire = plafonner(a_faire, par_video, sel, plafond)
     bilan = Bilan(a_classer=len(a_faire))
 
     def un(x: Mapping[str, Any]) -> tuple[Mapping[str, Any], Classement | None]:
