@@ -14,7 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from radar.agregats import agreger, agreger_videos
+from radar.agregats import agreger, agreger_videos, poids_par_video
 from radar.classement import DOSSIER_CLASSE
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition
 from radar.supabase_rest import Supabase
@@ -41,7 +41,13 @@ def main() -> int:
     for c in st.lister(DOSSIER_CLASSE):
         if c.endswith(".parquet"):
             classes.extend(lire_partition(st, c))
-    lignes = agreger(classes)
+    base = Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
+    # Plafond par vidéo (décision du 04/10/2026) : pondération par le volume réel.
+    volumes = {
+        str(v["video_id"]): int(v["commentaires"]) for v in base.select("volumes_videos", {})
+    }
+    poids = poids_par_video(classes, volumes)
+    lignes = agreger(classes, poids)
     par_type: defaultdict[str, float] = defaultdict(float)
     for li in lignes:
         par_type[str(li["type_source"])] += float(li["commentaires"])
@@ -53,10 +59,14 @@ def main() -> int:
     )
     for t, n in sorted(par_type.items()):
         print(f"- {t} : {n:.0f} commentaires")
+    ponderees = sum(1 for w in poids.values() if w > 1)
+    print(
+        f"\nVidéos pondérées (plus de commentaires que de classés) : {ponderees} ; "
+        f"commentaires estimés : {sum(float(li['commentaires']) for li in lignes):.0f}."
+    )
     if not args.dry_run:
-        base = Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
         base.upsert("agregats_themes", lignes, "jour,theme,type_source,format")
-        par_video = agreger_videos(classes)
+        par_video = agreger_videos(classes, poids)
         base.upsert("agregats_videos", par_video, "video_id")
         print(
             f"\nÉcrit dans Supabase : {len(lignes)} lignes (agregats_themes), "

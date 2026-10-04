@@ -202,6 +202,7 @@ class FausseBase:
         ]
         self.modifs: list[tuple[dict[str, str], dict[str, Any]]] = []
         self.sujets: list[dict[str, Any]] = []
+        self.volumes: dict[str, dict[str, Any]] = {}
         self.theses: dict[str, dict[str, Any]] = {
             # Thèse ancienne (plus de 30 jours) : doit être effacée au prochain run.
             "v0": {"video_id": "v0", "these": "ancienne", "recupere_le": "2026-08-01"}
@@ -214,6 +215,8 @@ class FausseBase:
             return [x for x in self.sujets if x["principal"]]
         if table == "videos_theses":
             return list(self.theses.values())
+        if table == "volumes_videos":
+            return list(self.volumes.values())
         return self.videos
 
     def modifier(self, table: str, filtres: dict[str, str], valeurs: dict[str, Any]) -> None:
@@ -232,7 +235,9 @@ class FausseBase:
         self.sujets = [x for x in self.sujets if x["video_id"] not in ids]
 
     def upsert(self, table: str, lignes: list[dict[str, Any]], conflit: str) -> None:
-        if table == "videos_theses":
+        if table == "volumes_videos":
+            self.volumes.update({x["video_id"]: x for x in lignes})
+        elif table == "videos_theses":
             self.theses.update({x["video_id"]: x for x in lignes})
         else:
             self.sujets.extend(lignes)
@@ -288,7 +293,9 @@ def test_script_dry_run_puis_classement(
     faux_claude.envois = 0
     monkeypatch.setattr(script, "Supabase", lambda url, cle: base)  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
     sortie = lancer("--dry-run")
-    assert "à classer : 5" in sortie and "à décrire (nature et sujets) : 2, dont 1 sans" in sortie
+    assert (
+        "par vidéo : 5 sous" in sortie and "à décrire (nature et sujets) : 2, dont 1 sans" in sortie
+    )
     assert not faux_jev.envois and faux_claude.envois == 0 and not base.modifs
     sortie = lancer()
     assert "Commentaires classés : 5 / 5" in sortie and TEXTE not in sortie
@@ -311,7 +318,7 @@ def test_script_dry_run_puis_classement(
         )
     ]
     sortie = lancer()
-    assert "à classer : 0" in sortie and "à décrire (nature et sujets) : 0" in sortie
+    assert "par vidéo : 0 sous" in sortie and "à décrire (nature et sujets) : 0" in sortie
     assert faux_claude.envois == 2  # rien de redécrit
 
 
@@ -328,3 +335,18 @@ def test_classe_ecrit_par_morceaux(tmp_path: Path) -> None:
     # Relancer ne reclasse rien et n'ajoute aucun fichier.
     classer(st, jev, comms, _videos(), SEL, JOUR, paralleles=2, lot=3, ecriture=4)
     assert st.lister(DOSSIER_CLASSE) == fichiers
+
+
+def test_plafond_par_video_stable_et_cumule(tmp_path: Path) -> None:
+    """Au plus N classés par vidéo, déjà classés compris ; même tirage d'un run à l'autre."""
+    st = StockageLocal(tmp_path)
+    jev = ClientJev(1.0, cle="x", transport=FauxJev())
+    comms = _commentaires(8, "v1") + _commentaires(2, "v2")
+    b1 = classer(st, jev, comms[:5], _videos(), SEL, JOUR, paralleles=2, plafond=3)
+    b2 = classer(st, jev, comms, _videos(), SEL, JOUR, paralleles=2, plafond=3)
+    lignes = _lire(st)
+    par_video = {v: sum(1 for x in lignes if x["video_id"] == v) for v in ("v1", "v2")}
+    assert par_video == {"v1": 3, "v2": 2}
+    assert (b1.classes, b2.classes) == (3, 2)
+    attendus = sorted(id_commentaire(str(x["comment_id"]), SEL) for x in comms[:5])[:3]
+    assert sorted(x["id"] for x in lignes if x["video_id"] == "v1") == attendus

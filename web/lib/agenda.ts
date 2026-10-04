@@ -110,6 +110,7 @@ export type ReactionVideo = {
   nuance: number;
   desaccord: number;
   hors_sujet: number;
+  poids?: number; // commentaires de la vidéo / commentaires classés (plafond par vidéo)
 };
 
 export type These = { video_id: string; these: string; explicite: boolean };

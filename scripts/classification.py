@@ -15,6 +15,7 @@ import argparse
 import logging
 import os
 import sys
+from collections import Counter
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -22,11 +23,13 @@ from typing import Any
 from radar.anonymisation import sel as lire_sel
 from radar.classement import (
     PARALLELES,
+    PLAFOND_PAR_VIDEO,
     Bilan,
     Video,
     classer,
-    deja_classes,
+    classes_par_video,
     id_commentaire,
+    plafonner,
 )
 from radar.classification import en_nature, normaliser_sujets
 from radar.evaluation import Candidate, classer_videos
@@ -132,13 +135,12 @@ def main() -> int:
         for v in lire_partition(brut, c):
             bruts_videos[str(v["video_id"])] = v
     commentaires = [x for _, c in partitions(brut, "commentaires") for x in lire_partition(brut, c)]
-    deja = deja_classes(classe)
-    a_classer = [
-        x
-        for x in commentaires
-        if id_commentaire(str(x["comment_id"]), sel) not in deja
-        and str(x.get("texte") or "").strip()
-    ]
+    deja, deja_par_video = classes_par_video(classe)
+    non_vides = [x for x in commentaires if str(x.get("texte") or "").strip()]
+    non_classes = [x for x in non_vides if id_commentaire(str(x["comment_id"]), sel) not in deja]
+    # Plafond par vidéo (décision du 04/10/2026) ; le volume réel de chaque vidéo sert à pondérer.
+    a_classer = plafonner(non_classes, deja_par_video, sel, PLAFOND_PAR_VIDEO)
+    volumes = Counter(str(x["video_id"]) for x in non_vides)
     if args.limite:
         a_classer = a_classer[: args.limite]
     vids = {str(x["video_id"]) for x in a_classer}
@@ -172,7 +174,8 @@ def main() -> int:
     print("# Classification en masse" + (" (dry-run)" if args.dry_run else ""))
     print(
         f"\nCommentaires dans le brut : {len(commentaires)} ; déjà classés : {len(deja)} ; "
-        f"à classer : {len(a_classer)} sous {len(vids)} vidéos."
+        f"non classés : {len(non_classes)} ; à classer avec le plafond de {PLAFOND_PAR_VIDEO} "
+        f"par vidéo : {len(a_classer)} sous {len(vids)} vidéos."
     )
     print(
         f"Vidéos à décrire (nature et sujets) : {len(a_decrire)}, dont {len(sans_nature)} sans "
@@ -185,6 +188,23 @@ def main() -> int:
             "Rien n'a été envoyé."
         )
         return 0
+
+    # Volume réel de commentaires (non vides) par vidéo, pour la pondération des agrégats. Jamais
+    # revu à la baisse : une purge du brut ne doit pas fausser les poids.
+    connus = {str(v["video_id"]): int(v["commentaires"]) for v in base.select("volumes_videos", {})}
+    base.upsert(
+        "volumes_videos",
+        [
+            {
+                "video_id": v,
+                "commentaires": max(n, connus.get(v, 0)),
+                "maj_le": aujourdhui.isoformat(),
+            }
+            for v, n in sorted(volumes.items())
+            if v in lignes_videos and n > connus.get(v, 0)
+        ],
+        "video_id",
+    )
 
     # 1. Nature et sujets des vidéos (Claude), écrits dans Supabase au fur et à mesure. Une
     # nature déjà attribuée n'est jamais changée (les commentaires classés en dépendent).
