@@ -31,6 +31,11 @@ import {
 import { chargerSujets, chargerTout } from "@/lib/chargement";
 import { CommentairesVideo } from "@/lib/Commentaires";
 import {
+  PourquoiCaBouge,
+  type ResumeIA,
+  dernierResume,
+} from "@/lib/PourquoiCaBouge";
+import {
   LIBELLES_THEMES,
   LIBELLES_TYPE,
   type TypeSource,
@@ -68,6 +73,7 @@ function Ecran() {
     new Map(),
   );
   const [theses, setTheses] = useState<Map<string, These>>(new Map());
+  const [resumes, setResumes] = useState<ResumeIA[]>([]);
   const [erreur, setErreur] = useState("");
   const [types, setTypes] = useState<TypeSource[]>(PUBLICS);
   const [debut, setDebut] = useState<string | null>(null);
@@ -90,6 +96,10 @@ function Ecran() {
     chargerTout<These>("videos_theses", "video_id,these,explicite")
       .then((l) => setTheses(new Map(l.map((t) => [t.video_id, t]))))
       .catch(() => setTheses(new Map()));
+    // Résumés IA (migration 15) : facultatifs.
+    chargerTout<ResumeIA>("resumes_ia", "*")
+      .then(setResumes)
+      .catch(() => setResumes([]));
   }, []);
 
   const dernier = useMemo(
@@ -271,6 +281,16 @@ function Ecran() {
                       <Carte
                         c={c}
                         rang={i + 1}
+                        resume={
+                          i === 0
+                            ? dernierResume(
+                                resumes,
+                                "sujet",
+                                c.id,
+                                periode.debut,
+                              )
+                            : null
+                        }
                         reprise={reprises.get(c.id)}
                         ouvrir={() => setOuvert(c)}
                       />
@@ -297,7 +317,15 @@ function Ecran() {
           </div>
         </main>
       )}
-      <Modale c={ouvert} fermer={() => setOuvert(null)} />
+      <Modale
+        c={ouvert}
+        fermer={() => setOuvert(null)}
+        resume={
+          ouvert && periode
+            ? dernierResume(resumes, "sujet", ouvert.id, periode.debut)
+            : null
+        }
+      />
     </div>
   );
 }
@@ -383,11 +411,13 @@ function Carte({
   c,
   rang,
   reprise,
+  resume,
   ouvrir,
 }: {
   c: CarteSujet;
   rang: number;
   reprise: Reprise | undefined;
+  resume: ResumeIA | null;
   ouvrir: () => void;
 }) {
   const total = PUBLICS.reduce((a, t) => a + (c.parType[t] ?? 0), 0);
@@ -481,6 +511,7 @@ function Carte({
             <Reprises r={reprise} />
           </div>
         </div>
+        {resume && <PourquoiCaBouge r={resume} />}
       </div>
     </article>
   );
@@ -816,7 +847,15 @@ function LigneVideo({ v }: { v: VideoDuSujet }) {
   );
 }
 
-function Modale({ c, fermer }: { c: CarteSujet | null; fermer: () => void }) {
+function Modale({
+  c,
+  fermer,
+  resume,
+}: {
+  c: CarteSujet | null;
+  fermer: () => void;
+  resume: ResumeIA | null;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -859,6 +898,7 @@ function Modale({ c, fermer }: { c: CarteSujet | null; fermer: () => void }) {
               </span>
             ))}
           </p>
+          {resume && <PourquoiCaBouge r={resume} />}
           <div className="radar-modale-grille">
             <div>
               <OuCaReagit c={c} />

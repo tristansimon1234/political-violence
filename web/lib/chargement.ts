@@ -18,6 +18,7 @@ const CLES: Record<string, string[]> = {
   videos_theses: ["video_id"],
   sujets_videos: ["video_id"],
   sources: ["id"],
+  resumes_ia: ["id"],
 };
 
 const memoire = new Map<string, Promise<unknown[]>>();

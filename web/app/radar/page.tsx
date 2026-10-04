@@ -32,6 +32,11 @@ import {
 import { chargerSujets, chargerTout } from "@/lib/chargement";
 import { CommentairesVideo } from "@/lib/Commentaires";
 import {
+  PourquoiCaBouge,
+  type ResumeIA,
+  dernierResume,
+} from "@/lib/PourquoiCaBouge";
+import {
   Barre,
   EnPreparation,
   Legende,
@@ -96,6 +101,7 @@ function VueEnsemble() {
     new Map(),
   );
   // Filtre par chaîne : agrégats par chaîne chargés au premier choix (migration 14).
+  const [resumes, setResumes] = useState<ResumeIA[]>([]);
   const [chaines, setChaines] = useState<string[]>([]);
   const [sources, setSources] = useState<SourceChaine[]>([]);
   const [parChaine, setParChaine] = useState<Agregat[] | null>(null);
@@ -128,6 +134,9 @@ function VueEnsemble() {
     )
       .then((l) => setRattachements(new Map(l.map((r) => [r.video_id, r]))))
       .catch(() => setRattachements(new Map()));
+    chargerTout<ResumeIA>("resumes_ia", "*")
+      .then(setResumes)
+      .catch(() => setResumes([]));
     // Chaînes du public seulement : les chaînes politiques restent lues à part.
     chargerTout<SourceChaine>("sources", "id,nom,type")
       .then((l) =>
@@ -284,6 +293,7 @@ function VueEnsemble() {
               reactions={reactions}
               theses={theses}
               rattachements={rattachements}
+              resumes={resumes}
             />
           </div>
           <ComparaisonSemaines
@@ -780,6 +790,7 @@ function ThemeSelectionne({
   reactions,
   theses,
   rattachements,
+  resumes,
 }: {
   ligne: LigneTheme;
   lignes: Agregat[];
@@ -789,6 +800,7 @@ function ThemeSelectionne({
   reactions: Map<string, ReactionVideo>;
   theses: Map<string, These>;
   rattachements: Map<string, Rattachement>;
+  resumes: ResumeIA[];
 }) {
   const [courante] = fenetres(lignes, filtres.periode);
   const debattues = videosDebattues(sujets, ligne.theme, reactions, theses);
@@ -831,6 +843,10 @@ function ThemeSelectionne({
         {fois(ligne.velocite)}
       </p>
 
+      {(() => {
+        const r = dernierResume(resumes, "theme", ligne.theme, courante.fin);
+        return r ? <PourquoiCaBouge r={r} semaine /> : null;
+      })()}
       <div className="ve-panneau">
         {
           <>

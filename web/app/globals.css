@@ -1819,3 +1819,60 @@ select {
   height: 100%;
   background: var(--r-orange);
 }
+
+/* --- Pourquoi ça bouge --- */
+
+.pcb {
+  margin: 16px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid #d6dfee;
+  border-radius: 10px;
+  background: #f1f4fa;
+}
+
+.pcb-tete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--r-discret);
+}
+
+.pcb-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--r-bleu);
+  color: #fff;
+  font-weight: 600;
+}
+
+.pcb-texte {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.pcb-renvoi {
+  font-size: 11px;
+  color: var(--r-bleu);
+}
+
+.pcb-sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--r-discret);
+}
+
+.pcb-n {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.pcb-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--r-discret);
+}
