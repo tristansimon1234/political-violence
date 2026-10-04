@@ -1639,3 +1639,87 @@ select {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* --- Vue d'ensemble : barre de filtres façon maquette --- */
+
+.radar-filtres {
+  align-items: center;
+  gap: 10px 18px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--r-bord);
+}
+
+.radar-filtres fieldset {
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--r-piste);
+}
+
+.radar-filtres legend {
+  float: left;
+  margin: 0 8px 0 6px;
+  font-size: 12px;
+}
+
+.radar-filtres .segment {
+  min-height: 32px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-weight: 600;
+}
+
+.radar-filtres .segment.actif {
+  background: var(--r-surface);
+  color: var(--r-texte);
+  border: none;
+  box-shadow: 0 1px 3px rgb(22 24 29 / 14%);
+}
+
+.ve-pastille {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 0;
+}
+
+.ve-pastille.media_traditionnel {
+  background: var(--r-bleu);
+}
+
+.ve-pastille.media_natif {
+  background: var(--r-orange);
+}
+
+.ve-compte {
+  font:
+    12px "IBM Plex Mono",
+    ui-monospace,
+    monospace;
+  color: var(--r-discret);
+}
+
+.ve-panneau h3 {
+  margin: 22px 0 8px;
+  font-size: 15px;
+}
+
+.ve-replie {
+  margin-top: 18px;
+  border-top: 1px solid var(--r-piste);
+  padding-top: 12px;
+}
+
+.ve-replie > summary {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ve-replie[open] > summary {
+  margin-bottom: 8px;
+}
