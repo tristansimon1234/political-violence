@@ -89,18 +89,23 @@ def main() -> int:
     if not args.dry_run:
         base.upsert("agregats_themes", lignes, "jour,theme,type_source,format")
         base.upsert("agregats_chaines", lignes_chaines, "jour,theme,source_id,format")
+        par_video = agreger_videos(classes, poids)
+        base.upsert("agregats_videos", par_video, "video_id")
+        print(
+            f"\nÉcrit dans Supabase : {len(lignes)} lignes (agregats_themes), "
+            f"{len(lignes_chaines)} lignes (agregats_chaines), {len(par_video)} vidéos "
+            "(agregats_videos)."
+        )
+        # Le drill-down en dernier : les chiffres sont à jour même s'il est interrompu.
         drilldown: Stockage = (
             StockageLocal(args.stockage_local / "drilldown")
             if args.stockage_local
             else StockageSupabase(url, cle, BUCKET_DRILLDOWN)
         )
-        ecrits, supprimes = publier(drilldown, par_video_dd)
-        print(f"Drill-down : {ecrits} fichiers écrits, {supprimes} supprimés.")
-        par_video = agreger_videos(classes, poids)
-        base.upsert("agregats_videos", par_video, "video_id")
+        ecrits, erreurs, supprimes = publier(drilldown, par_video_dd)
         print(
-            f"\nÉcrit dans Supabase : {len(lignes)} lignes (agregats_themes), "
-            f"{len(par_video)} vidéos (agregats_videos)."
+            f"Drill-down : {ecrits} fichiers écrits, {erreurs} en erreur (retentés au prochain "
+            f"run), {supprimes} supprimés."
         )
     return 0
 

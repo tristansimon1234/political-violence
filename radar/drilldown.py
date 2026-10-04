@@ -9,8 +9,11 @@ fichiers des vidéos sorties de la fenêtre sont supprimés.
 
 import gzip
 import json
+import logging
+import threading
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -20,6 +23,7 @@ from radar.storage import Stockage
 FENETRE_JOURS = 30
 DOSSIER = "videos"
 INDEX = "index.json"
+log = logging.getLogger(__name__)
 
 
 def _date(x: Any) -> date | None:
@@ -69,25 +73,50 @@ def chemin(video_id: str) -> str:
     return f"{DOSSIER}/{video_id}.json.gz"
 
 
-def publier(st: Stockage, par_video: Mapping[str, list[dict[str, Any]]]) -> tuple[int, int]:
+ECRITURES_PARALLELES = 8
+POINT_INDEX = 500  # l'index est réécrit tous les 500 fichiers : un run interrompu reprend
+
+
+def publier(st: Stockage, par_video: Mapping[str, list[dict[str, Any]]]) -> tuple[int, int, int]:
     """Écrit les fichiers modifiés depuis le dernier run et supprime ceux sortis de la fenêtre.
 
-    Renvoie (fichiers écrits, fichiers supprimés). Un index (nombre de commentaires par vidéo)
-    évite de réécrire les vidéos inchangées.
+    Renvoie (fichiers écrits, en erreur, supprimés). Un index (nombre de commentaires par
+    vidéo) évite de réécrire les vidéos inchangées ; il est enregistré au fil de l'eau, si bien
+    qu'un run coupé reprend là où il s'est arrêté. Un fichier en erreur est compté et retenté au
+    run suivant, sans arrêter les autres.
     """
     try:
         avant: dict[str, int] = json.loads(st.lire(INDEX))
     except Exception:
         avant = {}
-    ecrits = 0
-    for v, xs in sorted(par_video.items()):
-        if avant.get(v) == len(xs):
-            continue
-        donnees = json.dumps(xs, ensure_ascii=False).encode()
-        st.ecrire(chemin(v), gzip.compress(donnees))
-        ecrits += 1
+    a_ecrire = [(v, xs) for v, xs in sorted(par_video.items()) if avant.get(v) != len(xs)]
+    fait = {v: n for v, n in avant.items() if v in par_video}
+    verrou = threading.Lock()
+    ecrits = erreurs = 0
+
+    def un(paire: tuple[str, list[dict[str, Any]]]) -> bool:
+        v, xs = paire
+        try:
+            st.ecrire(chemin(v), gzip.compress(json.dumps(xs, ensure_ascii=False).encode()))
+            return True
+        except Exception as e:  # une erreur sur un fichier n'arrête pas les autres
+            log.warning("drill-down %s non écrit : %s", v, e)
+            return False
+
+    with ThreadPoolExecutor(max_workers=ECRITURES_PARALLELES) as pool:
+        for i in range(0, len(a_ecrire), POINT_INDEX):
+            lot = a_ecrire[i : i + POINT_INDEX]
+            for (v, xs), ok in zip(lot, pool.map(un, lot), strict=True):
+                with verrou:
+                    if ok:
+                        fait[v] = len(xs)
+                        ecrits += 1
+                    else:
+                        erreurs += 1
+            st.ecrire(INDEX, json.dumps(fait).encode())
+            log.info("drill-down : %d / %d fichiers écrits", ecrits, len(a_ecrire))
     existants = set(st.lister(DOSSIER))
     a_supprimer = sorted(existants - {chemin(v) for v in par_video})
     st.supprimer(a_supprimer)
-    st.ecrire(INDEX, json.dumps({v: len(xs) for v, xs in par_video.items()}).encode())
-    return ecrits, len(a_supprimer)
+    st.ecrire(INDEX, json.dumps(fait).encode())
+    return ecrits, erreurs, len(a_supprimer)

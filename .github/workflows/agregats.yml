@@ -20,7 +20,7 @@ concurrency:
 jobs:
   agregats:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120
     env:
       SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
