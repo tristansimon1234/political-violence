@@ -92,3 +92,28 @@ def test_message_sans_titre_disponible() -> None:
     v = VideoASituer("v", J, "[Chaîne]", "", "[sous-sujet]")
     m = message_sujets([], [v])
     assert "(none)" in m and "(title unavailable)" in m and "v |" not in m
+
+
+def test_valider_fusions_sans_chaine_ni_inconnu() -> None:
+    from radar.sujets import Fusion, ReponseFusions, valider_fusions
+
+    rep = ReponseFusions(
+        fusions=[
+            Fusion(garder="a", doublons=["b", "inconnu", "a"]),
+            Fusion(garder="c", doublons=["a", "b", "d"]),  # a est gardé, b déjà absorbé
+            Fusion(garder="b", doublons=["e"]),  # b déjà absorbé : ignoré
+        ]
+    )
+    assert valider_fusions(rep, {"a", "b", "c", "d", "e"}) == {"b": "a", "d": "c"}
+
+
+def test_candidats_fusion_recents_et_au_moins_deux_videos() -> None:
+    from radar.sujets import candidats_fusion
+
+    sujets = [
+        Sujet("vieux", "[v]", date(2026, 7, 1), date(2026, 7, 2), 9),
+        Sujet("seul", "[s]", date(2026, 9, 1), date(2026, 9, 2), 1),
+        Sujet("b", "[b]", date(2026, 9, 5), date(2026, 9, 9), 3),
+        Sujet("a", "[a]", date(2026, 9, 2), date(2026, 9, 20), 8),
+    ]
+    assert [s.id for s in candidats_fusion(sujets)] == ["a", "b"]

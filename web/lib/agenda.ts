@@ -171,6 +171,19 @@ export type SujetActu = {
 };
 
 export const MIN_VIDEOS_SUJET = 3;
+export const PART_THEME_SUJET = 0.3; // part minimale d'un thème pour y ranger un sujet
+
+/** Le thème est-il le premier du sujet, ou pèse-t-il au moins 30 % de ses vidéos ? */
+export function themePrincipal(
+  poids: Map<Theme, number> | undefined,
+  theme: Theme,
+): boolean {
+  if (!poids) return false;
+  const total = [...poids.values()].reduce((a, b) => a + b, 0);
+  const p = poids.get(theme) ?? 0;
+  const max = Math.max(0, ...poids.values());
+  return total > 0 && (p === max || p / total >= PART_THEME_SUJET);
+}
 export const MIN_CHAINES_SUJET = 2;
 
 /**
@@ -185,9 +198,15 @@ export function sujetsActu(
 ): SujetActu[] {
   const videos = new Map<string, Set<string>>();
   const chaines = new Map<string, Set<string>>();
+  // Poids de chaque thème dans le sujet (somme des poids des vidéos) : un sujet n'apparaît
+  // que sous ses thèmes principaux, pas sous un thème secondaire d'une de ses vidéos.
+  const poidsThemes = new Map<string, Map<Theme, number>>();
   for (const s of sujets) {
     const id = rattachements.get(s.video_id)?.sujet_id;
     if (!id) continue;
+    const pt = poidsThemes.get(id) ?? new Map<Theme, number>();
+    pt.set(s.theme, (pt.get(s.theme) ?? 0) + s.poids);
+    poidsThemes.set(id, pt);
     videos.set(id, (videos.get(id) ?? new Set()).add(s.video_id));
     chaines.set(
       id,
@@ -202,6 +221,7 @@ export function sujetsActu(
     if (!id || !r.sujets) continue;
     if ((videos.get(id)?.size ?? 0) < MIN_VIDEOS_SUJET) continue;
     if ((chaines.get(id)?.size ?? 0) < MIN_CHAINES_SUJET) continue;
+    if (!themePrincipal(poidsThemes.get(id), theme)) continue;
     const x = m.get(id) ?? {
       id,
       titre: r.sujets.titre,
