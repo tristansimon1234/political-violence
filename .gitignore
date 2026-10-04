@@ -14,3 +14,6 @@ audit*.md
 sortie_*.txt
 # Fichiers d'arbitrage produits localement par scripts/evaluation.py synthetique
 arbitrage/
+# Fichiers d'instructions générés par `next dev`
+web/AGENTS.md
+web/CLAUDE.md
