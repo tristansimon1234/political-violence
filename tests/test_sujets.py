@@ -107,13 +107,29 @@ def test_valider_fusions_sans_chaine_ni_inconnu() -> None:
     assert valider_fusions(rep, {"a", "b", "c", "d", "e"}) == {"b": "a", "d": "c"}
 
 
-def test_candidats_fusion_recents_et_au_moins_deux_videos() -> None:
-    from radar.sujets import candidats_fusion
+def test_jetons_sans_accents_ni_mots_vides() -> None:
+    from radar.sujets import jetons
 
-    sujets = [
-        Sujet("vieux", "[v]", date(2026, 7, 1), date(2026, 7, 2), 9),
-        Sujet("seul", "[s]", date(2026, 9, 1), date(2026, 9, 2), 1),
-        Sujet("b", "[b]", date(2026, 9, 5), date(2026, 9, 9), 3),
-        Sujet("a", "[a]", date(2026, 9, 2), date(2026, 9, 20), 8),
+    assert jetons("Accusations d'antisémitisme contre Paul Martin") == {
+        "accusa",
+        "antise",
+        "paul",
+        "martin",
+    }
+
+
+def test_groupes_candidats_titres_proches_et_voisins_dans_le_temps() -> None:
+    from radar.sujets import groupes_candidats
+
+    s = [
+        Sujet("a", "Accusations d'antisémitisme contre Paul Martin", J, J, 161),
+        Sujet("b", "Accusations antisémites contre Paul Martin", J, J, 8),
+        Sujet("c", "Accusations contre Paul Martin de propos antisémites", J, J, 4),
+        Sujet("d", "Blocages et heurts dans les lycées", J, J, 63),
+        Sujet("e", "Paul Martin en meeting à Lyon", J, J, 5),
+        Sujet(
+            "f", "Accusations antisémites contre Paul Martin", date(2026, 6, 1), date(2026, 6, 2), 9
+        ),
+        Sujet("g", "Accusations antisémites contre Paul Martin", J, J, 1),  # 1 vidéo
     ]
-    assert [s.id for s in candidats_fusion(sujets)] == ["a", "b"]
+    assert [[x.id for x in g] for g in groupes_candidats(s)] == [["a", "b", "c"]]

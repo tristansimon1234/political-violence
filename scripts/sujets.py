@@ -33,7 +33,7 @@ from radar.sujets import (
     VideoASituer,
     actifs,
     appliquer,
-    candidats_fusion,
+    groupes_candidats,
     message_fusions,
     message_sujets,
     mettre_a_jour,
@@ -138,8 +138,9 @@ def main() -> int:
     )
     if args.dry_run:
         print(
-            f"\nCoût estimé : ~{(appels + 1) * CLAUDE_USD_PAR_APPEL:.2f} USD (dont la recherche "
-            f"de doublons parmi {len(candidats_fusion(list(sujets.values())))} sujets). "
+            f"\nCoût estimé : ~{appels * CLAUDE_USD_PAR_APPEL:.2f} USD, plus la recherche de "
+            f"doublons ({len(groupes_candidats(list(sujets.values())))} groupes de titres "
+            "proches). "
             "Rien n'a été envoyé."
         )
         return 0
@@ -192,15 +193,13 @@ def main() -> int:
     except BudgetDepasse as e:
         print(f"\nArrêt au budget Claude ({e}) : relancer pour continuer.")
 
-    # Fusion des doublons (même événement décrit deux fois), à chaque run.
+    # Fusion des doublons (même événement décrit deux fois), à chaque run : groupes de sujets
+    # aux titres proches repérés par le code, tranchés un par un par Claude.
     fusionnes = 0
-    candidats = candidats_fusion(list(sujets.values()))
-    if len(candidats) >= 2:
-        try:
-            rep_f = claude.classer(
-                SYSTEME_FUSIONS, message_fusions(candidats), ReponseFusions, 4000
-            )
-            cible = valider_fusions(rep_f, {s.id for s in candidats})
+    try:
+        for groupe in groupes_candidats(list(sujets.values())):
+            rep_f = claude.classer(SYSTEME_FUSIONS, message_fusions(groupe), ReponseFusions, 1000)
+            cible = valider_fusions(rep_f, {s.id for s in groupe if s.id in sujets})
             par_garde: defaultdict[str, list[str]] = defaultdict(list)
             for d, g in cible.items():
                 par_garde[g].append(d)
@@ -217,8 +216,10 @@ def main() -> int:
                 base.supprimer("sujets", {"id": f"in.({lot_ids})"})
                 fusionnes += len(ds)
                 log.info("fusion : %s <- %s", g, lot_ids)
-        except (BudgetDepasse, ReponseInvalide) as e:
-            print(f"\nFusion des doublons non faite ({e}) : relancer.")
+    except BudgetDepasse as e:
+        print(f"\nFusion des doublons interrompue ({e}) : relancer.")
+    except ReponseInvalide as e:
+        print(f"\nFusion des doublons interrompue ({e}) : relancer.")
 
     affiches = [s for s in sujets.values() if s.videos >= 3]
     print(
