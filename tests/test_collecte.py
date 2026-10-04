@@ -183,9 +183,7 @@ def _run(
 
 
 def _tous_commentaires(st: StockageLocal) -> list[dict[str, Any]]:
-    return [
-        ligne for c in partitions(st, "commentaires").values() for ligne in lire_partition(st, c)
-    ]
+    return [ligne for _, c in partitions(st, "commentaires") for ligne in lire_partition(st, c)]
 
 
 def test_prefiltre_commentaires_seulement_pour_videos_retenues(tmp_path: Path) -> None:
@@ -209,7 +207,7 @@ def test_format_short_long(tmp_path: Path) -> None:
 def test_invariant_aucun_pseudo_ni_identifiant_auteur_en_clair(tmp_path: Path) -> None:
     faux = FauxYouTube(J1)
     _, _, st = _run(tmp_path, faux, FausseBase(SOURCES), _quotidien())
-    for chemin in partitions(st, "commentaires").values():
+    for _, chemin in partitions(st, "commentaires"):
         octets = st.lire(chemin)
         assert PSEUDO.encode() not in octets
         assert AUTEUR_ID.encode() not in octets
@@ -241,7 +239,9 @@ def test_invariant_commentaire_unique_date_de_sa_derniere_recuperation(tmp_path:
     ids = [ligne["comment_id"] for ligne in lignes]
     assert len(ids) == len(set(ids)) == 9
     assert {ligne["recupere_le"] for ligne in lignes} == {j2.date()}
-    assert set(partitions(st, "commentaires")) == {j2.date()}  # partition J1 vidée et supprimée
+    assert {j for j, _ in partitions(st, "commentaires")} == {
+        j2.date()
+    }  # partition J1 vidée et supprimée
 
 
 def test_relancer_le_meme_jour_ne_cree_pas_de_doublon(tmp_path: Path) -> None:
@@ -272,9 +272,55 @@ def test_unicite_avec_commentaires_non_re_recuperes(tmp_path: Path) -> None:
         st, "commentaires", j1, [{**ligne, "comment_id": "a"}, {**ligne, "comment_id": "b"}], j1
     )
     enregistrer(st, "commentaires", j2, [{**ligne, "comment_id": "b"}], j1)
-    p1 = [x["comment_id"] for x in lire_partition(st, chemin_partition("commentaires", j1))]
-    p2 = [x["comment_id"] for x in lire_partition(st, chemin_partition("commentaires", j2))]
-    assert (p1, p2) == (["a"], ["b"])
+    par_jour: dict[date, list[str]] = {}
+    for jour, c in partitions(st, "commentaires"):
+        par_jour.setdefault(jour, []).extend(x["comment_id"] for x in lire_partition(st, c))
+    assert par_jour == {j1: ["a"], j2: ["b"]}
+
+
+def test_morceaux_d_un_jour_et_unicite_entre_morceaux(tmp_path: Path) -> None:
+    """Un jour = plusieurs fichiers ; une ligne re-récupérée le même jour n'est jamais doublée."""
+    st = StockageLocal(tmp_path)
+    j = date(2026, 10, 3)
+    ligne = {
+        "video_id": "v",
+        "source_id": "s",
+        "auteur_hash": "h",
+        "texte": "t",
+        "likes": 0,
+        "nb_reponses": 0,
+        "publie_at": J1,
+        "modifie_at": None,
+    }
+    index: dict[str, set[str]] = {}
+    # Ancien format (un fichier par jour) encore présent : lu et dédoublonné aussi.
+    enregistrer(st, "commentaires", j, [{**ligne, "comment_id": "a"}], j, index)
+    st.ecrire(chemin_partition("commentaires", j), st.lire("commentaires/2026-10-03-001.parquet"))
+    st.supprimer(["commentaires/2026-10-03-001.parquet"])
+    enregistrer(st, "commentaires", j, [{**ligne, "comment_id": "b"}], j)
+    enregistrer(st, "commentaires", j, [{**ligne, "comment_id": "a"}], j)
+    chemins = [c for _, c in partitions(st, "commentaires")]
+    ids = [x["comment_id"] for c in chemins for x in lire_partition(st, c)]
+    assert sorted(ids) == ["a", "b"]
+    assert chemin_partition("commentaires", j) not in chemins  # vidé puis supprimé
+    assert all(c.startswith("commentaires/2026-10-03-") for c in chemins)
+
+
+def test_gros_lot_decoupe_en_morceaux(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import radar.storage as storage
+
+    monkeypatch.setattr(storage, "MAX_LIGNES_FICHIER", 2)
+    st = StockageLocal(tmp_path)
+    j = date(2026, 10, 3)
+    tags: list[str] = []
+    lignes: list[dict[str, Any]] = [
+        {"video_id": f"v{i}", "source_id": "s", "titre": "", "description": "", "tags": tags}
+        for i in range(5)
+    ]
+    enregistrer(st, "videos", j, lignes, j)
+    assert [c for _, c in partitions(st, "videos")] == [
+        f"videos/2026-10-03-00{k}.parquet" for k in (1, 2, 3)
+    ]
 
 
 def test_invariant_aucune_partition_de_plus_de_30_jours_apres_purge(tmp_path: Path) -> None:
@@ -285,7 +331,7 @@ def test_invariant_aucune_partition_de_plus_de_30_jours_apres_purge(tmp_path: Pa
             st.ecrire(chemin_partition(table, aujourdhui - timedelta(days=n)), b"x")
     purger(st, aujourdhui)
     for table in ("commentaires", "videos"):
-        jours = partitions(st, table)
+        jours = [j for j, _ in partitions(st, table)]
         assert jours
         assert all((aujourdhui - j).days < 30 for j in jours)
         assert len(jours) == 30

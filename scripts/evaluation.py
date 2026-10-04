@@ -155,12 +155,12 @@ def preparer(args: argparse.Namespace) -> int:
     sources = {str(s["id"]): s for s in base.select("sources", {})}
     videos = base.select("videos", {"derniere_collecte": "not.is.null"})
     bruts_videos: dict[str, dict[str, Any]] = {}
-    for c in partitions(st, "videos").values():
+    for _, c in partitions(st, "videos"):
         for v in lire_partition(st, c):
             bruts_videos[str(v["video_id"])] = v
     commentaires: dict[str, list[dict[str, Any]]] = {}
     total = 0
-    for c in partitions(st, "commentaires").values():
+    for _, c in partitions(st, "commentaires"):
         for x in lire_partition(st, c):
             commentaires.setdefault(str(x["video_id"]), []).append(x)
             total += 1
@@ -239,7 +239,7 @@ def _resumes(
             return avec_resumes(lignes, gardes)
         print("Résumés gardés tous vides : recalcul.")
     descriptions: dict[str, str] = {}
-    for c in partitions(st, "videos").values():
+    for _, c in partitions(st, "videos"):
         for v in lire_partition(st, c):
             descriptions[str(v["video_id"])] = str(v.get("description") or "")
     par_video = {li.video_id: li for li in lignes}
@@ -277,10 +277,10 @@ def restaurer(args: argparse.Namespace) -> int:
         return 1
     jour = max(remplis)[: -len("-etiquetage-rempli.csv")]
     titres: dict[str, str] = {}
-    for c in partitions(st, "videos").values():
+    for _, c in partitions(st, "videos"):
         for v in lire_partition(st, c):
             titres[str(v["video_id"])] = str(v.get("titre") or "")
-    bruts = [x for c in partitions(st, "commentaires").values() for x in lire_partition(st, c)]
+    bruts = [x for _, c in partitions(st, "commentaires") for x in lire_partition(st, c)]
     retrouvees, introuvables = restaurer_depuis_etiquetage(
         st.lire(chemin(jour, "etiquetage-rempli.csv")), bruts, titres
     )

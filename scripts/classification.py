@@ -128,12 +128,10 @@ def main() -> int:
     sources = {str(s["id"]): s for s in base.select("sources", {})}
     lignes_videos = {str(v["video_id"]): v for v in base.select("videos", {})}
     bruts_videos: dict[str, dict[str, Any]] = {}
-    for c in partitions(brut, "videos").values():
+    for _, c in partitions(brut, "videos"):
         for v in lire_partition(brut, c):
             bruts_videos[str(v["video_id"])] = v
-    commentaires = [
-        x for c in partitions(brut, "commentaires").values() for x in lire_partition(brut, c)
-    ]
+    commentaires = [x for _, c in partitions(brut, "commentaires") for x in lire_partition(brut, c)]
     deja = deja_classes(classe)
     a_classer = [
         x

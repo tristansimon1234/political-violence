@@ -122,6 +122,7 @@ def collecter(
     touchees: set[str] = set()
     commentaires: list[dict[str, Any]] = []
     premieres: list[date] = []
+    index: dict[str, set[str]] = {}  # fichiers du brut déjà lus pendant ce run
 
     def ecrire() -> None:
         """Stockage brut d'abord, puis état : une vidéo marquée collectée est stockée.
@@ -132,13 +133,14 @@ def collecter(
         if p.dry_run:
             return
         assert stockage is not None
-        enregistrer(stockage, "videos", aujourdhui, bruts_videos, depuis=aujourdhui)
+        enregistrer(stockage, "videos", aujourdhui, bruts_videos, aujourdhui, index)
         enregistrer(
             stockage,
             "commentaires",
             aujourdhui,
             commentaires,
-            depuis=min(premieres, default=aujourdhui),
+            min(premieres, default=aujourdhui),
+            index,
         )
         base.upsert("videos", [videos[i] for i in sorted(touchees)], conflit="video_id")
         if p.mode == "backfill" and p.jusqua is not None:

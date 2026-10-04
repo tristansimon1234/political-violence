@@ -28,13 +28,14 @@ from radar.anonymisation import hash_auteur
 from radar.classification import Classement, ContexteVideo, classement_jev, etat_jev, questions_jev
 from radar.llm import BudgetDepasse, ClientJev, ReponseInvalide
 from radar.schemas import VERSION_TAXONOMIE, NatureVideo
-from radar.storage import Stockage
+from radar.storage import Stockage, morceaux_suivants
 
 log = logging.getLogger(__name__)
 
 DOSSIER_CLASSE = "classe"
 MODELE = "jev"
-LOT = 2000  # commentaires classés entre deux écritures
+LOT = 2000  # commentaires envoyés à Jev entre deux bilans
+ECRITURE = 20_000  # commentaires classés par fichier (~1,5 Mo ; un objet Supabase : 50 Mo max)
 PARALLELES = 10
 
 # Aucun texte : ni commentaire, ni titre, ni chaîne, ni identifiant en clair.
@@ -91,6 +92,7 @@ class Video:
 
 
 def chemin_partition(jour: date) -> str:
+    """Ancien format : un fichier par jour de classification (toujours lu)."""
     return f"{DOSSIER_CLASSE}/{jour.isoformat()}.parquet"
 
 
@@ -104,16 +106,12 @@ def deja_classes(st: Stockage) -> set[str]:
 
 
 def ajouter_a_la_partition(st: Stockage, jour: date, lignes: Sequence[Mapping[str, Any]]) -> None:
-    """Ajoute des lignes à la partition du jour (lecture, concaténation, réécriture)."""
+    """Écrit des lignes dans un nouveau morceau du jour (`classe/AAAA-MM-JJ-NNN.parquet`)."""
     if not lignes:
         return
-    chemin = chemin_partition(jour)
-    existantes: list[dict[str, Any]] = []
-    if chemin in st.lister(DOSSIER_CLASSE):
-        table = pq.read_table(io.BytesIO(st.lire(chemin)))  # pyright: ignore[reportUnknownMemberType]
-        existantes = table.to_pylist()
+    (chemin,) = morceaux_suivants(st, DOSSIER_CLASSE, jour, 1)
     tampon = io.BytesIO()
-    donnees = pa.Table.from_pylist([*existantes, *lignes], schema=SCHEMA_CLASSE)
+    donnees = pa.Table.from_pylist(list(lignes), schema=SCHEMA_CLASSE)
     pq.write_table(donnees, tampon)  # pyright: ignore[reportUnknownMemberType]
     st.ecrire(chemin, tampon.getvalue())
 
@@ -169,8 +167,13 @@ def classer(
     paralleles: int = PARALLELES,
     lot: int = LOT,
     rapporter: Callable[[Bilan], None] | None = None,
+    ecriture: int = ECRITURE,
 ) -> Bilan:
-    """Classe les commentaires non encore classés des vidéos connues ; écrit par lots."""
+    """Classe les commentaires non encore classés des vidéos connues ; écrit par morceaux.
+
+    Un morceau est écrit tous les `ecriture` commentaires classés, à l'arrêt au budget et en
+    cas d'erreur imprévue : un plantage perd au plus le classement en attente d'écriture.
+    """
     deja = deja_classes(st)
     consignes = version_consignes()
     a_faire = [
@@ -194,26 +197,34 @@ def classer(
             return x, None
         return x, classement_jev(reps, v.nature)
 
+    en_attente: list[dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=paralleles) as pool:
-        for i in range(0, len(a_faire), lot):
-            lignes: list[dict[str, Any]] = []
-            try:
-                for x, c in pool.map(un, a_faire[i : i + lot]):
-                    if c is None:
-                        bilan.erreurs += 1
-                        continue
-                    v = videos[str(x["video_id"])]
-                    lignes.append(ligne_classee(x, v, c, sel, aujourdhui, consignes))
-            except BudgetDepasse as e:
-                # Les appels déjà partis se terminent ; ceux qui ont abouti sont perdus pour ce
-                # lot uniquement s'ils n'ont pas été collectés : on écrit ce qu'on a.
-                log.warning("arrêt au budget : %s", e)
-                bilan.arret_budget = True
-            ajouter_a_la_partition(st, aujourdhui, lignes)
-            bilan.classes += len(lignes)
-            bilan.cout_usd = jev.compteur.cout_usd
-            if rapporter is not None:
-                rapporter(bilan)
-            if bilan.arret_budget:
-                break
+        try:
+            for i in range(0, len(a_faire), lot):
+                lignes: list[dict[str, Any]] = []
+                try:
+                    for x, c in pool.map(un, a_faire[i : i + lot]):
+                        if c is None:
+                            bilan.erreurs += 1
+                            continue
+                        v = videos[str(x["video_id"])]
+                        lignes.append(ligne_classee(x, v, c, sel, aujourdhui, consignes))
+                except BudgetDepasse as e:
+                    # Les appels déjà partis se terminent ; ceux qui ont abouti sont perdus pour ce
+                    # lot uniquement s'ils n'ont pas été collectés : on écrit ce qu'on a.
+                    log.warning("arrêt au budget : %s", e)
+                    bilan.arret_budget = True
+                en_attente.extend(lignes)
+                if len(en_attente) >= ecriture:
+                    ajouter_a_la_partition(st, aujourdhui, en_attente)
+                    en_attente.clear()
+                bilan.classes += len(lignes)
+                bilan.cout_usd = jev.compteur.cout_usd
+                if rapporter is not None:
+                    rapporter(bilan)
+                if bilan.arret_budget:
+                    break
+        finally:
+            # Ce qui est classé est écrit même en cas d'erreur imprévue.
+            ajouter_a_la_partition(st, aujourdhui, en_attente)
     return bilan

@@ -87,7 +87,7 @@ def main() -> int:
     }
     titres: dict[str, str] = {}
     brut = _brut(args)
-    for c in partitions(brut, "videos").values():
+    for _, c in partitions(brut, "videos"):
         for v in lire_partition(brut, c):
             titres[str(v["video_id"])] = str(v.get("titre") or "")
     sujets = {
