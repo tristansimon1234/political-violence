@@ -156,3 +156,68 @@ def mettre_a_jour(
         s.dernier_jour = max(s.dernier_jour, jours[vid])
         modifies.add(sid)
     return modifies
+
+
+# --- Fusion des doublons ---
+# Deux sujets peuvent décrire le même événement (créés dans deux lots, ou après une pause de
+# plus de 7 jours). À chaque run, Claude reçoit la liste des sujets récents et désigne les
+# doublons ; leurs vidéos passent au sujet gardé.
+
+FENETRE_FUSION_JOURS = 45
+MAX_SUJETS_FUSION = 400
+
+
+class Fusion(BaseModel):
+    garder: str
+    doublons: list[str]
+
+
+class ReponseFusions(BaseModel):
+    fusions: list[Fusion]
+
+
+SYSTEME_FUSIONS = """You receive a list of news stories ("sujets") detected in French political
+YouTube videos: id, neutral title, number of videos, first and last day.
+
+Find the stories that are the SAME event described twice (same announcement, same
+controversy, same vote, same news item, possibly worded differently or continued later).
+For each group, return `garder` (the id to keep: the one with the most videos) and `doublons`
+(the other ids of that same event).
+
+Do not merge different events that merely share a theme, a place or a person (two different
+statements by the same politician, two different strikes, two different votes are different
+stories). When unsure, do not merge. Return an empty list if there is no duplicate."""
+
+
+def candidats_fusion(sujets: list[Sujet]) -> list[Sujet]:
+    """Sujets d'au moins 2 vidéos actifs dans les 45 derniers jours de données, au plus 400."""
+    if not sujets:
+        return []
+    fin = max(s.dernier_jour for s in sujets)
+    debut = fin - timedelta(days=FENETRE_FUSION_JOURS)
+    retenus = [s for s in sujets if s.videos >= 2 and s.dernier_jour >= debut]
+    retenus.sort(key=lambda s: (-s.videos, s.id))
+    return sorted(retenus[:MAX_SUJETS_FUSION], key=lambda s: (s.premier_jour, s.id))
+
+
+def message_fusions(sujets: list[Sujet]) -> str:
+    return "\n".join(
+        f"{s.id} | {_ligne(s.titre, MAX_TITRE_SUJET)} | {s.videos} videos | "
+        f"{s.premier_jour.isoformat()} → {s.dernier_jour.isoformat()}"
+        for s in sujets
+    )
+
+
+def valider_fusions(rep: ReponseFusions, connus: set[str]) -> dict[str, str]:
+    """Doublon → sujet gardé. Identifiants inconnus ignorés ; un sujet gardé n'est jamais
+    absorbé ensuite, un doublon ne l'est qu'une fois (pas de chaîne de fusions)."""
+    cible: dict[str, str] = {}
+    gardes: set[str] = set()
+    for f in rep.fusions:
+        if f.garder not in connus or f.garder in cible:
+            continue
+        for d in f.doublons:
+            if d in connus and d != f.garder and d not in cible and d not in gardes:
+                cible[d] = f.garder
+        gardes.add(f.garder)
+    return cible

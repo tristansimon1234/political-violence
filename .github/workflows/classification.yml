@@ -24,6 +24,10 @@ on:
       limite:
         description: "Facultatif : au plus N commentaires (essai)"
         default: ""
+      direct:
+        description: "Décrire les vidéos sans l'API Batch (résultat immédiat, 2 à 3 fois plus cher)"
+        type: boolean
+        default: false
       etape:
         description: "tout : vidéos puis commentaires ; videos : décrire les vidéos seulement (peut tourner en même temps qu'un run « tout »)"
         type: choice
@@ -60,6 +64,7 @@ jobs:
           ARGS=(--budget-jev "${{ inputs.budget_jev }}" --budget-claude "${{ inputs.budget_claude }}" --paralleles "$PARALLELES")
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
           if [ "${{ inputs.etape }}" = "videos" ]; then ARGS+=(--videos-seulement); fi
+          if [ "${{ inputs.direct }}" = "true" ]; then ARGS+=(--direct); fi
           if [ -n "$LIMITE" ]; then
             [[ "$LIMITE" =~ ^[0-9]+$ ]] || { echo "limite invalide"; exit 1; }
             ARGS+=(--limite "$LIMITE")

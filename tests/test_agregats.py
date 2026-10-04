@@ -118,3 +118,16 @@ def test_plafond_pondere_par_le_volume_reel() -> None:
     assert sum(float(x["commentaires"]) for x in lignes) == pytest.approx(11.0)
     secu = sum(float(x["commentaires"]) for x in lignes if x["theme"] == "securite")
     assert secu == pytest.approx(2.5)  # poids 5, réparti sur 2 thèmes
+
+
+def test_par_chaine_meme_total_que_par_type() -> None:
+    classes = [
+        {**_c(), "source_id": "s1"},
+        {**_c(themes=["sante", "retraites"]), "source_id": "s2"},
+    ]
+    par_type = agreger(classes)
+    par_chaine = agreger(classes, par_chaine=True)
+    assert {x["source_id"] for x in par_chaine} == {"s1", "s2"}
+    assert all(x["type_source"] == "media_natif" for x in par_chaine)
+    total = sum(float(x["commentaires"]) for x in par_type)
+    assert sum(float(x["commentaires"]) for x in par_chaine) == pytest.approx(total)

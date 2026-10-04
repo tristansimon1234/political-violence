@@ -20,6 +20,7 @@ import {
   thesesDuSujet,
 } from "@/lib/cetteSemaine";
 import { chargerSujets, chargerTout } from "@/lib/chargement";
+import { CommentairesVideo } from "@/lib/Commentaires";
 import {
   LIBELLES_THEMES,
   LIBELLES_TYPE,
@@ -496,6 +497,7 @@ function LigneVideo({ v }: { v: VideoDuSujet }) {
           ? ` · ${Math.round(pct(r.accord, prononces))} % d'accord`
           : ""}
       </span>
+      <CommentairesVideo videoId={v.video_id} />
     </li>
   );
 }
@@ -614,10 +616,6 @@ function Modale({ c, fermer }: { c: CarteSujet | null; fermer: () => void }) {
                   </p>
                 </>
               )}
-              <EnPreparation
-                titre="Exemples de commentaires"
-                attend="quelques commentaires des 30 derniers jours par sujet, lus dans les données stockées, texte non modifié, sans pseudo, avec le lien vers la vidéo."
-              />
             </div>
             <div>
               <h3>Les vidéos ({c.videos.length})</h3>

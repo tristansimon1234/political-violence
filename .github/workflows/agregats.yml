@@ -2,7 +2,8 @@ name: Agrégats
 
 # Recalcule les agrégats par thème (table Supabase `agregats_themes`) depuis les commentaires
 # classés du bucket `radar-classe`. Lancement manuel, après une classification. Idempotent.
-# Secrets : SUPABASE_SECRET_KEY.
+# Aussi : agrégats par chaîne et drill-down (bucket `radar-drilldown`).
+# Secrets : SUPABASE_SECRET_KEY, RADAR_SEL.
 
 on:
   workflow_dispatch:
@@ -23,6 +24,7 @@ jobs:
     env:
       SUPABASE_URL: https://yqzgtkaeodibfujienyj.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      RADAR_SEL: ${{ secrets.RADAR_SEL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

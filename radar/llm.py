@@ -14,7 +14,9 @@ from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
 import requests
-from anthropic import Anthropic
+from anthropic import Anthropic, transform_schema
+from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+from anthropic.types.messages.batch_create_params import Request
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 log = logging.getLogger(__name__)
@@ -76,6 +78,8 @@ MODELE_CLAUDE = "claude-haiku-4-5"
 # Tarifs Claude Haiku 4.5 ($ par million de tokens).
 PRIX_CLAUDE_ENTREE = 1.0
 PRIX_CLAUDE_SORTIE = 5.0
+# API Message Batches : traitement différé (1 h en général, 24 h au plus), 50 % du prix.
+REDUCTION_BATCH = 0.5
 
 
 class ClientClaude:
@@ -102,6 +106,78 @@ class ClientClaude:
             self.compteur.erreur()
             raise ReponseInvalide(f"claude stop_reason={r.stop_reason}")
         return r.parsed_output
+
+    def lot(
+        self,
+        requetes: dict[str, tuple[str, str, int]],
+        sortie: type[T],
+        pause_s: float = 30.0,
+        attente_max_s: float = 6 * 3600,
+    ) -> dict[str, T]:
+        """Envoie des requêtes en un batch (API Message Batches, -50 %) et attend le résultat.
+
+        `requetes` : identifiant → (consigne, message, max_tokens). Renvoie les réponses valides
+        par identifiant ; une requête en erreur ou invalide est comptée et absente du résultat
+        (à reprendre au run suivant). Le budget est vérifié avant l'envoi.
+        """
+        self.compteur.verifier()
+        if not requetes:
+            return {}
+        schema = transform_schema(sortie)
+        batch = self._client.messages.batches.create(
+            requests=[
+                Request(
+                    custom_id=cle,
+                    params=MessageCreateParamsNonStreaming(
+                        model=MODELE_CLAUDE,
+                        max_tokens=max_tokens,
+                        system=systeme,
+                        messages=[{"role": "user", "content": message}],
+                        output_config={"format": {"type": "json_schema", "schema": schema}},
+                    ),
+                )
+                for cle, (systeme, message, max_tokens) in requetes.items()
+            ]
+        )
+        log.info("claude batch %s : %d requêtes envoyées", batch.id, len(requetes))
+        debut = time.monotonic()
+        while batch.processing_status != "ended":
+            if time.monotonic() - debut > attente_max_s:
+                self._client.messages.batches.cancel(batch.id)
+                raise ReponseInvalide(f"batch {batch.id} non terminé après {attente_max_s} s")
+            time.sleep(pause_s)
+            batch = self._client.messages.batches.retrieve(batch.id)
+        resultats: dict[str, T] = {}
+        for r in self._client.messages.batches.results(batch.id):
+            if r.result.type != "succeeded":
+                self.compteur.erreur()
+                log.warning("batch %s : requête %s %s", batch.id, r.custom_id, r.result.type)
+                continue
+            m = r.result.message
+            u = m.usage
+            self.compteur.ajouter(
+                u.input_tokens,
+                u.output_tokens,
+                REDUCTION_BATCH
+                * (u.input_tokens * PRIX_CLAUDE_ENTREE + u.output_tokens * PRIX_CLAUDE_SORTIE)
+                / 1e6,
+            )
+            texte = next((b.text for b in m.content if b.type == "text"), "")
+            try:
+                if m.stop_reason != "end_turn":
+                    raise ReponseInvalide(f"stop_reason={m.stop_reason}")
+                resultats[r.custom_id] = sortie.model_validate_json(texte)
+            except (ReponseInvalide, ValidationError) as e:
+                self.compteur.erreur()
+                log.warning("batch %s : requête %s invalide : %s", batch.id, r.custom_id, e)
+        log.info(
+            "claude batch %s : %d / %d réponses valides, %.0f s",
+            batch.id,
+            len(resultats),
+            len(requetes),
+            time.monotonic() - debut,
+        )
+        return resultats
 
 
 # --- Jev ---

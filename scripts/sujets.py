@@ -25,14 +25,19 @@ from radar.llm import BudgetDepasse, ClientClaude, ReponseInvalide
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.sujets import (
     LOT_SUJETS,
+    SYSTEME_FUSIONS,
     SYSTEME_SUJETS,
+    ReponseFusions,
     ReponseSujets,
     Sujet,
     VideoASituer,
     actifs,
     appliquer,
+    candidats_fusion,
+    message_fusions,
     message_sujets,
     mettre_a_jour,
+    valider_fusions,
 )
 from radar.supabase_rest import Supabase
 
@@ -132,7 +137,11 @@ def main() -> int:
         f"Sujets existants : {len(sujets)}."
     )
     if args.dry_run:
-        print(f"\nCoût estimé : ~{appels * CLAUDE_USD_PAR_APPEL:.2f} USD. Rien n'a été envoyé.")
+        print(
+            f"\nCoût estimé : ~{(appels + 1) * CLAUDE_USD_PAR_APPEL:.2f} USD (dont la recherche "
+            f"de doublons parmi {len(candidats_fusion(list(sujets.values())))} sujets). "
+            "Rien n'a été envoyé."
+        )
         return 0
 
     claude = ClientClaude(budget_usd=args.budget_claude)
@@ -183,11 +192,40 @@ def main() -> int:
     except BudgetDepasse as e:
         print(f"\nArrêt au budget Claude ({e}) : relancer pour continuer.")
 
+    # Fusion des doublons (même événement décrit deux fois), à chaque run.
+    fusionnes = 0
+    candidats = candidats_fusion(list(sujets.values()))
+    if len(candidats) >= 2:
+        try:
+            rep_f = claude.classer(
+                SYSTEME_FUSIONS, message_fusions(candidats), ReponseFusions, 4000
+            )
+            cible = valider_fusions(rep_f, {s.id for s in candidats})
+            par_garde: defaultdict[str, list[str]] = defaultdict(list)
+            for d, g in cible.items():
+                par_garde[g].append(d)
+            for g, ds in sorted(par_garde.items()):
+                lot_ids = ",".join(sorted(ds))
+                base.modifier("sujets_videos", {"sujet_id": f"in.({lot_ids})"}, {"sujet_id": g})
+                garde = sujets[g]
+                for d in ds:
+                    absorbe = sujets.pop(d)
+                    garde.videos += absorbe.videos
+                    garde.premier_jour = min(garde.premier_jour, absorbe.premier_jour)
+                    garde.dernier_jour = max(garde.dernier_jour, absorbe.dernier_jour)
+                base.upsert("sujets", [_ligne_sujet(garde, aujourdhui)], "id")
+                base.supprimer("sujets", {"id": f"in.({lot_ids})"})
+                fusionnes += len(ds)
+                log.info("fusion : %s <- %s", g, lot_ids)
+        except (BudgetDepasse, ReponseInvalide) as e:
+            print(f"\nFusion des doublons non faite ({e}) : relancer.")
+
     affiches = [s for s in sujets.values() if s.videos >= 3]
     print(
         f"\n## Bilan\n\n- Vidéos rattachées : {rattachees_run} / {a_situer}, dont {sans_sujet} "
         f"sans sujet\n- Sujets créés : {crees} ; sujets d'au moins 3 vidéos : {len(affiches)} "
-        f"(le critère des 2 chaînes est appliqué à l'affichage)\n- Coût Claude : "
+        f"(le critère des 2 chaînes est appliqué à l'affichage)\n- Doublons fusionnés : "
+        f"{fusionnes}\n- Coût Claude : "
         f"{claude.compteur.cout_usd:.2f} USD\n"
         f"- Durée : {(datetime.now(UTC) - debut).total_seconds() / 60:.0f} min"
     )

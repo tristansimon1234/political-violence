@@ -28,6 +28,7 @@ import {
   semaines,
 } from "@/lib/semaines";
 import { chargerSujets, chargerTout } from "@/lib/chargement";
+import { CommentairesVideo } from "@/lib/Commentaires";
 import {
   Barre,
   EnPreparation,
@@ -103,6 +104,11 @@ function VueEnsemble() {
   const [rattachements, setRattachements] = useState<Map<string, Rattachement>>(
     new Map(),
   );
+  // Filtre par chaîne : agrégats par chaîne chargés au premier choix (migration 14).
+  const [chaines, setChaines] = useState<string[]>([]);
+  const [sources, setSources] = useState<SourceChaine[]>([]);
+  const [parChaine, setParChaine] = useState<Agregat[] | null>(null);
+  const [erreurChaines, setErreurChaines] = useState("");
 
   useEffect(() => {
     chargerAgregats()
@@ -131,18 +137,67 @@ function VueEnsemble() {
     )
       .then((l) => setRattachements(new Map(l.map((r) => [r.video_id, r]))))
       .catch(() => setRattachements(new Map()));
+    // Chaînes du public seulement : les chaînes politiques restent lues à part.
+    chargerTout<SourceChaine>("sources", "id,nom,type")
+      .then((l) =>
+        setSources(
+          l
+            .filter((x) => PUBLICS.includes(x.type))
+            .sort((a, b) => a.nom.localeCompare(b.nom, "fr")),
+        ),
+      )
+      .catch(() => setSources([]));
   }, []);
+
+  useEffect(() => {
+    if (chaines.length === 0 || parChaine !== null) return;
+    chargerTout<Agregat>("agregats_chaines", "*")
+      .then((l) => setParChaine(depuisCollecte(l)))
+      .catch((e: unknown) => {
+        setParChaine([]);
+        setErreurChaines(e instanceof Error ? e.message : String(e));
+      });
+  }, [chaines, parChaine]);
+
+  const donnees = useMemo(
+    () =>
+      chaines.length === 0
+        ? lignes
+        : parChaine === null
+          ? null
+          : parChaine.filter((l) => chaines.includes(l.source_id ?? "")),
+    [lignes, chaines, parChaine],
+  );
+  const filtresEff = useMemo<Filtres>(
+    () =>
+      chaines.length === 0
+        ? filtres
+        : {
+            ...filtres,
+            types: PUBLICS.filter((t) =>
+              sources.some((x) => chaines.includes(x.id) && x.type === t),
+            ),
+          },
+    [filtres, chaines, sources],
+  );
+  const sujetsBase = useMemo(
+    () =>
+      chaines.length === 0
+        ? sujets
+        : sujets.filter((x) => chaines.includes(x.videos?.sources?.id ?? "")),
+    [sujets, chaines],
+  );
 
   // Table vide : aucun calcul (pas de dernier jour, donc pas de fenêtre).
   const vue = useMemo(
-    () => (lignes && lignes.length > 0 ? themes(lignes, filtres) : null),
-    [lignes, filtres],
+    () => (donnees && donnees.length > 0 ? themes(donnees, filtresEff) : null),
+    [donnees, filtresEff],
   );
   const actif =
     vue?.lignes.find((l) => l.theme === choisi) ?? vue?.lignes[0] ?? null;
   const sujetsPeriode = useMemo(
-    () => (vue ? sujetsFiltres(sujets, filtres, vue.courante) : []),
-    [sujets, filtres, vue],
+    () => (vue ? sujetsFiltres(sujetsBase, filtresEff, vue.courante) : []),
+    [sujetsBase, filtresEff, vue],
   );
   const agenda = useMemo(() => agendaParTheme(sujetsPeriode), [sujetsPeriode]);
 
@@ -173,14 +228,29 @@ function VueEnsemble() {
         </p>
       )}
 
-      {vue && lignes && actif && (
+      {lignes && lignes.length > 0 && (
+        <BarreFiltres
+          filtres={filtres}
+          setFiltres={setFiltres}
+          politiques={politiques}
+          setPolitiques={setPolitiques}
+          sources={sources}
+          chaines={chaines}
+          setChaines={setChaines}
+        />
+      )}
+      {chaines.length > 0 && !vue && (
+        <p className="discret radar-marge">
+          {donnees === null
+            ? "Chargement des agrégats par chaîne…"
+            : erreurChaines
+              ? `Agrégats par chaîne indisponibles (migration 14 et workflow « Agrégats ») : ${erreurChaines}`
+              : "Aucun commentaire classé pour ces chaînes."}
+        </p>
+      )}
+
+      {vue && donnees && actif && (
         <>
-          <BarreFiltres
-            filtres={filtres}
-            setFiltres={setFiltres}
-            politiques={politiques}
-            setPolitiques={setPolitiques}
-          />
           <p className="radar-bandeau">
             <span className="radar-badge">
               Données réelles · expérimentation privée
@@ -211,7 +281,7 @@ function VueEnsemble() {
                 actif={actif.theme}
                 choisir={setChoisi}
               />
-              <SignalEmergent lignes={lignes} filtres={filtres} />
+              <SignalEmergent lignes={donnees} filtres={filtresEff} />
               {sansSujets && (
                 <p className="discret petit-texte">
                   Thèmes des vidéos indisponibles : {sansSujets}
@@ -221,8 +291,8 @@ function VueEnsemble() {
             <ThemeSelectionne
               key={actif.theme}
               ligne={actif}
-              lignes={lignes}
-              filtres={filtres}
+              lignes={donnees}
+              filtres={filtresEff}
               politiques={politiques}
               sujets={sujetsPeriode}
               reactions={reactions}
@@ -231,9 +301,9 @@ function VueEnsemble() {
             />
           </div>
           <ComparaisonSemaines
-            lignes={lignes}
-            filtres={filtres}
-            sujets={sujets}
+            lignes={donnees}
+            filtres={filtresEff}
+            sujets={sujetsBase}
             choisir={setChoisi}
           />
         </>
@@ -242,17 +312,33 @@ function VueEnsemble() {
   );
 }
 
+type SourceChaine = { id: string; nom: string; type: TypeSource };
+
 function BarreFiltres({
   filtres,
   setFiltres,
   politiques,
   setPolitiques,
+  sources,
+  chaines,
+  setChaines,
 }: {
   filtres: Filtres;
   setFiltres: (f: Filtres) => void;
   politiques: boolean;
   setPolitiques: (b: boolean) => void;
+  sources: SourceChaine[];
+  chaines: string[];
+  setChaines: (c: string[]) => void;
 }) {
+  const [recherche, setRecherche] = useState("");
+  const basculerChaine = (id: string) =>
+    setChaines(
+      chaines.includes(id) ? chaines.filter((x) => x !== id) : [...chaines, id],
+    );
+  const visibles = sources.filter((x) =>
+    x.nom.toLowerCase().includes(recherche.trim().toLowerCase()),
+  );
   const basculerType = (t: TypeSource) => {
     const types = filtres.types.includes(t)
       ? filtres.types.filter((x) => x !== t)
@@ -286,6 +372,56 @@ function BarreFiltres({
             {LIBELLES_TYPE[t]}
           </button>
         ))}
+      </fieldset>
+      <fieldset>
+        <legend>Chaînes</legend>
+        <details className="radar-choix-chaines">
+          <summary className={chaines.length ? "segment actif" : "segment"}>
+            {chaines.length === 0
+              ? "Toutes les chaînes"
+              : chaines.length === 1
+                ? (sources.find((x) => x.id === chaines[0])?.nom ?? "1 chaîne")
+                : `${chaines.length} chaînes`}
+          </summary>
+          <div className="radar-choix-chaines-liste">
+            <input
+              type="search"
+              placeholder="Chercher une chaîne"
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              aria-label="Chercher une chaîne"
+            />
+            {chaines.length > 0 && (
+              <button
+                className="radar-lien petit-texte"
+                onClick={() => setChaines([])}
+              >
+                Tout effacer (revenir au panel)
+              </button>
+            )}
+            {PUBLICS.map((t) => (
+              <div key={t}>
+                <p className="discret petit-texte">{LIBELLES_TYPE[t]}</p>
+                {visibles
+                  .filter((x) => x.type === t)
+                  .map((x) => (
+                    <label key={x.id}>
+                      <input
+                        type="checkbox"
+                        checked={chaines.includes(x.id)}
+                        onChange={() => basculerChaine(x.id)}
+                      />{" "}
+                      {x.nom}
+                    </label>
+                  ))}
+              </div>
+            ))}
+            <p className="discret petit-texte">
+              Avec des chaînes choisies, le filtre « Réactions sous » est
+              ignoré.
+            </p>
+          </div>
+        </details>
       </fieldset>
       <fieldset>
         <legend>Format</legend>
@@ -669,6 +805,7 @@ function SujetsDuTheme({ actu }: { actu: SujetActu[] }) {
                       · {entier(v.videos?.nb_commentaires ?? 0)} commentaires
                       annoncés
                     </span>
+                    <CommentairesVideo videoId={v.video_id} />
                   </li>
                 ))}
               </ol>
@@ -831,6 +968,7 @@ function ThemeSelectionne({
                     · {entier(v.videos?.nb_commentaires ?? 0)} commentaires
                     annoncés
                   </span>
+                  <CommentairesVideo videoId={v.video_id} />
                 </li>
               ))}
             </ol>
