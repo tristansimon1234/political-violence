@@ -256,34 +256,45 @@ function VueEnsemble() {
       });
   };
 
+  const outils = lignes && lignes.length > 0 && (
+    <>
+      <div className="r-segments" role="group" aria-label="Période">
+        {([7, 30, "tout"] as const).map((p) => (
+          <button
+            key={p}
+            className={filtres.periode === p ? "actif" : ""}
+            aria-pressed={filtres.periode === p}
+            onClick={() => setFiltres({ ...filtres, periode: p })}
+          >
+            {p === "tout" ? "Campagne" : `${p} jours`}
+          </button>
+        ))}
+      </div>
+      <MenuFiltres
+        filtres={filtres}
+        setFiltres={setFiltres}
+        politiques={politiques}
+        setPolitiques={setPolitiques}
+        sources={sources}
+        chaines={chaines}
+        setChaines={setChaines}
+      />
+    </>
+  );
+
   return (
     <div className="radar">
-      <Entete actif="ensemble" />
+      <Entete actif="ensemble" outils={outils} />
 
-      {erreur && <p className="erreur radar-marge">{erreur}</p>}
-      {!lignes && !erreur && (
-        <Squelette />
-      )}
+      {erreur && <p className="erreur r-page">{erreur}</p>}
+      {!lignes && !erreur && <Squelette />}
       {lignes && lignes.length === 0 && (
-        <p className="discret radar-marge">
-          Aucun agrégat : lancer la classification puis le workflow « Agrégats
-          ».
+        <p className="r-vide r-page">
+          Aucun agrégat : lancer la classification puis le workflow « Agrégats ».
         </p>
       )}
-
-      {lignes && lignes.length > 0 && (
-        <BarreFiltres
-          filtres={filtres}
-          setFiltres={setFiltres}
-          politiques={politiques}
-          setPolitiques={setPolitiques}
-          sources={sources}
-          chaines={chaines}
-          setChaines={setChaines}
-        />
-      )}
       {chainesD.length > 0 && !vue && (
-        <p className="discret radar-marge">
+        <p className="r-vide r-page">
           {donnees === null
             ? "Chargement des agrégats par chaîne…"
             : erreurChaines
@@ -296,23 +307,18 @@ function VueEnsemble() {
 
       {vue && donnees && actif && (
         <main
-          className={enCalcul ? "ve-page radar-contenu en-calcul" : "ve-page radar-contenu"}
+          className={enCalcul ? "r-page r-contenu en-calcul" : "r-page r-contenu"}
           aria-busy={enCalcul}
         >
-          <p className="ve-resume-periode">
-            Du {dateCourte(vue.courante.debut)} au{" "}
-            {dateCourte(vue.courante.fin)} (jour de publication des
-            commentaires) · <strong>{entier(vue.total.commentaires)}</strong>{" "}
-            commentaires classés, dont{" "}
-            {pc(pct(vue.nonPolitique.commentaires, vue.total.commentaires))} non
+          <p className="r-periode">
+            Du {dateCourte(vue.courante.debut)} au {dateCourte(vue.courante.fin)} ·{" "}
+            <strong>{entier(vue.total.commentaires)}</strong> commentaires classés,
+            dont {pc(pct(vue.nonPolitique.commentaires, vue.total.commentaires))} non
             politiques
+            {sansSujets && ` · thèmes des vidéos indisponibles : ${sansSujets}`}
           </p>
-          <div className="ve-maitre">
-            <ThemesEnMouvement
-              lignes={vue.lignes}
-              actif={actif.theme}
-              choisir={setChoisi}
-            />
+          <div className="r-maitre">
+            <ListeThemes lignes={vue.lignes} actif={actif.theme} choisir={setChoisi} />
             <ThemeSelectionne
               key={actif.theme}
               ligne={actif}
@@ -320,6 +326,7 @@ function VueEnsemble() {
               filtres={filtresEff}
               politiques={politiquesD}
               sujets={sujetsPeriode}
+              agenda={agenda}
               reactions={reactions}
               theses={theses}
               rattachements={rattachements}
@@ -330,18 +337,18 @@ function VueEnsemble() {
               ouvrirVideo={ouvrirVideo}
             />
           </div>
-          <Panorama
-            lignes={vue.lignes}
-            agenda={agenda}
-            actif={actif.theme}
-            choisir={choisirEtMontrer}
-            donnees={donnees}
-            filtres={filtresEff}
-            sujetsBase={sujetsBase}
-            horsGrille={sujetsActu(sujetsPeriode, "autre", rattachements, 5)}
-            ouvrirSujet={ouvrirSujet}
-            sansSujets={sansSujets}
-          />
+          <details className="r-carte r-repli">
+            <summary>
+              <span>Tous les thèmes, semaine par semaine</span>
+              <span className="r-discret">ce qui a changé et part de chaque thème</span>
+            </summary>
+            <ComparaisonSemaines
+              lignes={donnees}
+              filtres={filtresEff}
+              sujets={sujetsBase}
+              choisir={choisirEtMontrer}
+            />
+          </details>
         </main>
       )}
       <Explorateur pile={pile} setPile={setPile} />
@@ -351,7 +358,7 @@ function VueEnsemble() {
 
 type SourceChaine = { id: string; nom: string; type: TypeSource };
 
-function BarreFiltres({
+function MenuFiltres({
   filtres,
   setFiltres,
   politiques,
@@ -376,109 +383,102 @@ function BarreFiltres({
   const visibles = sources.filter((x) =>
     x.nom.toLowerCase().includes(recherche.trim().toLowerCase()),
   );
-  const basculerType = (t: TypeSource) => {
-    const types = filtres.types.includes(t)
-      ? filtres.types.filter((x) => x !== t)
-      : [...filtres.types, t];
-    if (types.length) setFiltres({ ...filtres, types });
-  };
+  const resume =
+    chaines.length > 0
+      ? chaines.length === 1
+        ? (sources.find((x) => x.id === chaines[0])?.nom ?? "1 chaîne")
+        : `${chaines.length} chaînes`
+      : filtres.types.length === PUBLICS.length
+        ? "Tous les médias"
+        : LIBELLES_TYPE[filtres.types[0]!];
   return (
-    <div className="radar-filtres" role="group" aria-label="Filtres">
-      <fieldset>
-        <legend>Période</legend>
-        {([7, 30, "tout"] as const).map((p) => (
-          <button
-            key={p}
-            className={filtres.periode === p ? "segment actif" : "segment"}
-            aria-pressed={filtres.periode === p}
-            onClick={() => setFiltres({ ...filtres, periode: p })}
-          >
-            {p === "tout" ? "Depuis le 1er sept." : `${p} jours`}
-          </button>
-        ))}
-      </fieldset>
-      <fieldset>
-        <legend>Réactions sous</legend>
-        {PUBLICS.map((t) => (
-          <button
-            key={t}
-            className={filtres.types.includes(t) ? "segment actif" : "segment"}
-            aria-pressed={filtres.types.includes(t)}
-            onClick={() => basculerType(t)}
-          >
-            <i className={`ve-pastille ${t}`} aria-hidden="true" />
-            {LIBELLES_TYPE[t]}{" "}
-            <span className="ve-compte">
-              {sources.filter((x) => x.type === t).length || ""}
-            </span>
-          </button>
-        ))}
-      </fieldset>
-      <fieldset>
-        <legend>Chaînes</legend>
-        <details className="radar-choix-chaines">
-          <summary className={chaines.length ? "segment actif" : "segment"}>
-            {chaines.length === 0
-              ? "Toutes les chaînes"
-              : chaines.length === 1
-                ? (sources.find((x) => x.id === chaines[0])?.nom ?? "1 chaîne")
-                : `${chaines.length} chaînes`}
-          </summary>
-          <div className="radar-choix-chaines-liste">
-            <input
-              type="search"
-              placeholder="Chercher une chaîne"
-              value={recherche}
-              onChange={(e) => setRecherche(e.target.value)}
-              aria-label="Chercher une chaîne"
-            />
-            {chaines.length > 0 && (
-              <button
-                className="radar-lien petit-texte"
-                onClick={() => setChaines([])}
-              >
-                Tout effacer (revenir au panel)
-              </button>
-            )}
+    <details className="r-menu">
+      <summary className="r-bouton">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M4 6h16M7 12h10M10 18h4" />
+        </svg>
+        {resume}
+        {politiques && " · politiques"}
+      </summary>
+      <div className="r-menu-corps">
+        <fieldset>
+          <legend>Réactions sous</legend>
+          <div className="r-segments">
+            {(
+              [
+                ["Tous", PUBLICS],
+                ["Traditionnels", ["media_traditionnel"]],
+                ["Natifs du web", ["media_natif"]],
+              ] as [string, TypeSource[]][]
+            ).map(([nom, ts]) => {
+              const actif = chaines.length === 0 && ts.join() === filtres.types.join();
+              return (
+                <button
+                  key={nom}
+                  className={actif ? "actif" : ""}
+                  aria-pressed={actif}
+                  onClick={() => {
+                    setChaines([]);
+                    setFiltres({ ...filtres, types: ts });
+                  }}
+                >
+                  {nom}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Chaînes</legend>
+          <input
+            type="search"
+            placeholder="Chercher une chaîne"
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            aria-label="Chercher une chaîne"
+          />
+          {chaines.length > 0 && (
+            <button className="r-lien" onClick={() => setChaines([])}>
+              Tout effacer (revenir au panel)
+            </button>
+          )}
+          <div className="r-menu-liste">
             {PUBLICS.map((t) => (
               <div key={t}>
-                <p className="discret petit-texte">{LIBELLES_TYPE[t]}</p>
+                <p className="r-surtitre">{LIBELLES_TYPE[t]}</p>
                 {visibles
                   .filter((x) => x.type === t)
                   .map((x) => (
-                    <label key={x.id}>
+                    <label key={x.id} className="r-case">
                       <input
                         type="checkbox"
                         checked={chaines.includes(x.id)}
                         onChange={() => basculerChaine(x.id)}
-                      />{" "}
+                      />
                       {x.nom}
                     </label>
                   ))}
               </div>
             ))}
-            <p className="discret petit-texte">
-              Avec des chaînes choisies, le filtre « Réactions sous » est
-              ignoré.
-            </p>
           </div>
-        </details>
-      </fieldset>
-      <label className="radar-interrupteur">
-        <input
-          type="checkbox"
-          checked={politiques}
-          onChange={(e) => setPolitiques(e.target.checked)}
-        />
-        Chaînes politiques <span className="discret">(lues à part)</span>
-      </label>
-    </div>
+        </fieldset>
+        <label className="r-case">
+          <input
+            type="checkbox"
+            checked={politiques}
+            onChange={(e) => setPolitiques(e.target.checked)}
+          />
+          Afficher les chaînes politiques (lues à part)
+        </label>
+      </div>
+    </details>
   );
 }
 
-type Classement = "volume" | "desaccord" | "hostilite";
+type Classement = "volume" | "velocite" | "desaccord" | "hostilite";
 const CLASSEMENTS: [Classement, string][] = [
-  ["volume", "Volume"],
+  ["volume", "Réactions"],
+  ["velocite", "Évolution"],
   ["desaccord", "Désaccord"],
   ["hostilite", "Hostilité"],
 ];
@@ -487,7 +487,8 @@ const MIN_PRONONCES_THEME = 50;
 /** Valeur du thème pour le classement choisi (null si l'échantillon est trop petit). */
 function valeurTheme(l: LigneTheme, c: Classement): number | null {
   const m = l.courant;
-  if (c === "volume") return l.velocite ?? l.part * 100;
+  if (c === "volume") return l.part * 100;
+  if (c === "velocite") return l.velocite;
   if (c === "hostilite")
     return m.commentaires >= MIN_PRONONCES_THEME
       ? pct(m.hostiles, m.commentaires)
@@ -496,7 +497,7 @@ function valeurTheme(l: LigneTheme, c: Classement): number | null {
   return prononces >= MIN_PRONONCES_THEME ? pct(m.desaccord, prononces) : null;
 }
 
-function ThemesEnMouvement({
+function ListeThemes({
   lignes,
   actif,
   choisir,
@@ -506,31 +507,24 @@ function ThemesEnMouvement({
   choisir: (t: Theme) => void;
 }) {
   const [classement, setClassement] = useState<Classement>("volume");
-  const parVelocite = lignes.some((l) => l.velocite !== null);
   const tries = [...lignes]
-    .filter(
-      (l) => classement === "volume" || valeurTheme(l, classement) !== null,
-    )
+    .filter((l) => valeurTheme(l, classement) !== null)
     .sort(
       (a, b) =>
         (valeurTheme(b, classement) ?? -1) - (valeurTheme(a, classement) ?? -1),
     );
-  const max = Math.max(1, ...tries.map((l) => valeurTheme(l, classement) ?? 0));
+  const max = Math.max(0.01, ...tries.map((l) => valeurTheme(l, classement) ?? 0));
   const libelle = (l: LigneTheme) => {
     const v = valeurTheme(l, classement);
     if (v === null) return "–";
-    if (classement === "volume")
-      return l.velocite === null ? pc(v) : fois(l.velocite);
-    return pc(v);
+    return classement === "velocite" ? fois(v) : pc(v);
   };
   return (
-    <section className="radar-carte" aria-labelledby="titre-themes">
-      <h2 id="titre-themes">Thèmes en mouvement</h2>
-      <div
-        className="ve-classement"
-        role="group"
-        aria-label="Classer les thèmes par"
-      >
+    <section className="r-carte r-themes" aria-labelledby="t-themes">
+      <div className="r-carte-tete">
+        <h2 id="t-themes">{lignes.length} thèmes</h2>
+      </div>
+      <div className="r-puces-choix" role="group" aria-label="Classer les thèmes par">
         {CLASSEMENTS.map(([c, nom]) => (
           <button
             key={c}
@@ -542,225 +536,56 @@ function ThemesEnMouvement({
           </button>
         ))}
       </div>
-      <p className="discret petit-texte">
+      <p className="r-discret r-themes-aide">
         {classement === "volume"
-          ? parVelocite
-            ? "Classés par vélocité"
-            : "Classés par part des commentaires politiques (vélocité après 5 semaines de données)"
-          : classement === "desaccord"
-            ? "Part de désaccord avec les vidéos d'opinion, parmi les commentaires qui se prononcent (au moins 50)"
-            : "Part de commentaires hostiles"}
+          ? "Part des commentaires politiques · vélocité à droite"
+          : classement === "velocite"
+            ? "Commentaires sur 7 jours ÷ moyenne des 4 semaines d'avant (×1,0 = habituel)"
+            : classement === "desaccord"
+              ? "Désaccord avec les vidéos d'opinion (au moins 50 commentaires qui se prononcent)"
+              : "Part de commentaires hostiles"}
       </p>
-      <ol className="radar-themes">
-        {tries.map((l, i) => {
+      {tries.length === 0 && (
+        <p className="r-vide">Pas encore assez de semaines de données pour ce classement.</p>
+      )}
+      <ol className="r-themes-liste">
+        {tries.map((l) => {
           const v = valeurTheme(l, classement) ?? 0;
-          const fort =
-            classement === "volume"
-              ? l.velocite !== null && l.velocite >= 1.5
-              : v >= 0.8 * max;
           return (
             <li key={l.theme}>
               <button
-                className={
-                  l.theme === actif ? "radar-theme actif" : "radar-theme"
-                }
+                className={l.theme === actif ? "r-theme actif" : "r-theme"}
                 onClick={() => choisir(l.theme)}
                 aria-pressed={l.theme === actif}
                 title={DEFINITIONS_THEMES[l.theme]}
               >
-                <span className="radar-rang">{i + 1}</span>
-                <span className="radar-nom">{LIBELLES_THEMES[l.theme]}</span>
-                {classement === "volume" ? (
-                  <Courbe serie={l.serie} />
-                ) : (
-                  <span className="ve-jauge" aria-hidden="true">
-                    <span style={{ width: `${(100 * v) / max}%` }} />
+                <span className="r-theme-corps">
+                  <span className="r-theme-nom">{LIBELLES_THEMES[l.theme]}</span>
+                  <span className="r-piste">
+                    <span className="noir" style={{ width: `${(100 * v) / max}%` }} />
                   </span>
-                )}
+                </span>
+                <span className="r-mono">{libelle(l)}</span>
                 <span
-                  className={fort ? "radar-pastille forte" : "radar-pastille"}
+                  className={
+                    l.velocite === null
+                      ? "r-mono r-discret"
+                      : l.velocite >= 1.2
+                        ? "r-mono bleu"
+                        : l.velocite <= 0.8
+                          ? "r-mono orange"
+                          : "r-mono r-discret"
+                  }
+                  title="Vélocité"
                 >
-                  {libelle(l)}
+                  {classement === "velocite" ? pc(l.part * 100) : fois(l.velocite)}
                 </span>
               </button>
             </li>
           );
         })}
       </ol>
-      <div className="radar-definition">
-        <strong>Vélocité</strong> · commentaires sur 7 jours ÷ moyenne des 4
-        semaines précédentes. ×1,0 = activité habituelle. Provisoire : pas
-        encore pondérée par l'audience des sources.
-      </div>
     </section>
-  );
-}
-
-function CarteSujets({
-  lignes,
-  agenda,
-  actif,
-  choisir,
-}: {
-  lignes: LigneTheme[];
-  agenda: Map<Theme, Agenda>;
-  actif: Theme;
-  choisir: (t: Theme) => void;
-}) {
-  const points = lignes
-    .map((l) => {
-      const vues = agenda.get(l.theme)?.vues ?? 0;
-      return {
-        l,
-        vues,
-        intensite: vues > 0 ? (1000 * l.courant.commentaires) / vues : 0,
-      };
-    })
-    .filter(
-      (p) =>
-        p.vues > 0 && p.l.courant.commentaires > 0 && p.l.theme !== "autre",
-    );
-  const mediane = (xs: number[]) => {
-    const t = [...xs].sort((a, b) => a - b);
-    return t[Math.floor((t.length - 1) / 2)] ?? 1;
-  };
-  const L = 560;
-  const H = 340;
-  const m = 48; // marge : les étiquettes des points restent dans le cadre
-  const lx = points.map((p) => Math.log10(p.vues));
-  const ly = points.map((p) => Math.log10(p.intensite));
-  const x0 = Math.min(...lx);
-  const x1 = Math.max(...lx);
-  const y0 = Math.min(...ly);
-  const y1 = Math.max(...ly);
-  const px = (v: number) =>
-    m + ((Math.log10(v) - x0) / Math.max(0.01, x1 - x0)) * (L - 2 * m);
-  const py = (v: number) =>
-    H - m - ((Math.log10(v) - y0) / Math.max(0.01, y1 - y0)) * (H - 2 * m - 16);
-  const ancre = (x: number) =>
-    x < L * 0.2 ? "start" : x > L * 0.8 ? "end" : "middle";
-  const mx = px(mediane(points.map((p) => p.vues)));
-  const my = py(mediane(points.map((p) => p.intensite)));
-  const maxC = Math.max(1, ...points.map((p) => p.l.courant.commentaires));
-  const rayon = (c: number) => 5 + 14 * Math.sqrt(c / maxC);
-  return (
-    <div>
-      <p className="discret petit-texte">
-        Attention (vues des vidéos, réparties selon leurs thèmes) × intensité
-        (commentaires classés pour 1 000 vues). Échelles logarithmiques,
-        séparations à la médiane, taille = commentaires.
-      </p>
-      {points.length < 3 ? (
-        <EnPreparation
-          titre="Positions des thèmes sur la carte"
-          attend="le thème des vidéos et leurs vues (relancer la classification après la migration 10)."
-        />
-      ) : (
-        <svg
-          viewBox={`0 0 ${L} ${H}`}
-          className="radar-nuage"
-          role="img"
-          aria-label="Carte des thèmes : attention en abscisse, intensité en ordonnée"
-        >
-          <line x1={mx} x2={mx} y1={8} y2={H - 8} className="axe" />
-          <line x1={8} x2={L - 8} y1={my} y2={my} className="axe" />
-          <text x={12} y={18} className="quadrant">
-            Minorité mobilisée
-          </text>
-          <text x={L - 12} y={18} className="quadrant" textAnchor="end">
-            Débat de fond
-          </text>
-          <text x={12} y={H - 10} className="quadrant">
-            Bruit de fond
-          </text>
-          <text x={L - 12} y={H - 10} className="quadrant" textAnchor="end">
-            Regardé en silence
-          </text>
-          {points.map((p) => {
-            const r = rayon(p.l.courant.commentaires);
-            return (
-              <g
-                key={p.l.theme}
-                className={p.l.theme === actif ? "point actif" : "point"}
-                onClick={() => choisir(p.l.theme)}
-              >
-                <title>
-                  {`${LIBELLES_THEMES[p.l.theme]} (${DEFINITIONS_THEMES[p.l.theme]}) : ${entier(p.vues)} vues, ${p.intensite
-                    .toFixed(1)
-                    .replace(".", ",")} commentaires pour 1 000 vues`}
-                </title>
-                <circle cx={px(p.vues)} cy={py(p.intensite)} r={r} />
-                <text
-                  x={px(p.vues)}
-                  y={py(p.intensite) - r - 4}
-                  textAnchor={ancre(px(p.vues))}
-                >
-                  {LIBELLES_THEMES[p.l.theme]}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      )}
-      <p className="discret petit-texte">Cliquer sur un thème pour afficher son détail.</p>
-    </div>
-  );
-}
-
-function SignalEmergent({
-  lignes,
-  filtres,
-  horsGrille,
-  ouvrirSujet,
-}: {
-  lignes: Agregat[];
-  filtres: Filtres;
-  horsGrille: SujetActu[];
-  ouvrirSujet: (id: string) => void;
-}) {
-  const [courante, precedente] = fenetres(lignes, filtres.periode);
-  const part = (w: typeof courante) => {
-    const politiques = filtrer(lignes, filtres).filter(
-      (l) => dans(l, w) && l.theme !== "non_politique",
-    );
-    const total = additionner(politiques).commentaires;
-    const autre = additionner(
-      politiques.filter((l) => l.theme === "autre"),
-    ).commentaires;
-    return pct(autre, total);
-  };
-  const actuelle = part(courante);
-  const avant = precedente ? part(precedente) : null;
-  return (
-    <div className="ve-deux">
-      <div>
-        <p className="ve-kpi">
-          <span className="ve-kpi-valeur">
-            {actuelle.toFixed(1).replace(".", ",")} %
-          </span>
-          <span className="ve-kpi-libelle">des commentaires politiques dans « Autre »</span>
-          {avant !== null && (
-            <span className={actuelle > avant ? "radar-hausse" : "discret"}>
-              {actuelle >= avant ? "+" : "−"}
-              {Math.abs(actuelle - avant).toFixed(1).replace(".", ",")} pts sur
-              la période précédente
-            </span>
-          )}
-        </p>
-        <p className="discret petit-texte">
-          Des commentaires que la taxonomie ne sait pas encore ranger. Quand ça
-          monte, un sujet nouveau arrive.
-        </p>
-      </div>
-      <div>
-        <h3 className="ve-h3">Les sujets hors grille</h3>
-        <p className="discret petit-texte">
-          Sujets d'actualité de la période rangés dans « Autre » : ce qui fait
-          réagir sans entrer dans les 13 thèmes.
-        </p>
-        <ListeSujets actu={horsGrille} ouvrir={ouvrirSujet} />
-      </div>
-    </div>
   );
 }
 
@@ -807,7 +632,7 @@ function ListeSujets({
   );
 }
 
-type Onglet = "reactions" | "sujets" | "videos" | "theses";
+type Onglet = "reactions" | "medias" | "sujets" | "videos" | "theses";
 
 function Onglets<T extends string>({
   items,
@@ -821,7 +646,7 @@ function Onglets<T extends string>({
   libelle: string;
 }) {
   return (
-    <div className="ve-onglets" role="tablist" aria-label={libelle}>
+    <div className="r-onglets" role="tablist" aria-label={libelle}>
       {items.map(([cle, nom, n]) => (
         <button
           key={cle}
@@ -831,7 +656,7 @@ function Onglets<T extends string>({
           onClick={() => choisir(cle)}
         >
           {nom}
-          {n !== undefined && <span className="ve-compte">{n}</span>}
+          {n !== undefined && <span className="r-compte">{n}</span>}
         </button>
       ))}
     </div>
@@ -844,6 +669,7 @@ function ThemeSelectionne({
   filtres,
   politiques,
   sujets,
+  agenda,
   reactions,
   theses,
   rattachements,
@@ -858,6 +684,7 @@ function ThemeSelectionne({
   filtres: Filtres;
   politiques: boolean;
   sujets: SujetVideo[];
+  agenda: Map<Theme, Agenda>;
   reactions: Map<string, ReactionVideo>;
   theses: Map<string, These>;
   rattachements: Map<string, Rattachement>;
@@ -869,7 +696,7 @@ function ThemeSelectionne({
 }) {
   const [courante] = fenetres(lignes, filtres.periode);
   const debattues = videosDebattues(sujets, ligne.theme, reactions, theses);
-  const ss = sousSujets(sujets, ligne.theme);
+  const ss = sousSujets(sujets, ligne.theme, 8);
   const actu = sujetsActu(sujets, ligne.theme, rattachements, 20);
   const [toutes, setToutes] = useState(false);
   const toutesVideos = videosQuiReagissent(
@@ -885,7 +712,7 @@ function ThemeSelectionne({
       ),
     );
   const rangees: Rangee[] = [
-    { nom: "Ensemble", m: du(filtres.types) },
+    { nom: "Ensemble du public", m: du(filtres.types) },
     ...filtres.types.map((t) => ({ nom: LIBELLES_TYPE[t], m: du([t]) })),
     ...(politiques
       ? [{ nom: "Chaînes politiques", m: du(["politique"]), aPart: true }]
@@ -894,38 +721,41 @@ function ThemeSelectionne({
   const ensemble = rangees[0]!.m;
   const prononces = ensemble.accord + ensemble.nuance + ensemble.desaccord;
   const resume = dernierResume(resumes, "theme", ligne.theme, courante.fin);
+  // Couverture : part des vidéos du thème parmi les vidéos de la période (agenda des médias).
+  const totalVideos = [...agenda.entries()]
+    .filter(([t]) => t !== "autre" || ligne.theme === "autre")
+    .reduce((a, [, x]) => a + x.videos, 0);
+  const couverture = totalVideos ? (agenda.get(ligne.theme)?.videos ?? 0) / totalVideos : null;
+  const ratio = couverture ? ligne.part / couverture : null;
   return (
-    <section className="radar-carte ve-detail" id="ve-detail" aria-labelledby="titre-detail">
-      <p className="explo-surtitre">Thème sélectionné</p>
-      <h2 id="titre-detail" className="ve-titre-theme">
+    <section className="r-carte r-detail" id="ve-detail" aria-labelledby="titre-detail">
+      <h2 id="titre-detail" className="r-detail-titre">
         {LIBELLES_THEMES[ligne.theme]}
       </h2>
-      <p className="radar-def-theme">{DEFINITIONS_THEMES[ligne.theme]}</p>
-      <div className="explo-chiffres">
-        <div className="explo-chiffre">
-          <span>{entier(ligne.courant.commentaires)}</span>
-          <span>commentaires</span>
-        </div>
-        <div className="explo-chiffre">
-          <span>{pc(ligne.part * 100)}</span>
-          <span>des commentaires politiques</span>
-        </div>
-        <div className="explo-chiffre">
-          <span>{fois(ligne.velocite)}</span>
-          <span>vélocité</span>
-        </div>
-        <div className="explo-chiffre">
-          <span>
-            {prononces >= MIN_PRONONCES_THEME
-              ? pc(pct(ensemble.desaccord, prononces))
-              : "–"}
-          </span>
-          <span>désaccord avec les vidéos</span>
-        </div>
-        <div className="explo-chiffre">
-          <span>{pc(pct(ensemble.hostiles, ensemble.commentaires))}</span>
-          <span>hostiles</span>
-        </div>
+      <p className="r-discret">{DEFINITIONS_THEMES[ligne.theme]}</p>
+      <div className="r-tuiles">
+        <Tuile valeur={pc(ligne.part * 100)} libelle="des commentaires politiques" />
+        <Tuile
+          valeur={couverture === null ? "–" : pc(couverture * 100)}
+          libelle="des vidéos (couverture)"
+        />
+        <Tuile
+          valeur={fois(ligne.velocite)}
+          libelle="vélocité"
+          classe={
+            ligne.velocite === null ? "" : ligne.velocite >= 1.2 ? "bleu" : ligne.velocite <= 0.8 ? "orange" : ""
+          }
+        />
+        <Tuile
+          valeur={
+            prononces >= MIN_PRONONCES_THEME ? pc(pct(ensemble.desaccord, prononces)) : "–"
+          }
+          libelle="désaccord avec les vidéos"
+        />
+        <Tuile
+          valeur={pc(pct(ensemble.hostiles, ensemble.commentaires))}
+          libelle="hostiles"
+        />
       </div>
       {resume && <PourquoiCaBouge r={resume} semaine />}
 
@@ -935,43 +765,86 @@ function ThemeSelectionne({
         choisir={setOnglet}
         items={[
           ["reactions", "Réactions"],
+          ["medias", "Médias vs commentaires"],
           ["sujets", "Sujets", rattachements.size > 0 ? actu.length : ss.length],
           ["videos", "Vidéos", toutesVideos.length],
           ["theses", "Thèses", debattues.filter((v) => v.these?.explicite).length],
         ]}
       />
-      <div className="ve-onglet-corps" role="tabpanel" key={onglet}>
+      <div className="r-onglet-corps" role="tabpanel" key={onglet}>
         {onglet === "reactions" && <Reactions rangees={rangees} />}
+        {onglet === "medias" && (
+          <div className="r-medias">
+            <div className="r-medias-barres">
+              <div className="r-piste-ligne large">
+                <span>Couverture</span>
+                <span className="r-piste">
+                  <span
+                    className="gris"
+                    style={{ width: `${Math.min(100, (couverture ?? 0) * 100 * 2)}%` }}
+                  />
+                </span>
+                <span className="r-mono">{couverture === null ? "–" : pc(couverture * 100)}</span>
+              </div>
+              <div className="r-piste-ligne large">
+                <span>Réactions</span>
+                <span className="r-piste">
+                  <span className="noir" style={{ width: `${Math.min(100, ligne.part * 100 * 2)}%` }} />
+                </span>
+                <span className="r-mono">{pc(ligne.part * 100)}</span>
+              </div>
+              <p className="r-discret">
+                {ratio === null
+                  ? "Couverture inconnue : thèmes des vidéos pas encore calculés."
+                  : ratio >= 1.25
+                    ? `Le thème fait ${fois(ratio).replace("×", "")} fois plus réagir que sa place dans les vidéos.`
+                    : ratio <= 0.8
+                      ? `Le thème est plus couvert qu'il ne fait réagir (${fois(ratio)}).`
+                      : "Couverture et réactions sont à peu près alignées."}
+              </p>
+            </div>
+            <div>
+              <h3 className="r-h3">De quoi parlent les vidéos du thème</h3>
+              {ss.length === 0 ? (
+                <p className="r-discret">Aucune vidéo du thème sur la période.</p>
+              ) : (
+                <ul className="r-liste-simple">
+                  {ss.map((x) => (
+                    <li key={x.libelle}>
+                      <span>{x.libelle}</span>
+                      <span className="r-mono r-discret">
+                        {x.videos} vidéo{x.videos > 1 ? "s" : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="r-discret petit-texte">
+                Sous-sujets neutres écrits par une IA, classés par commentaires
+                annoncés. Ce dont parlent les commentaires eux-mêmes n'est pas
+                encore mesuré.
+              </p>
+            </div>
+          </div>
+        )}
         {onglet === "sujets" &&
           (rattachements.size > 0 ? (
             <>
               <ListeSujets actu={actu} ouvrir={ouvrirSujet} />
-              <p className="discret petit-texte">
+              <p className="r-discret petit-texte">
                 Vidéos regroupées par événement par une IA (titre neutre, pas
                 celui d'une vidéo), à partir de 3 vidéos de 2 chaînes.
               </p>
             </>
-          ) : ss.length === 0 ? (
-            <EnPreparation
-              titre="Sous-sujets"
-              attend="le thème et le sous-sujet des vidéos."
-            />
           ) : (
-            <ul className="radar-sous-sujets">
-              {ss.map((x) => (
-                <li key={x.libelle}>
-                  <span>{x.libelle}</span>
-                  <span className="radar-mono discret">
-                    {x.videos} vidéo{x.videos > 1 ? "s" : ""} ·{" "}
-                    {entier(x.commentaires)} comm.
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <EnPreparation
+              titre="Sujets d'actualité"
+              attend="le workflow « Sujets »."
+            />
           ))}
         {onglet === "videos" &&
           (videos.length === 0 ? (
-            <p className="discret petit-texte">Aucune vidéo sur la période.</p>
+            <p className="r-discret">Aucune vidéo sur la période.</p>
           ) : (
             <>
               <ListeVideos
@@ -984,19 +857,15 @@ function ThemeSelectionne({
               />
               {toutesVideos.length > 10 && (
                 <button
-                  className="cs-lien-bas"
+                  className="r-plus"
                   onClick={() => setToutes(!toutes)}
                   aria-expanded={toutes}
                 >
                   {toutes
                     ? "Ne garder que les 10 premières"
-                    : `Voir toutes les vidéos du thème (${toutesVideos.length}) →`}
+                    : `Voir toutes les vidéos du thème (${toutesVideos.length})`}
                 </button>
               )}
-              <p className="discret petit-texte">
-                Classées par commentaires annoncés par YouTube. Libellé neutre
-                du sujet (pas le titre de la vidéo).
-              </p>
             </>
           ))}
         {onglet === "theses" && (
@@ -1004,6 +873,23 @@ function ThemeSelectionne({
         )}
       </div>
     </section>
+  );
+}
+
+function Tuile({
+  valeur,
+  libelle,
+  classe = "",
+}: {
+  valeur: string;
+  libelle: string;
+  classe?: string;
+}) {
+  return (
+    <div className="r-tuile">
+      <span className={`r-tuile-valeur ${classe}`}>{valeur}</span>
+      <span className="r-tuile-libelle">{libelle}</span>
+    </div>
   );
 }
 
@@ -1085,104 +971,6 @@ function Reactions({ rangees }: { rangees: Rangee[] }) {
   );
 }
 
-function Panorama({
-  lignes,
-  agenda,
-  actif,
-  choisir,
-  donnees,
-  filtres,
-  sujetsBase,
-  horsGrille,
-  ouvrirSujet,
-  sansSujets,
-}: {
-  lignes: LigneTheme[];
-  agenda: Map<Theme, Agenda>;
-  actif: Theme;
-  choisir: (t: Theme) => void;
-  donnees: Agregat[];
-  filtres: Filtres;
-  sujetsBase: SujetVideo[];
-  horsGrille: SujetActu[];
-  ouvrirSujet: (id: string) => void;
-  sansSujets: string;
-}) {
-  const [vue, setVue] = useState<"carte" | "semaines" | "hors_grille">("carte");
-  return (
-    <section className="radar-carte ve-panorama" aria-labelledby="titre-panorama">
-      <div className="ve-panorama-tete">
-        <h2 id="titre-panorama">Panorama des thèmes</h2>
-        <Onglets
-          libelle="Panorama"
-          actif={vue}
-          choisir={setVue}
-          items={[
-            ["carte", "Carte attention × intensité"],
-            ["semaines", "Semaine par semaine"],
-            ["hors_grille", "Signal émergent", horsGrille.length],
-          ]}
-        />
-      </div>
-      <div className="ve-onglet-corps" key={vue}>
-      {vue === "carte" && (
-        <CarteSujets lignes={lignes} agenda={agenda} actif={actif} choisir={choisir} />
-      )}
-      {vue === "semaines" && (
-        <ComparaisonSemaines
-          lignes={donnees}
-          filtres={filtres}
-          sujets={sujetsBase}
-          choisir={choisir}
-        />
-      )}
-      {vue === "hors_grille" && (
-        <SignalEmergent
-          lignes={donnees}
-          filtres={filtres}
-          horsGrille={horsGrille}
-          ouvrirSujet={ouvrirSujet}
-        />
-      )}
-      </div>
-      {sansSujets && (
-        <p className="discret petit-texte">
-          Thèmes des vidéos indisponibles : {sansSujets}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function Courbe({ serie }: { serie: number[] }) {
-  const max = Math.max(1, ...serie);
-  const l = 52;
-  const h = 22;
-  const pas = serie.length > 1 ? l / (serie.length - 1) : 0;
-  const points = serie
-    .map(
-      (v, i) =>
-        `${(i * pas).toFixed(1)},${(h - (v / max) * (h - 2) - 1).toFixed(1)}`,
-    )
-    .join(" ");
-  return (
-    <svg
-      className="radar-courbe"
-      width={l}
-      height={h}
-      viewBox={`0 0 ${l} ${h}`}
-      aria-hidden="true"
-    >
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-    </svg>
-  );
-}
-
 const semaineCourte = (lundi: string) => `sem. du ${dateCourte(lundi)}`;
 
 function ComparaisonSemaines({
@@ -1211,9 +999,9 @@ function ComparaisonSemaines({
     ...liste.flatMap((w) => [...w.parts.values()]),
   );
   return (
-    <div className="radar-semaines">
+    <div className="r-semaines">
       <section aria-labelledby="titre-change">
-        <h3 id="titre-change" className="ve-h3">Ce qui a changé</h3>
+        <h3 id="titre-change" className="r-h3">Ce qui a changé</h3>
         {!c ? (
           <EnPreparation
             titre="Comparaison avec la semaine précédente"
@@ -1278,7 +1066,7 @@ function ComparaisonSemaines({
         )}
       </section>
       <section aria-labelledby="titre-semaines">
-        <h3 id="titre-semaines" className="ve-h3">Part de chaque thème</h3>
+        <h3 id="titre-semaines" className="r-h3">Part de chaque thème</h3>
         <p className="discret petit-texte">
           Part de chaque thème parmi les commentaires politiques, par semaine de
           publication des commentaires. Semaines grisées : moins de{" "}
@@ -1415,9 +1203,9 @@ function SurQuoiDaccord({
     );
   return (
     <>
-      <div className="ve-deux">
+      <div className="r-deux">
         <div>
-          <h3 className="ve-h3">Les plus approuvées</h3>
+          <h3 className="r-h3">Les plus approuvées</h3>
           <ul className="explo-liste">
             {approuvees.map((v) => (
               <LigneThese key={v.sujet.video_id} v={v} ouvrir={ouvrir} />
@@ -1425,7 +1213,7 @@ function SurQuoiDaccord({
           </ul>
         </div>
         <div>
-          <h3 className="ve-h3">Les plus contestées</h3>
+          <h3 className="r-h3">Les plus contestées</h3>
           {contestees.length === 0 ? (
             <p className="discret petit-texte">
               Trop peu de thèses explicites pour en distinguer les plus
@@ -1442,7 +1230,7 @@ function SurQuoiDaccord({
       </div>
       {autres.length > 0 && (
         <button
-          className="cs-lien-bas"
+          className="r-plus"
           onClick={() => setIncertaines(!incertaines)}
           aria-expanded={incertaines}
         >

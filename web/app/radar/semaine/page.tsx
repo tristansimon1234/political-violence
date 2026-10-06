@@ -5,8 +5,6 @@
 // reprise par les chaînes politiques), le décalage couverture / réactions, et ce qui a changé.
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
-import Link from "next/link";
-
 import { AccesAdmin } from "@/lib/AccesAdmin";
 import {
   type ReactionVideo,
@@ -35,20 +33,13 @@ import {
   dernierResume,
 } from "@/lib/PourquoiCaBouge";
 import { LIBELLES_THEMES, type TypeSource } from "@/lib/taxonomie";
-import { Legende, Squelette, dateCourte, entier, pc } from "@/lib/ui";
+import { Barre, Legende, Squelette, dateCourte, entier } from "@/lib/ui";
 import { pct } from "@/lib/vueEnsemble";
 
 const PUBLICS: TypeSource[] = ["media_traditionnel", "media_natif"];
-const COURT: Record<string, string> = {
-  media_traditionnel: "Médias trad.",
-  media_natif: "Natifs du web",
-};
 const MIN_PRONONCES_SUJET = 20;
 const DEBUT_COLLECTE = "2026-09-01";
-const jj = (j: string) => `${j.slice(8, 10)}/${j.slice(5, 7)}`;
 const fois = (x: number) => `×${x.toFixed(1).replace(".", ",")}`;
-const ecartJours = (a: string, b: string) =>
-  Math.round((Date.parse(a) - Date.parse(b)) / 86_400_000);
 
 export default function CetteSemaine() {
   return (
@@ -162,154 +153,166 @@ function Ecran() {
       },
     ]);
   const incomplete = periode && dernier ? periode.fin > dernier : false;
-  const visibles = tous ? cartes : cartes.slice(0, 5);
+  const visibles = tous ? cartes : cartes.slice(0, 10);
+
+  const resumeTop =
+    cartes[0] && periodeD
+      ? dernierResume(resumes, "sujet", cartes[0].id, periodeD.debut)
+      : null;
+  const typesCle = types.join();
+
+  const outils = periode && (
+    <>
+      <div className="r-semaine">
+        <button
+          className="r-icone"
+          onClick={() => setDebut(decaler(periode.debut, -7))}
+          disabled={periode.debut <= DEBUT_COLLECTE}
+          aria-label="Semaine précédente"
+        >
+          ‹
+        </button>
+        <span className="r-semaine-nom">
+          {dateCourte(periode.debut)} – {dateCourte(periode.fin)}
+          {incomplete ? <span className="r-discret"> · en cours</span> : ""}
+        </span>
+        <button
+          className="r-icone"
+          onClick={() => setDebut(decaler(periode.debut, 7))}
+          disabled={!dernier || periode.fin >= dernier}
+          aria-label="Semaine suivante"
+        >
+          ›
+        </button>
+      </div>
+      <label className="r-choix">
+        <span>Réactions sous</span>
+        <select
+          value={typesCle}
+          onChange={(e) =>
+            setTypes(e.target.value.split(",") as TypeSource[])
+          }
+        >
+          <option value={PUBLICS.join()}>Tous les médias</option>
+          <option value="media_traditionnel">Médias traditionnels</option>
+          <option value="media_natif">Natifs du web</option>
+        </select>
+      </label>
+    </>
+  );
 
   return (
-    <div className="radar cs">
-      <Entete actif="semaine" />
+    <div className="radar">
+      <Entete actif="semaine" outils={outils} />
 
-      {erreur && <p className="erreur radar-marge">{erreur}</p>}
+      {erreur && <p className="erreur r-page">{erreur}</p>}
       {!sujets && !erreur && <Squelette />}
 
       {periode && (
-        <main className="cs-page">
-          <section className="cs-tete">
-            <div>
-              <p className="cs-surtitre">
-                <button
-                  className="cs-fleche"
-                  onClick={() => setDebut(decaler(periode.debut, -7))}
-                  disabled={periode.debut <= DEBUT_COLLECTE}
-                  aria-label="Semaine précédente"
-                >
-                  ‹
-                </button>
-                Semaine du {dateCourte(periode.debut)} au{" "}
-                {dateCourte(periode.fin)}
-                {incomplete ? " · en cours" : ""}
-                <button
-                  className="cs-fleche"
-                  onClick={() => setDebut(decaler(periode.debut, 7))}
-                  disabled={!dernier || periode.fin >= dernier}
-                  aria-label="Semaine suivante"
-                >
-                  ›
-                </button>
-              </p>
-              <h1>Ce qui a fait réagir cette semaine</h1>
-              <p className="cs-chapo">{chapo(cartes, decalage)}</p>
-              <p className="cs-note">
-                Résumé automatique à partir des chiffres de la semaine · pas
-                encore relu par la rédaction
-              </p>
-            </div>
-            <fieldset className="cs-filtre">
-              <legend>Réactions sous</legend>
-              <div className="cs-segments">
-                {(
-                  [
-                    ["Toutes", PUBLICS],
-                    [COURT.media_traditionnel, ["media_traditionnel"]],
-                    [COURT.media_natif, ["media_natif"]],
-                  ] as [string, TypeSource[]][]
-                ).map(([nom, ts]) => {
-                  const actif = ts.join() === types.join();
-                  return (
-                    <button
-                      key={nom}
-                      className={actif ? "actif" : ""}
-                      aria-pressed={actif}
-                      onClick={() => setTypes(ts)}
-                    >
-                      {nom}
-                    </button>
-                  );
-                })}
-              </div>
-            </fieldset>
+        <main className="r-page">
+          <section className="r-hero">
+            <h1>Ce qui a fait réagir cette semaine</h1>
+            <p className="r-chapo">{chapo(cartes, decalage)}</p>
+            <p className="r-note">
+              Résumé automatique à partir des chiffres de la semaine · pas encore
+              relu
+            </p>
           </section>
 
           <div
             key={`${periodeD?.debut}|${typesD.join()}`}
-            className={enCalcul ? "radar-contenu en-calcul" : "radar-contenu"}
+            className={enCalcul ? "r-contenu en-calcul" : "r-contenu"}
             aria-busy={enCalcul}
           >
-          {faits.length > 0 && (
-            <section className="cs-faits" aria-labelledby="cs-titre-faits">
-              <h2 id="cs-titre-faits" className="cs-cache">
-                Faits marquants
-              </h2>
-              {faits.map((f) => (
-                <button
-                  key={f.cle}
-                  className="cs-fait"
-                  onClick={() => ouvrir(f.sujet)}
-                >
-                  <span className="cs-fait-etiquette">{f.etiquette}</span>
-                  <span className="cs-fait-valeur">{f.valeur}</span>
-                  <span className="cs-fait-texte">{f.texte}</span>
-                  <span className="cs-fait-sujet">{f.sujet.titre}</span>
-                </button>
-              ))}
-            </section>
-          )}
+            {faits.length > 0 && (
+              <section className="r-faits" aria-label="Faits marquants">
+                {faits.slice(0, 4).map((f) => (
+                  <button
+                    key={f.cle}
+                    className="r-fait"
+                    onClick={() => ouvrir(f.sujet)}
+                  >
+                    <span className="r-fait-etiquette">{f.etiquette}</span>
+                    <span
+                      className={
+                        f.cle === "conteste" || f.cle === "hostile"
+                          ? "r-fait-valeur orange"
+                          : "r-fait-valeur"
+                      }
+                    >
+                      {f.valeur}
+                    </span>
+                    <span className="r-fait-texte">{f.texte}</span>
+                    <span className="r-fait-sujet">{f.sujet.titre} ›</span>
+                  </button>
+                ))}
+              </section>
+            )}
 
-          <div className="cs-grille">
-            <section aria-labelledby="cs-titre-sujets">
-              <div className="cs-titre-liste">
-                <h2 id="cs-titre-sujets">
-                  Les {Math.min(5, cartes.length) || ""} sujets de la semaine
-                </h2>
-                <span className="discret petit-texte">
-                  classés par commentaires
-                </span>
-              </div>
-              {cartes.length === 0 ? (
-                <p className="discret">
-                  Aucun sujet d'actualité cette semaine (au moins 3 vidéos de 2
-                  chaînes).
-                </p>
-              ) : (
-                <ol className="cs-cartes">
-                  {visibles.map((c, i) => (
-                    <li key={c.id}>
-                      <Carte
-                        c={c}
-                        rang={i + 1}
-                        resume={
-                          i === 0
-                            ? dernierResume(
-                                resumes,
-                                "sujet",
-                                c.id,
-                                periodeD?.debut,
-                              )
-                            : null
-                        }
-                        reprise={reprises.get(c.id)}
-                        ouvrir={() => ouvrir(c)}
-                      />
-                    </li>
-                  ))}
-                </ol>
-              )}
-              {cartes.length > 5 && (
-                <button className="cs-lien-bas" onClick={() => setTous(!tous)}>
-                  {tous
-                    ? "Ne garder que les 5 premiers"
-                    : `Voir tous les sujets de la semaine (${cartes.length}) →`}
-                </button>
-              )}
-              <p className="cs-lien-bas">
-                <Link href="/radar">La carte des thèmes et les filtres →</Link>
-              </p>
-            </section>
-            <aside className="cs-colonne">
-              <Decalage d={decalage} ouvrir={ouvrir} />
-              <MediasOuNatifs cartes={cartes.slice(0, 6)} ouvrir={ouvrir} />
-              <CeQuiAChange cartes={cartes} avant={avant} ouvrir={ouvrir} />
-            </aside>
-          </div>
+            <div className="r-grille">
+              <section className="r-carte r-sujets" aria-labelledby="t-sujets">
+                <div className="r-carte-tete">
+                  <h2 id="t-sujets">Les sujets qui font réagir</h2>
+                  <span className="r-discret">
+                    classés par commentaires · cliquer pour le détail
+                  </span>
+                </div>
+                {cartes.length === 0 ? (
+                  <p className="r-vide">
+                    Aucun sujet d'actualité cette semaine (au moins 3 vidéos de 2
+                    chaînes).
+                  </p>
+                ) : (
+                  <>
+                    <div className="r-sujets-entete" aria-hidden="true">
+                      <span>#</span>
+                      <span>Sujet</span>
+                      <span>Par jour</span>
+                      <span className="r-droite">Comm.</span>
+                      <span>Accord · désaccord avec les vidéos</span>
+                    </div>
+                    <ol className="r-sujets-liste">
+                      {visibles.map((c, i) => (
+                        <li key={c.id}>
+                          <LigneSujet
+                            c={c}
+                            rang={i + 1}
+                            reprise={reprises.get(c.id)}
+                            ouvrir={() => ouvrir(c)}
+                          />
+                        </li>
+                      ))}
+                    </ol>
+                    <Legende
+                      items={[
+                        ["D'accord avec la vidéo", "var(--r-bleu)"],
+                        ["Nuancé", "var(--r-nuance)"],
+                        ["En désaccord", "var(--r-orange)"],
+                      ]}
+                    />
+                  </>
+                )}
+                {cartes.length > 10 && (
+                  <button className="r-plus" onClick={() => setTous(!tous)}>
+                    {tous
+                      ? "Ne garder que les 10 premiers"
+                      : `Voir tous les sujets de la semaine (${cartes.length})`}
+                  </button>
+                )}
+              </section>
+              <aside className="r-colonne">
+                <Decalage d={decalage} ouvrir={ouvrir} />
+                <CeQuiAChange cartes={cartes} avant={avant} ouvrir={ouvrir} />
+                {resumeTop && cartes[0] && (
+                  <section className="r-carte r-sombre" aria-labelledby="t-pourquoi">
+                    <h2 id="t-pourquoi">Pourquoi ça bouge</h2>
+                    <p className="r-discret">{cartes[0].titre}</p>
+                    <PourquoiCaBouge r={resumeTop} />
+                  </section>
+                )}
+                <MediasOuNatifs cartes={cartes.slice(0, 6)} ouvrir={ouvrir} />
+              </aside>
+            </div>
           </div>
         </main>
       )}
@@ -375,20 +378,20 @@ function chapo(cartes: CarteSujet[], d: Decalages): string {
   return phrases.join(" ");
 }
 
-// --- Carte d'un sujet ---
+// --- Ligne d'un sujet ---
 
 function Courbe({ jours }: { jours: number[] }) {
   const max = Math.max(1, ...jours);
   const pts = jours
     .map(
       (n, i) =>
-        `${(i * 94) / Math.max(1, jours.length - 1) + 3},${30 - (26 * n) / max}`,
+        `${(i * 104) / Math.max(1, jours.length - 1) + 3},${29 - (25 * n) / max}`,
     )
     .join(" ");
   return (
     <svg
-      viewBox="0 0 100 32"
-      className="cs-courbe"
+      viewBox="0 0 110 32"
+      className="r-courbe"
       role="img"
       aria-label={`Commentaires par jour de publication des vidéos : ${jours.map((n) => Math.round(n)).join(", ")}`}
     >
@@ -397,164 +400,77 @@ function Courbe({ jours }: { jours: number[] }) {
   );
 }
 
-function badge(c: CarteSujet): { texte: string; classe: string } {
+function evolutionSujet(c: CarteSujet): { texte: string; classe: string } {
   if (c.nouveau || c.precedent === 0)
-    return { texte: "Nouveau", classe: "cs-pastille nouveau" };
+    return { texte: "Nouveau", classe: "r-puce bleu" };
   const r = c.classes / c.precedent;
-  return {
-    texte: fois(r),
-    classe: r >= 1 ? "cs-pastille hausse" : "cs-pastille",
-  };
+  return { texte: fois(r), classe: r >= 1 ? "r-puce orange" : "r-puce" };
 }
 
-function Carte({
+function lecturePositions(p: number, c: CarteSujet): string {
+  if (p < MIN_PRONONCES_SUJET) return "trop peu de vidéos d'opinion";
+  const a = pct(c.accord, p);
+  const d = pct(c.desaccord, p);
+  if (d >= 50) return `${Math.round(d)} % en désaccord`;
+  if (a >= 50) return `${Math.round(a)} % d'accord`;
+  return `partagé · ${Math.round(d)} % en désaccord`;
+}
+
+function LigneSujet({
   c,
   rang,
   reprise,
-  resume,
   ouvrir,
 }: {
   c: CarteSujet;
   rang: number;
   reprise: Reprise | undefined;
-  resume: ResumeIA | null;
   ouvrir: () => void;
 }) {
-  const total = PUBLICS.reduce((a, t) => a + (c.parType[t] ?? 0), 0);
-  const prononces = c.accord + c.nuance + c.desaccord;
-  const b = badge(c);
+  const p = c.accord + c.nuance + c.desaccord;
+  const e = evolutionSujet(c);
   const theme = c.themes[0];
+  const politiques = reprise ? reprise.partis + reprise.personnalites : 0;
   return (
-    <article className={rang === 1 ? "cs-carte premiere" : "cs-carte"}>
-      <span className="cs-rang">{String(rang).padStart(2, "0")}</span>
-      <div className="cs-carte-corps">
-        <div className="cs-carte-tete">
-          <div>
-            <h3>
-              <button className="cs-carte-lien" onClick={ouvrir}>
-                {c.titre}
-              </button>
-            </h3>
-            <p className="cs-meta">
-              {theme ? LIBELLES_THEMES[theme.theme] : ""} · depuis le{" "}
-              {jj(c.premierJour)} · {c.videos.length} vidéos sur {c.chaines}{" "}
-              chaînes
-            </p>
-          </div>
-          <Courbe jours={c.parJour} />
-          <span
-            className={b.classe}
-            title="Commentaires face à la semaine précédente"
-          >
-            {b.texte}
+    <button className="r-sujet" onClick={ouvrir} data-ouvre-sujet>
+      <span className="r-rang">{rang}</span>
+      <span className="r-sujet-corps">
+        <span className="r-sujet-titre">{c.titre}</span>
+        <span className="r-sujet-meta">
+          {theme && (
+            <span className="r-puce">{LIBELLES_THEMES[theme.theme]}</span>
+          )}
+          <span className={e.classe} title="Commentaires face à la semaine précédente">
+            {e.texte}
           </span>
-        </div>
-        <div className="cs-indicateurs">
-          <div>
-            <p className="cs-etiquette">Où ça réagit</p>
-            {total > 0 ? (
-              <>
-                <div
-                  className="cs-barre"
-                  role="img"
-                  aria-label={`${COURT.media_traditionnel} ${Math.round(pct(c.parType.media_traditionnel ?? 0, total))} %, ${COURT.media_natif} ${Math.round(pct(c.parType.media_natif ?? 0, total))} %`}
-                >
-                  <span
-                    className="bleu"
-                    style={{
-                      width: `${pct(c.parType.media_traditionnel ?? 0, total)}%`,
-                    }}
-                  />
-                  <span
-                    className="orange"
-                    style={{
-                      width: `${pct(c.parType.media_natif ?? 0, total)}%`,
-                    }}
-                  />
-                </div>
-                <p className="cs-petit">
-                  Trad.{" "}
-                  {Math.round(pct(c.parType.media_traditionnel ?? 0, total))} %
-                  · Natifs {Math.round(pct(c.parType.media_natif ?? 0, total))}{" "}
-                  %
-                </p>
-              </>
-            ) : (
-              <p className="cs-petit">pas encore de commentaires classés</p>
-            )}
-          </div>
-          <div>
-            <p className="cs-etiquette">Désaccord avec les vidéos</p>
-            {prononces >= MIN_PRONONCES_SUJET ? (
-              <>
-                <div className="cs-barre">
-                  <span
-                    className="noir"
-                    style={{ width: `${pct(c.desaccord, prononces)}%` }}
-                  />
-                </div>
-                <p className="cs-petit">
-                  {pc(pct(c.desaccord, prononces))} de ceux qui se prononcent
-                </p>
-              </>
-            ) : (
-              <p className="cs-petit">trop peu de vidéos d'opinion</p>
-            )}
-          </div>
-          <div>
-            <p className="cs-etiquette">Hostilité</p>
-            <p className="cs-valeur">
-              {c.classes ? pc(pct(c.hostiles, c.classes)) : "–"}
-            </p>
-            <p className="cs-petit">des commentaires</p>
-          </div>
-          <div>
-            <p className="cs-etiquette">Repris par les politiques</p>
-            <Reprises r={reprise} />
-          </div>
-        </div>
-        {resume && <PourquoiCaBouge r={resume} />}
-      </div>
-    </article>
-  );
-}
-
-function Reprises({ r }: { r: Reprise | undefined }) {
-  if (!r || r.partis + r.personnalites === 0)
-    return (
-      <>
-        <p className="cs-valeur">Aucune chaîne</p>
-        <p className="cs-petit">politique du panel</p>
-      </>
-    );
-  const morceaux = [
-    r.partis ? `${r.partis} parti${r.partis > 1 ? "s" : ""}` : "",
-    r.personnalites
-      ? `${r.personnalites} personnalité${r.personnalites > 1 ? "s" : ""}`
-      : "",
-  ].filter(Boolean);
-  let quand = "";
-  let avant = false;
-  if (r.premierPolitique && r.premierMedia) {
-    const e = ecartJours(r.premierPolitique, r.premierMedia);
-    avant = e < 0;
-    quand =
-      e === 0
-        ? "le jour même que les médias"
-        : e > 0
-          ? `${e} jour${e > 1 ? "s" : ""} après les médias`
-          : "avant les médias : lancé par une chaîne politique";
-  }
-  return (
-    <>
-      <p className="cs-valeur">{morceaux.join(" · ")}</p>
-      {r.premierPolitique && (
-        <p className={avant ? "cs-petit cs-alerte" : "cs-petit"}>
-          1er le {jj(r.premierPolitique)}
-          {quand ? `, ${quand}` : ""}
-        </p>
-      )}
-    </>
+          <span>
+            {c.videos.length} vidéos · {c.chaines} chaînes
+            {politiques > 0 && ` · repris par ${politiques} chaîne${politiques > 1 ? "s" : ""} politique${politiques > 1 ? "s" : ""}`}
+          </span>
+        </span>
+      </span>
+      <Courbe jours={c.parJour} />
+      <span className="r-sujet-chiffre">{entier(c.classes)}</span>
+      <span className="r-sujet-positions">
+        {p >= MIN_PRONONCES_SUJET ? (
+          <Barre
+            titre="Accord avec les vidéos d'opinion"
+            total={p}
+            segments={[
+              { libelle: "Accord", valeur: c.accord, couleur: "var(--r-bleu)" },
+              { libelle: "Nuance", valeur: c.nuance, couleur: "var(--r-nuance)" },
+              { libelle: "Désaccord", valeur: c.desaccord, couleur: "var(--r-orange)" },
+            ]}
+          />
+        ) : (
+          <span className="radar-barre vide" aria-hidden="true" />
+        )}
+        <span className="r-discret">{lecturePositions(p, c)}</span>
+      </span>
+      <span className="r-chevron" aria-hidden="true">
+        ›
+      </span>
+    </button>
   );
 }
 
@@ -567,48 +483,45 @@ function Decalage({
   d: Decalages;
   ouvrir: (c: CarteSujet) => void;
 }) {
-  const toutes = [...d.couverts, ...d.commentes];
+  const toutes = [...d.commentes, ...d.couverts];
   if (toutes.length === 0) return null;
   const maxV = Math.max(1, ...toutes.map((x) => x.videos));
   const maxR = Math.max(1, ...toutes.map((x) => x.ratio));
-  const bloc = (titre: string, lignes: LigneDecalage[]) =>
-    lignes.length > 0 && (
-      <>
-        <p className="cs-sous-titre">{titre}</p>
-        {lignes.map((x) => (
-          <div key={x.c.id} className="cs-decalage">
-            <button className="cs-nom" onClick={() => ouvrir(x.c)}>
-              {x.c.titre}
-            </button>
-            <span className="cs-petit">Couverture</span>
-            <span className="cs-piste">
-              <span
-                className="gris"
-                style={{ width: `${(100 * x.videos) / maxV}%` }}
-              />
-            </span>
-            <span className="cs-chiffre">{x.videos} vidéos</span>
-            <span className="cs-petit">Réactions</span>
-            <span className="cs-piste">
-              <span
-                className="orange"
-                style={{ width: `${(100 * x.ratio) / maxR}%` }}
-              />
-            </span>
-            <span className="cs-chiffre">{fois(x.ratio)}</span>
-          </div>
-        ))}
-      </>
-    );
   return (
-    <section className="cs-encart" aria-labelledby="cs-titre-decalage">
-      <h2 id="cs-titre-decalage">Le décalage de la semaine</h2>
-      <p className="cs-petit">
-        Couverture par les chaînes du panel face aux réactions suscitées (part
-        des commentaires ÷ part des vidéos)
+    <section className="r-carte" aria-labelledby="t-decalage">
+      <h2 id="t-decalage">Médias et commentaires ne suivent pas le même agenda</h2>
+      <p className="r-discret">
+        Couverture (vidéos du panel) face aux réactions (part des commentaires ÷
+        part des vidéos)
       </p>
-      {bloc("Très couvert, peu de réactions", d.couverts)}
-      {bloc("Peu couvert, beaucoup de réactions", d.commentes)}
+      <ul className="r-decalages">
+        {toutes.map((x) => (
+          <li key={x.c.id}>
+            <button className="r-decalage" onClick={() => ouvrir(x.c)}>
+              <span className="r-decalage-tete">
+                <span className="r-decalage-nom">{x.c.titre}</span>
+                <span className={x.ratio >= 1 ? "r-chiffre bleu" : "r-chiffre orange"}>
+                  {fois(x.ratio)}
+                </span>
+              </span>
+              <span className="r-piste-ligne">
+                <span>Couverture</span>
+                <span className="r-piste">
+                  <span className="gris" style={{ width: `${(100 * x.videos) / maxV}%` }} />
+                </span>
+                <span className="r-mono">{x.videos} vid.</span>
+              </span>
+              <span className="r-piste-ligne">
+                <span>Réactions</span>
+                <span className="r-piste">
+                  <span className="noir" style={{ width: `${(100 * x.ratio) / maxR}%` }} />
+                </span>
+                <span className="r-mono">{fois(x.ratio)}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -632,49 +545,33 @@ function MediasOuNatifs({
       trad: partDesaccord(c.positionsParType.media_traditionnel),
       natif: partDesaccord(c.positionsParType.media_natif),
     }))
-    .filter((x) => x.trad !== null || x.natif !== null);
+    .filter((x) => x.trad !== null && x.natif !== null);
   if (lignes.length === 0) return null;
   return (
-    <section className="cs-encart" aria-labelledby="cs-titre-medias">
-      <h2 id="cs-titre-medias">Médias traditionnels ou natifs du web ?</h2>
-      <p className="cs-petit">
-        Part de désaccord avec les vidéos, selon qui en parle
-      </p>
-      <ul className="cs-haltere">
+    <section className="r-carte" aria-labelledby="t-medias">
+      <h2 id="t-medias">Médias traditionnels ou natifs du web ?</h2>
+      <p className="r-discret">Désaccord avec les vidéos, selon qui en parle</p>
+      <ul className="r-halteres">
         {lignes.map(({ c, trad, natif }) => (
           <li key={c.id}>
-            <button className="cs-nom" onClick={() => ouvrir(c)}>
-              {c.titre}
-            </button>
-            <span
-              className="cs-axe"
-              role="img"
-              aria-label={`Désaccord : médias traditionnels ${trad === null ? "n.d." : `${Math.round(trad)} %`}, natifs du web ${natif === null ? "n.d." : `${Math.round(natif)} %`}`}
-            >
-              {trad !== null && natif !== null && (
+            <button className="r-haltere" onClick={() => ouvrir(c)}>
+              <span className="r-haltere-nom">{c.titre}</span>
+              <span
+                className="r-axe"
+                role="img"
+                aria-label={`Désaccord : médias traditionnels ${Math.round(trad!)} %, natifs du web ${Math.round(natif!)} %`}
+              >
                 <span
-                  className="cs-lien-haltere"
+                  className="r-axe-lien"
                   style={{
-                    left: `${Math.min(trad, natif)}%`,
-                    width: `${Math.abs(natif - trad)}%`,
+                    left: `${Math.min(trad!, natif!)}%`,
+                    width: `${Math.abs(natif! - trad!)}%`,
                   }}
                 />
-              )}
-              {trad !== null && (
-                <span className="cs-point bleu" style={{ left: `${trad}%` }} />
-              )}
-              {natif !== null && (
-                <span
-                  className="cs-point orange"
-                  style={{ left: `${natif}%` }}
-                />
-              )}
-            </span>
-            <span className="cs-chiffre">
-              {trad !== null && natif !== null
-                ? `${natif - trad >= 0 ? "+" : "−"}${Math.abs(Math.round(natif - trad))}`
-                : "–"}
-            </span>
+                <span className="r-point bleu" style={{ left: `${trad}%` }} />
+                <span className="r-point orange" style={{ left: `${natif}%` }} />
+              </span>
+            </button>
           </li>
         ))}
       </ul>
@@ -684,10 +581,6 @@ function MediasOuNatifs({
           ["Natifs du web", "var(--r-orange)"],
         ]}
       />
-      <p className="cs-petit">
-        Écart en points ; vidéos d'opinion avec au moins 20 commentaires qui se
-        prononcent.
-      </p>
     </section>
   );
 }
@@ -712,9 +605,9 @@ function CeQuiAChange({
     if (!rangs.has(c.id))
       items.push({
         etiquette: "Nouveau",
-        classe: "nouveau",
+        classe: "bleu",
         c,
-        texte: `« ${c.titre} » entre directement en ${i + 1}${i === 0 ? "re" : "e"} position.`,
+        texte: `« ${c.titre} » entre en ${i + 1}${i === 0 ? "re" : "e"} position.`,
       });
   });
   const hausse = cartes
@@ -723,46 +616,45 @@ function CeQuiAChange({
   if (hausse && hausse.classes > hausse.precedent * 1.2)
     items.push({
       etiquette: "En hausse",
-      classe: "hausse",
+      classe: "orange",
       c: hausse,
-      texte: `« ${hausse.titre} » : ${fois(hausse.classes / hausse.precedent)} de commentaires sur la semaine précédente.`,
+      texte: `« ${hausse.titre} » : ${fois(hausse.classes / hausse.precedent)} de commentaires.`,
     });
   const ici = new Set(cartes.slice(0, 10).map((c) => c.id));
   for (const c of avant.slice(0, 3))
     if (!ici.has(c.id))
       items.push({
         etiquette: "En baisse",
-        classe: "baisse",
+        classe: "",
         c: cartes.find((x) => x.id === c.id),
         texte: `« ${c.titre} », ${rangs.get(c.id) === 1 ? "1er" : `${rangs.get(c.id)}e`} la semaine précédente, sort du classement.`,
       });
   return (
-    <section className="cs-encart" aria-labelledby="cs-titre-change">
-      <h2 id="cs-titre-change">Ce qui a changé</h2>
+    <section className="r-carte" aria-labelledby="t-change">
+      <h2 id="t-change">Ce qui a changé</h2>
       {items.length === 0 ? (
-        <p className="cs-petit">
-          Rien de notable face à la semaine précédente.
-        </p>
+        <p className="r-discret">Rien de notable face à la semaine précédente.</p>
       ) : (
-        <ul className="cs-changements">
-          {items.slice(0, 6).map((x, i) => (
-            <li key={i}>
-              {x.c ? (
-                <button
-                  className="cs-changement"
-                  onClick={() => x.c && ouvrir(x.c)}
-                >
-                  <span className={`cs-etiq ${x.classe}`}>{x.etiquette}</span>
-                  <span>{x.texte}</span>
-                </button>
-              ) : (
-                <span className="cs-changement">
-                  <span className={`cs-etiq ${x.classe}`}>{x.etiquette}</span>
-                  <span>{x.texte}</span>
-                </span>
-              )}
-            </li>
-          ))}
+        <ul className="r-changements">
+          {items.slice(0, 6).map((x, i) => {
+            const contenu = (
+              <>
+                <span className={`r-puce ${x.classe}`}>{x.etiquette}</span>
+                <span>{x.texte}</span>
+              </>
+            );
+            return (
+              <li key={i}>
+                {x.c ? (
+                  <button className="r-changement" onClick={() => x.c && ouvrir(x.c)}>
+                    {contenu}
+                  </button>
+                ) : (
+                  <span className="r-changement">{contenu}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
