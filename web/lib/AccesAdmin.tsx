@@ -37,12 +37,30 @@ export function AccesAdmin({
     return () => data.subscription.unsubscribe();
   }, []);
 
+  const [erreurAcces, setErreurAcces] = useState("");
+
   useEffect(() => {
     if (!session) return;
     void supabase()
       .rpc("est_admin")
-      .then(({ data }) => setAdmin(Boolean(data)));
+      .then(({ data, error }) => {
+        // Une erreur (session expirée, réseau) n'est pas un refus : on le dit.
+        if (error) {
+          setErreurAcces(error.message);
+          setAdmin(false);
+        } else {
+          setErreurAcces("");
+          setAdmin(Boolean(data));
+        }
+      });
   }, [session]);
+
+  const reconnecter = () => {
+    void supabase().auth.signOut().then(() => {
+      setAdmin(null);
+      setSession(null);
+    });
+  };
 
   if (configuration)
     return (
@@ -61,7 +79,20 @@ export function AccesAdmin({
     return (
       <main>
         <h1>{titre}</h1>
-        <p className="erreur">Ce compte n'est pas administrateur (table `admins`).</p>
+        {erreurAcces ? (
+          <p className="erreur">
+            Vérification de l'accès impossible (session expirée ou réseau) : {erreurAcces}
+          </p>
+        ) : (
+          <p className="erreur">
+            Le compte {session.user.email} n'est pas administrateur (table `admins`).
+          </p>
+        )}
+        <p>
+          <button className="petit" onClick={reconnecter}>
+            Se déconnecter et recevoir un nouveau lien
+          </button>
+        </p>
       </main>
     );
   return <>{children(session.user.email ?? "")}</>;
