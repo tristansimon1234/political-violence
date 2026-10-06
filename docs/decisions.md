@@ -115,3 +115,7 @@ Décision de Tristan, qui remplace « Shorts inclus partout » (02/10/2026). Les
 ## 06/10/2026 — Refonte de l'interface
 
 Validée par Tristan sur maquette (artifact « Radar 2027 — refonte interface »). Une barre du haut commune (navigation Cette semaine · Thèmes · Admin, outils de l'écran), une police (Geist, auto-hébergée par Next), cartes blanches sur fond gris clair, un sens par couleur (bleu : accord, hausse ; orange : désaccord, baisse ; gris : couverture, nuance), mode sombre. « Cette semaine » : sujets en tableau au lieu de grandes cartes, 4 faits marquants. « Vue d'ensemble » devient « Thèmes » : liste classable + détail en onglets, dont un onglet « Médias vs commentaires » (couverture face aux réactions, sous-sujets des vidéos) ; carte attention × intensité et « Signal émergent » retirés, semaine par semaine replié en bas. Aucune donnée ni calcul modifié.
+
+## 06/10/2026 — Onglet « Méthodologie »
+
+Nouvel écran `/radar/methodologie` dans la barre du haut. Il affiche `docs/methodologie.md`, lu au build : le fichier reste la seule source (aucune copie à la main), toute modification de la méthode passe toujours par ce fichier et ce journal. Réservé à l'admin comme les autres écrans tant que rien n'est public.
