@@ -25,7 +25,7 @@ export type SujetVideo = {
 const PARIS = new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris" });
 export const jourParis = (iso: string) => PARIS.format(new Date(iso)); // AAAA-MM-JJ
 
-/** Sujets des vidéos publiées dans la fenêtre, sous les types et le format choisis. */
+/** Sujets des vidéos publiées dans la fenêtre, sous les types choisis (vidéos longues). */
 export function sujetsFiltres(
   sujets: SujetVideo[],
   f: Filtres,
@@ -37,7 +37,7 @@ export function sujetsFiltres(
     const jour = jourParis(v.publiee_at);
     return (
       f.types.includes(v.sources.type) &&
-      (f.format === "tous" || v.format === f.format) &&
+      v.format !== "short" &&
       jour >= w.debut &&
       jour <= w.fin
     );
@@ -193,7 +193,7 @@ export const MIN_CHAINES_SUJET = 2;
 
 /**
  * Sujets d'actualité d'un thème, classés par commentaires annoncés. Un sujet n'apparaît qu'à
- * partir de 3 vidéos de 2 chaînes parmi les vidéos affichées (période, types, format).
+ * partir de 3 vidéos de 2 chaînes parmi les vidéos affichées (période, types).
  */
 export function sujetsActu(
   sujets: SujetVideo[],

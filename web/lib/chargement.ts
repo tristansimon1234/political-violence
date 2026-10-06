@@ -83,9 +83,10 @@ export function chargerTout<T>(table: string, colonnes: string): Promise<T[]> {
   return p as Promise<T[]>;
 }
 
+/** Sujets des vidéos longues : les Shorts sont exclus de l'analyse (décision du 06/10/2026). */
 export function chargerSujets(): Promise<SujetVideo[]> {
   return chargerTout<SujetVideo>(
     "videos_sujets",
     "video_id,theme,sous_sujet,poids,videos(publiee_at,format,vues,nb_commentaires,sources(id,type,sous_type,nom))",
-  );
+  ).then((xs) => xs.filter((s) => s.videos?.format !== "short"));
 }

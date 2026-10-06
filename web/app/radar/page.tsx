@@ -87,7 +87,6 @@ function VueEnsemble() {
   const [filtres, setFiltres] = useState<Filtres>({
     periode: "tout",
     types: PUBLICS,
-    format: "tous",
   });
   const [politiques, setPolitiques] = useState(false);
   const [choisi, setChoisi] = useState<Theme | null>(null);
@@ -433,19 +432,6 @@ function BarreFiltres({
             </p>
           </div>
         </details>
-      </fieldset>
-      <fieldset>
-        <legend>Format</legend>
-        {(["tous", "long", "short"] as const).map((f) => (
-          <button
-            key={f}
-            className={filtres.format === f ? "segment actif" : "segment"}
-            aria-pressed={filtres.format === f}
-            onClick={() => setFiltres({ ...filtres, format: f })}
-          >
-            {f === "tous" ? "Tous" : f === "long" ? "Vidéos longues" : "Shorts"}
-          </button>
-        ))}
       </fieldset>
       <label className="radar-interrupteur">
         <input

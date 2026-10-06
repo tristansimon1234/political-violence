@@ -97,7 +97,9 @@ class FauxYouTube:
                 "pub": pub,
                 "short": False,
             },
-            "m3": {"pl": "UUm", "titre": "Le 49.3 en 30 secondes", "pub": pub, "short": True},
+            "m3": {"pl": "UUm", "titre": "Le 49.3 expliqué", "pub": pub, "short": False},
+            # Short retenu par le pré-filtre : ses commentaires ne sont pas lus (06/10/2026).
+            "m4": {"pl": "UUm", "titre": "Le 49.3 en 30 secondes", "pub": pub, "short": True},
             "p1": {"pl": "UUp", "titre": "Nos vœux de rentrée", "pub": pub, "short": False},
         }
         self.fermes = fermes
@@ -192,7 +194,8 @@ def test_prefiltre_commentaires_seulement_pour_videos_retenues(tmp_path: Path) -
     commentees = {v for r, v in faux.appels if r == "commentThreads"}
     # m2 (recette) n'a aucun mot-clé : pas de commentaires. p1 : chaîne politique, gardée.
     assert commentees == {"m1", "m3", "p1"}
-    assert bilan.videos_prefiltre == 3 and bilan.commentaires == 9
+    assert bilan.videos_prefiltre == 4 and bilan.commentaires == 9
+    assert bilan.shorts_ignores == 1  # m4, Short retenu : commentaires non lus
 
 
 def test_format_short_long(tmp_path: Path) -> None:
@@ -201,7 +204,7 @@ def test_format_short_long(tmp_path: Path) -> None:
     base = FausseBase(SOURCES)
     _run(tmp_path / "b", faux, base, _quotidien())
     formats = {v["video_id"]: v["format"] for v in base.tables["videos"]}
-    assert formats == {"m1": "long", "m2": "long", "m3": "short", "p1": "long"}
+    assert formats == {"m1": "long", "m2": "long", "m3": "long", "m4": "short", "p1": "long"}
 
 
 def test_invariant_aucun_pseudo_ni_identifiant_auteur_en_clair(tmp_path: Path) -> None:
@@ -252,7 +255,7 @@ def test_relancer_le_meme_jour_ne_cree_pas_de_doublon(tmp_path: Path) -> None:
     _run(tmp_path, faux, base, _quotidien())
     assert not [a for a in faux.appels[avant:] if a[0] == "commentThreads"]
     assert len(_tous_commentaires(st)) == 9
-    assert len(base.tables["videos"]) == 4
+    assert len(base.tables["videos"]) == 5
 
 
 def test_unicite_avec_commentaires_non_re_recuperes(tmp_path: Path) -> None:
@@ -579,7 +582,11 @@ def test_backfill_recollecte_l_ancien_mode(tmp_path: Path) -> None:
         v["mode_commentaires"] = "pertinence_200"
     bilan, _, st = _run(tmp_path, faux, base, p, J1 + timedelta(days=1))
     assert bilan.videos_commentees == 3
-    assert all(v["mode_commentaires"] == "tout" for v in base.tables["videos"] if v["prefiltre"])
+    assert all(
+        v["mode_commentaires"] == "tout"
+        for v in base.tables["videos"]
+        if v["prefiltre"] and v["format"] == "long"
+    )
     ids = [ligne["comment_id"] for ligne in _tous_commentaires(st)]
     assert len(ids) == len(set(ids)) == 9
     _, yt3, _ = _run(tmp_path, faux, base, p, J1 + timedelta(days=2))

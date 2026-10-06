@@ -37,7 +37,7 @@ from radar.resumes import (
     stats_sujets,
     valider,
 )
-from radar.schemas import LIBELLES_THEMES, NON_POLITIQUE
+from radar.schemas import FORMAT_EXCLU, LIBELLES_THEMES, NON_POLITIQUE
 from radar.supabase_rest import Supabase
 
 log = logging.getLogger("resumes")
@@ -63,7 +63,11 @@ def main() -> int:
     base = Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
 
     sources = {str(s["id"]): s for s in base.select("sources", {})}
-    videos = {str(v["video_id"]): v for v in base.select("videos", {"prefiltre": "eq.true"})}
+    videos = {
+        str(v["video_id"]): v
+        for v in base.select("videos", {"prefiltre": "eq.true"})
+        if v.get("format") != FORMAT_EXCLU  # Shorts exclus (décision du 06/10/2026)
+    }
     principal: dict[str, dict[str, Any]] = {
         str(s["video_id"]): s for s in base.select("videos_sujets", {"principal": "eq.true"})
     }

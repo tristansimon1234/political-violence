@@ -36,7 +36,6 @@ export const MESURES: (keyof Mesures)[] = [
 export type Filtres = {
   periode: 7 | 30 | "tout";
   types: TypeSource[]; // réactions du public : jamais `politique` ici
-  format: "tous" | "short" | "long";
 };
 
 const JOUR_MS = 86_400_000;
@@ -86,7 +85,8 @@ export function fenetres(
 
 export function filtrer(lignes: Agregat[], f: Filtres, types: TypeSource[] = f.types): Agregat[] {
   return lignes.filter(
-    (l) => types.includes(l.type_source) && (f.format === "tous" || l.format === f.format),
+    // Shorts exclus de l'analyse (décision du 06/10/2026).
+    (l) => types.includes(l.type_source) && l.format !== "short",
   );
 }
 

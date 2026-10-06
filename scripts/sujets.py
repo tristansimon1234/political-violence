@@ -22,6 +22,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from radar.llm import BudgetDepasse, ClientClaude, ReponseInvalide
+from radar.schemas import FORMAT_EXCLU
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.sujets import (
     LOT_SUJETS,
@@ -90,7 +91,18 @@ def main() -> int:
     base = Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
 
     sources = {str(s["id"]): str(s.get("nom") or "") for s in base.select("sources", {})}
-    videos = {str(v["video_id"]): v for v in base.select("videos", {"prefiltre": "eq.true"})}
+    videos = {
+        str(v["video_id"]): v
+        for v in base.select("videos", {"prefiltre": "eq.true"})
+        if v.get("format") != FORMAT_EXCLU
+    }
+    # Shorts exclus (décision du 06/10/2026) : leurs anciens rattachements sont retirés.
+    shorts = sorted(
+        str(v["video_id"]) for v in base.select("videos", {"format": f"eq.{FORMAT_EXCLU}"})
+    )
+    if not args.dry_run:
+        for i in range(0, len(shorts), 200):
+            base.supprimer("sujets_videos", {"video_id": f"in.({','.join(shorts[i : i + 200])})"})
     sous_sujets = {
         str(s["video_id"]): str(s["sous_sujet"])
         for s in base.select("videos_sujets", {"principal": "eq.true"})

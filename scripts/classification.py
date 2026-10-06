@@ -34,7 +34,7 @@ from radar.classement import (
 from radar.classification import en_nature, normaliser_sujets
 from radar.evaluation import Candidate, classer_videos, decrire_videos_batch
 from radar.llm import BudgetDepasse, ClientClaude, ClientJev
-from radar.schemas import VERSION_TAXONOMIE, NatureVideo, Theme
+from radar.schemas import FORMAT_EXCLU, VERSION_TAXONOMIE, NatureVideo, Theme
 from radar.storage import (
     RETENTION_JOURS,
     Stockage,
@@ -136,12 +136,20 @@ def main() -> int:
     base = Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
 
     sources = {str(s["id"]): s for s in base.select("sources", {})}
-    lignes_videos = {str(v["video_id"]): v for v in base.select("videos", {})}
+    # Shorts exclus de l'analyse (décision du 06/10/2026) : ni commentaires classés, ni description.
+    lignes_videos = {
+        str(v["video_id"]): v for v in base.select("videos", {}) if v.get("format") != FORMAT_EXCLU
+    }
     bruts_videos: dict[str, dict[str, Any]] = {}
     for _, c in partitions(brut, "videos"):
         for v in lire_partition(brut, c):
             bruts_videos[str(v["video_id"])] = v
-    commentaires = [x for _, c in partitions(brut, "commentaires") for x in lire_partition(brut, c)]
+    commentaires = [
+        x
+        for _, c in partitions(brut, "commentaires")
+        for x in lire_partition(brut, c)
+        if str(x["video_id"]) in lignes_videos
+    ]
     deja, deja_par_video = classes_par_video(classe)
     non_vides = [x for x in commentaires if str(x.get("texte") or "").strip()]
     non_classes = [x for x in non_vides if id_commentaire(str(x["comment_id"]), sel) not in deja]
