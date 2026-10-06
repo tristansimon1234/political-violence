@@ -22,6 +22,7 @@ from radar.agregats import agreger, agreger_videos, poids_par_video
 from radar.anonymisation import sel as lire_sel
 from radar.classement import DOSSIER_CLASSE
 from radar.drilldown import fiches, publier
+from radar.schemas import FORMAT_EXCLU
 from radar.storage import Stockage, StockageLocal, StockageSupabase, lire_partition, partitions
 from radar.supabase_rest import Supabase
 
@@ -49,6 +50,8 @@ def main() -> int:
     for c in st.lister(DOSSIER_CLASSE):
         if c.endswith(".parquet"):
             classes.extend(lire_partition(st, c))
+    # Shorts exclus de l'analyse (décision du 06/10/2026), y compris ceux déjà classés.
+    classes = [c for c in classes if c.get("format") != FORMAT_EXCLU]
     base = Supabase(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
     # Plafond par vidéo (décision du 04/10/2026) : pondération par le volume réel.
     volumes = {
@@ -87,9 +90,16 @@ def main() -> int:
         f"{sum(len(x) for x in par_video_dd.values())} commentaires classés (30 derniers jours)."
     )
     if not args.dry_run:
+        for table in ("agregats_themes", "agregats_chaines"):
+            base.supprimer(table, {"format": f"eq.{FORMAT_EXCLU}"})
         base.upsert("agregats_themes", lignes, "jour,theme,type_source,format")
         base.upsert("agregats_chaines", lignes_chaines, "jour,theme,source_id,format")
         par_video = agreger_videos(classes, poids)
+        shorts = sorted(
+            str(v["video_id"]) for v in base.select("videos", {"format": f"eq.{FORMAT_EXCLU}"})
+        )
+        for i in range(0, len(shorts), 200):
+            base.supprimer("agregats_videos", {"video_id": f"in.({','.join(shorts[i : i + 200])})"})
         base.upsert("agregats_videos", par_video, "video_id")
         print(
             f"\nÉcrit dans Supabase : {len(lignes)} lignes (agregats_themes), "

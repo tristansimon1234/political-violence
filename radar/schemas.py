@@ -31,7 +31,8 @@ LIBELLES_TYPE: Final[dict[TypeSource, str]] = {
     "politique": "Politiques",
 }
 
-# Critère commun d'activité : au moins 10 vidéos sur 90 jours, Shorts compris.
+# Critère commun d'activité : au moins 10 vidéos sur 90 jours, Shorts compris (le panel ne
+# change pas, même si les Shorts ne sont plus analysés).
 SEUIL_ACTIVITE_VIDEOS: Final = 10
 FENETRE_ACTIVITE_JOURS: Final = 90
 
@@ -39,6 +40,9 @@ FENETRE_ACTIVITE_JOURS: Final = 90
 
 FormatVideo = Literal["short", "long"]
 FORMATS_VIDEO: Final[tuple[FormatVideo, ...]] = get_args(FormatVideo)
+# Shorts exclus de l'analyse (décision du 06/10/2026) : métadonnées toujours collectées (critère
+# d'activité du panel inchangé), mais ni commentaires, ni classification, ni agrégats, ni sujets.
+FORMAT_EXCLU: Final = "short"
 
 
 # --- Classification (docs/donnees.md) ---

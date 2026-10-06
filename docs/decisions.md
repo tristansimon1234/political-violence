@@ -107,3 +107,7 @@ Chaque décision validée qui modifie le projet est ajoutée ici, datée, avec s
 ## 04/10/2026 — Drill-down : écriture robuste
 
 Agrégats plantait sur un 504 de Supabase Storage pendant l'écriture des ~11 600 fichiers de drill-down, avant d'écrire `agregats_videos`. Désormais : `agregats_videos` est écrit avant le drill-down ; chaque écriture Storage est retentée (4 essais) sur erreur 5xx/429/réseau ; le drill-down est écrit en parallèle (8) et son index enregistré tous les 500 fichiers, si bien qu'un run coupé reprend là où il s'est arrêté ; un fichier en échec est compté et retenté au run suivant sans arrêter les autres. Délai du workflow porté à 120 min.
+
+## 06/10/2026 — Shorts exclus de l'analyse
+
+Décision de Tristan, qui remplace « Shorts inclus partout » (02/10/2026). Les métadonnées des Shorts sont toujours collectées (format, pré-filtre), et le critère d'activité du panel (≥ 10 vidéos sur 90 jours, Shorts compris) est inchangé : la composition du panel ne bouge pas. En revanche : plus aucun commentaire de Short n'est lu (économie de quota), ni décrit ni classé ; les Shorts déjà collectés et classés restent dans le brut (purge manuelle) mais sont exclus des agrégats, du drill-down, des sujets d'actualité, des résumés et de l'interface. Les lignes `format = short` des tables d'agrégats et les rattachements de Shorts aux sujets sont supprimés au prochain run. Le filtre « Format » disparaît de la vue d'ensemble.

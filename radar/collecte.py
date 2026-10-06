@@ -20,6 +20,7 @@ from typing import Any, Literal, Protocol
 
 from radar.anonymisation import hash_auteur
 from radar.prefiltre import MotsCles
+from radar.schemas import FORMAT_EXCLU
 from radar.storage import Stockage, enregistrer
 from radar.youtube import QuotaDepasse, VideoDetail, VideoIndisponible, YouTube, format_video
 
@@ -62,6 +63,7 @@ class Bilan:
     commentaires_annonces: int = 0
     arret_budget: bool = False
     videos_indisponibles: int = 0
+    shorts_ignores: int = 0  # Shorts retenus, commentaires non lus (décision du 06/10/2026)
     prefiltre_par_type: Counter[str] = field(default_factory=Counter[str])
     nouvelles_par_type: Counter[str] = field(default_factory=Counter[str])
     prefiltre_par_jour: Counter[str] = field(default_factory=Counter[str])
@@ -239,6 +241,9 @@ def collecter(
             bilan.prefiltre_par_type[type_source] += 1
             bilan.prefiltre_par_jour[str(v["publiee_at"])[:10]] += 1
             if v["commentaires_fermes"]:
+                continue
+            if v.get("format") == FORMAT_EXCLU:
+                bilan.shorts_ignores += 1
                 continue
             if p.mode == "quotidien":
                 ok = (

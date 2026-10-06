@@ -245,8 +245,16 @@ class FausseBase:
             {
                 "video_id": "v2",
                 "source_id": "s1",
-                "format": "short",
+                "format": "long",
                 "nature": "info_factuelle",
+                "prefiltre": True,
+            },
+            # Short : exclu de l'analyse (06/10/2026), jamais décrit ni classé.
+            {
+                "video_id": "v3",
+                "source_id": "s1",
+                "format": "short",
+                "nature": None,
                 "prefiltre": True,
             },
         ]

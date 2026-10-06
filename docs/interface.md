@@ -2,7 +2,7 @@
 
 ## Interface et éditorial
 
-**État au 02/10/2026** : écran `/radar` (Vue d'ensemble des thèmes, v1), réservé à l'admin. Filtres période (7 j, 30 j, depuis le début), réactions sous (médias traditionnels, médias natifs du web), format (tous, vidéos longues, Shorts), chaînes politiques (lues à part). Liste des thèmes (part des commentaires politiques, évolution, courbe, vélocité provisoire) et détail du thème choisi (tonalité, part hostile, accord avec la vidéo sous les vidéos d'opinion, par type de source). Source : table `agregats_themes`.
+**État au 02/10/2026** : écran `/radar` (Vue d'ensemble des thèmes, v1), réservé à l'admin. Filtres période (7 j, 30 j, depuis le début), réactions sous (médias traditionnels, médias natifs du web), chaînes politiques (lues à part). Liste des thèmes (part des commentaires politiques, évolution, courbe, vélocité provisoire) et détail du thème choisi (tonalité, part hostile, accord avec la vidéo sous les vidéos d'opinion, par type de source). Source : table `agregats_themes`.
 
 **Organisation de l'information (04/10/2026)**
 - **Un seul drill-down** pour les deux écrans : un panneau latéral à niveaux (sujet › vidéo › commentaires classés), avec fil d'Ariane, retour et fermeture (`web/lib/Explorateur.tsx`). Un seul niveau affiché à la fois : plus de blocs dépliables imbriqués dans les listes, plus de modale.

@@ -37,7 +37,8 @@ def rapport(p: Parametres, b: Bilan, yt: YouTube, debut: datetime) -> str:
         f"- Vidéos examinées : {b.videos_vues} (nouvelles : {b.videos_nouvelles})",
         f"- Passent le pré-filtre ou chaîne politique : {b.videos_prefiltre}",
         f"- Éligibles aux commentaires : {b.videos_eligibles} "
-        f"(≤ {b.pages_estimees} pages ≈ {b.pages_estimees} unités au plus)",
+        f"(≤ {b.pages_estimees} pages ≈ {b.pages_estimees} unités au plus) ; Shorts ignorés : "
+        f"{b.shorts_ignores}",
         f"- Commentaires annoncés par YouTube sur ces vidéos (réponses comprises) : "
         f"{b.commentaires_annonces} ; tout prendre coûterait au plus "
         f"~{b.commentaires_annonces // 100 + b.videos_eligibles} unités",
