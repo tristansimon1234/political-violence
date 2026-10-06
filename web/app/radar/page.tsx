@@ -211,15 +211,12 @@ function VueEnsemble() {
   );
   const agenda = useMemo(() => agendaParTheme(sujetsPeriode), [sujetsPeriode]);
 
-  // Sujets d'actualité de la période (format choisi), au format du drill-down.
+  // Sujets d'actualité de la période (vidéos longues : Shorts exclus au chargement).
   const cartes = useMemo(() => {
     if (!vue) return new Map<string, CarteSujet>();
-    const base = sujetsBase.filter(
-      (x) => filtresEff.format === "tous" || x.videos?.format === filtresEff.format,
-    );
     return new Map(
       cartesSujets(
-        base,
+        sujetsBase,
         vue.courante,
         filtresEff.types,
         rattachements,
