@@ -1984,6 +1984,76 @@ span.r-changement {
   }
 }
 
+/* --- Méthodologie --- */
+
+.r-methodo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.r-sommaire {
+  flex: 1 1 220px;
+  position: sticky;
+  top: 96px;
+  gap: 4px;
+}
+
+.r-sommaire a {
+  color: var(--r-discret);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  margin: 0 -10px;
+  border-radius: 8px;
+}
+
+.r-sommaire a:hover {
+  background: var(--r-piste);
+  color: var(--r-texte);
+}
+
+.r-texte {
+  flex: 999 1 600px;
+  max-width: 820px;
+  padding: 32px 40px 40px;
+  gap: 14px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.r-texte h1 {
+  font-size: 32px;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.r-texte h2 {
+  font-size: 21px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--r-bord-doux);
+  scroll-margin-top: 110px;
+}
+
+.r-texte ul,
+.r-texte ol {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.r-texte code {
+  font-family: var(--r-mono);
+  font-size: 0.9em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--r-piste);
+}
+
 /* --- Petits écrans --- */
 
 @media (max-width: 760px) {
@@ -2059,8 +2129,13 @@ span.r-changement {
     margin: 12px 16px 16px;
   }
 
-  .r-themes {
+  .r-themes,
+  .r-sommaire {
     position: static;
+  }
+
+  .r-texte {
+    padding: 22px 18px;
   }
 
   .r-detail {

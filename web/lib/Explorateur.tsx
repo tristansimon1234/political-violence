@@ -395,14 +395,14 @@ export function ListeVideos({
               </span>
               <span className="explo-ligne-chiffres">
                 <span>
-                  {r ? entier(r.commentaires) : entier(v.annonces)}
-                  <small>{r ? " classés" : " annoncés"}</small>
+                  {entier(v.annonces)}
+                  <small> comm. annoncés</small>
                 </span>
-                {r && n >= MIN_PRONONCES && (
-                  <span className="discret">
-                    {Math.round(pct(r.accord, n))} % d'accord
-                  </span>
-                )}
+                <span className="discret">
+                  {r
+                    ? `${entier(r.commentaires)} classés${n >= MIN_PRONONCES ? ` · ${Math.round(pct(r.accord, n))} % d'accord` : ""}`
+                    : "non classée"}
+                </span>
               </span>
               <span className="explo-chevron" aria-hidden="true">
                 ›

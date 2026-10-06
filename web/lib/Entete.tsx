@@ -7,10 +7,14 @@ export function Entete({
   actif,
   outils,
 }: {
-  actif: "semaine" | "ensemble";
+  actif: "semaine" | "ensemble" | "methodologie";
   outils?: ReactNode;
 }) {
-  const lien = (cle: "semaine" | "ensemble", href: string, nom: string) => (
+  const lien = (
+    cle: "semaine" | "ensemble" | "methodologie",
+    href: string,
+    nom: string,
+  ) => (
     <Link
       href={href}
       className={actif === cle ? "r-nav-lien actif" : "r-nav-lien"}
@@ -35,6 +39,7 @@ export function Entete({
         <nav className="r-nav" aria-label="Écrans">
           {lien("semaine", "/radar/semaine", "Cette semaine")}
           {lien("ensemble", "/radar", "Thèmes")}
+          {lien("methodologie", "/radar/methodologie", "Méthodologie")}
           <a href="/admin" className="r-nav-lien">
             Admin
           </a>
